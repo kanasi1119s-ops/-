@@ -1,0 +1,6 @@
+{
+  "name": "AIスマート経理ソフト",
+  "description": "売上・経費管理、AIレシート一発読取(OCR)、リアルタイム税金・手取り自動シミュレーション、取引明細帳を備えた個人事業主・フリーランス向けクラウド経理アプリ",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
