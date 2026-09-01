@@ -132,6 +132,53 @@ export function exportTransactionsToJson(transactions: Transaction[], customFile
   URL.revokeObjectURL(url);
 }
 
+export function exportClosingStatementToCsv(statement: {
+  periodLabel: string;
+  incomeByCategory: { category: string; amount: number; count: number }[];
+  expenseByCategory: { category: string; amount: number; count: number }[];
+  totalIncome: number;
+  totalExpense: number;
+  grossProfit: number;
+  blueReturnDeduction: number;
+  taxableBusinessIncome: number;
+  progressiveTax: { taxableIncome: number; totalIncomeTax: number };
+}, year: number): void {
+  const BOM = '\uFEFF';
+  const escapeCell = (val: string | number) => `"${String(val).replace(/"/g, '""')}"`;
+  const lines: string[] = [];
+
+  lines.push(escapeCell(`決算書サマリー（${statement.periodLabel}）`));
+  lines.push('');
+  lines.push([escapeCell('収入の部'), escapeCell('金額(円)'), escapeCell('件数')].join(','));
+  statement.incomeByCategory.forEach((r) => {
+    lines.push([escapeCell(r.category), Math.round(r.amount), r.count].join(','));
+  });
+  lines.push([escapeCell('収入金額合計'), Math.round(statement.totalIncome), ''].join(','));
+  lines.push('');
+  lines.push([escapeCell('必要経費の部'), escapeCell('金額(円)'), escapeCell('件数')].join(','));
+  statement.expenseByCategory.forEach((r) => {
+    lines.push([escapeCell(r.category), Math.round(r.amount), r.count].join(','));
+  });
+  lines.push([escapeCell('必要経費合計'), Math.round(statement.totalExpense), ''].join(','));
+  lines.push('');
+  lines.push([escapeCell('差引金額（収入-経費）'), Math.round(statement.grossProfit)].join(','));
+  lines.push([escapeCell('青色申告特別控除額'), Math.round(statement.blueReturnDeduction)].join(','));
+  lines.push([escapeCell('所得金額（事業所得）'), Math.round(statement.taxableBusinessIncome)].join(','));
+  lines.push([escapeCell('概算課税所得金額（基礎控除後・参考値）'), Math.round(statement.progressiveTax.taxableIncome)].join(','));
+  lines.push([escapeCell('概算所得税額（復興特別所得税込・参考値）'), Math.round(statement.progressiveTax.totalIncomeTax)].join(','));
+
+  const csvContent = BOM + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `決算書_確定申告サマリー_${year}年.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export interface JsonImportResult {
   success: boolean;
   transactions?: Transaction[];
@@ -188,6 +235,7 @@ export function validateAndParseTransactionsJson(jsonContent: string): JsonImpor
       const paymentMethod = typeof item.paymentMethod === 'string' ? item.paymentMethod : undefined;
       const items = Array.isArray(item.items) ? item.items.filter((x: any) => x && typeof x.name === 'string').map((x: any) => ({ name: x.name, price: Number(x.price) || 0, quantity: Number(x.quantity) || 1, taxRate: Number(x.taxRate) || undefined })) : undefined;
       const createdAt = typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString();
+      const qualifiedInvoice = typeof item.qualifiedInvoice === 'boolean' ? item.qualifiedInvoice : undefined;
 
       validTransactions.push({
         id,
@@ -207,6 +255,7 @@ export function validateAndParseTransactionsJson(jsonContent: string): JsonImpor
         paymentMethod,
         items,
         createdAt,
+        qualifiedInvoice,
       });
     }
 

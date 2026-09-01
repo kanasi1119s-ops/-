@@ -8,6 +8,10 @@ export const DEFAULT_TAX_SETTINGS: TaxSettings = {
   reducedTaxRate: 0.08, // 8%
   blueReturnDeduction: 650000,
   applyBlueReturn: false, // Default matches Streamlit formula (30% total deductions on profit)
+  invoiceRegistered: false,
+  invoiceRegistrationNumber: '',
+  businessName: '',
+  taxpayerName: '',
 };
 
 // Generate realistic default transactions for current date/month

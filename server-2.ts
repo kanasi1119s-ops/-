@@ -79,7 +79,12 @@ app.put('/api/transactions', (req, res) => {
 // AI Receipt OCR Endpoint (Handles printed receipts, handwritten receipts, handwritten invoices)
 app.post('/api/receipt-ocr', async (req, res) => {
   try {
-    const { imageBase64, mimeType = 'image/jpeg', ocrTextHint } = req.body;
+    const { imageBase64, mimeType = 'image/jpeg', ocrTextHint, mode: rawMode } = req.body;
+    const mode: 'expense' | 'income' = rawMode === 'income' ? 'income' : 'expense';
+
+    const EXPENSE_CATEGORY_LIST = '消耗品費, 通信費, 広告宣伝費, 接待交際費, 旅費交通費, 会議費, 新聞図書費, 支払手数料, 地代家賃, 水道光熱費, 外注工賃, 車両費, 研修費, 雑費';
+    const INCOME_CATEGORY_LIST = '売上高, 業務委託報酬, 制作費, 商品販売, コンサルティング, 原稿料・監修料, 雑収入';
+    const defaultCategory = mode === 'income' ? '売上高' : '消耗品費';
 
     if (!imageBase64 && !ocrTextHint) {
       return res.status(400).json({ success: false, error: '画像またはテキストデータが必要です。' });
@@ -88,7 +93,7 @@ app.post('/api/receipt-ocr', async (req, res) => {
     const ai = getGenAI();
     if (!ai || !imageBase64) {
       const text = String(ocrTextHint || '');
-      const amountMatch = text.match(/(?:合計|税込合計|総額|請求金額|お支払|金額|金)[:\s]*[¥￥]?\s*([0-9,]+)/i);
+      const amountMatch = text.match(/(?:合計|税込合計|総額|請求金額|お支払|ご入金|入金額|振込金額|金額|金)[:\s]*[¥￥]?\s*([0-9,]+)/i);
       const total = amountMatch ? Number(amountMatch[1].replace(/,/g, '')) : 0;
       const taxRate = 0.10;
       const tax = total ? Math.round(total - total / (1 + taxRate)) : 0;
@@ -96,8 +101,8 @@ app.post('/api/receipt-ocr', async (req, res) => {
         success: true,
         source: 'fallback_parser',
         data: {
-          documentType: 'other', merchant: '書類発行元（要確認）', date: new Date().toISOString().slice(0, 10),
-          total, amount: Math.max(0, total - tax), tax, taxRate, category: '消耗品費',
+          documentType: 'other', merchant: mode === 'income' ? '取引先（要確認）' : '書類発行元（要確認）', date: new Date().toISOString().slice(0, 10),
+          total, amount: Math.max(0, total - tax), tax, taxRate, category: defaultCategory,
           description: 'OCRデータ（要確認）', invoiceNumber: '', paymentMethod: '', items: [], rawText: text,
           confidence: 0.2,
         },
@@ -110,7 +115,25 @@ app.post('/api/receipt-ocr', async (req, res) => {
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(detectedMime)) detectedMime = 'image/jpeg';
 
     const currentYear = new Date().getFullYear();
-    const prompt = `あなたは日本の経理入力専用AIです。画像を読み取り、レシート、領収書、請求書、利用明細・明細書、その他の経理書類を正確に構造化してください。
+    const prompt = mode === 'income'
+      ? `あなたは日本の経理入力専用AIです。画像を読み取り、売上・入金に関する書類（自分が発行した請求書・納品書、銀行の入出金明細・振込明細、ネットバンキングやスマホ決済アプリの入金通知スクリーンショット、Stripe/PayPal等の決済サービスの入金確認画面など）を正確に構造化してください。
+
+【絶対条件】
+- 画像に書いてある情報だけを根拠にしてください。読めない項目は空文字または0にし、「推測」で取引先名や金額を作らないでください。
+- merchant は入金元・支払元・請求先の企業名/屋号/個人名（振込明細なら「振込人名」、請求書なら「宛先」ではなく自分が請求した相手先）。
+- total は実際の入金額/請求総額。手数料が差し引かれた「振込金額」ではなく、可能であれば請求・売上の総額を優先。
+- date は入金日・取引日・請求日。YYYY-MM-DD。和暦は西暦化。年省略時は ${currentYear} 年として処理。
+- tax と amount は明記値を優先。税額が明記されない場合のみ税率から計算。
+- taxRate は標準10%、軽減税率対象は8%。不明なら0.10。
+- documentType は receipt / invoice / statement / other のいずれか（銀行明細・入金通知はstatement）。
+- invoiceNumber は請求書番号や取引番号など、明確な番号があれば抽出。
+- paymentMethod は銀行振込、現金、クレジットカード決済、電子マネー等が読める場合のみ。
+- items は明細が読める場合に品目・金額・数量を抽出。
+- category は「${INCOME_CATEGORY_LIST}」から最も妥当なもの。ただし画像だけでは判断できない場合は売上高。
+- rawText は主要な読み取り文字を要約。
+- confidence は0〜1。金額・取引先名・日付が明瞭なら高く、不鮮明なら低くする。
+`
+      : `あなたは日本の経理入力専用AIです。画像を読み取り、レシート、領収書、請求書、利用明細・明細書、その他の経理書類を正確に構造化してください。
 
 【絶対条件】
 - 画像に書いてある情報だけを根拠にしてください。読めない項目は空文字または0にし、「推測」で店舗名や金額を作らないでください。
@@ -123,7 +146,7 @@ app.post('/api/receipt-ocr', async (req, res) => {
 - invoiceNumber は請求書番号、インボイス登録番号(Tから始まる番号)、取引番号など、明確な番号があれば抽出。
 - paymentMethod は現金、クレジットカード、電子マネー、振込等が読める場合のみ。
 - items は明細が読める場合に商品名・金額・数量・税率を抽出。
-- category は「消耗品費, 通信費, 広告宣伝費, 接待交際費, 旅費交通費, 会議費, 新聞図書費, 支払手数料, 地代家賃, 水道光熱費, 外注工賃, 車両費, 研修費, 雑費」から最も妥当なもの。ただし画像だけでは判断できない場合は消耗品費。
+- category は「${EXPENSE_CATEGORY_LIST}」から最も妥当なもの。ただし画像だけでは判断できない場合は消耗品費。
 - rawText は主要な読み取り文字を要約。
 - confidence は0〜1。金額・店舗名・日付が明瞭なら高く、手書きや不鮮明なら低くする。
 `;
@@ -153,7 +176,7 @@ app.post('/api/receipt-ocr', async (req, res) => {
     const safeTax = Number.isFinite(Number(parsed.tax)) && Number(parsed.tax) >= 0
       ? Math.round(Number(parsed.tax))
       : Math.round(safeTotal - safeTotal / (1 + safeTaxRate));
-    // `total` is the figure printed most prominently on a receipt and is what the AI
+    // `total` is the figure printed most prominently on a receipt/statement and is what the AI
     // reads most reliably; `amount` (税抜) is a derived breakdown that's easy for the
     // model to get slightly wrong on handwritten documents. Rather than trust a
     // model-reported `amount` outright — which could silently make amount + tax ≠ total
@@ -165,6 +188,8 @@ app.post('/api/receipt-ocr', async (req, res) => {
       ? Math.round(parsedAmount)
       : reconciledAmount;
 
+    const allowedCategories = mode === 'income' ? INCOME_CATEGORY_LIST.split(', ') : EXPENSE_CATEGORY_LIST.split(', ');
+
     return res.json({
       success: true,
       source: 'gemini_vision',
@@ -174,7 +199,7 @@ app.post('/api/receipt-ocr', async (req, res) => {
         merchant: typeof parsed.merchant === 'string' ? parsed.merchant.trim() : '',
         date: typeof parsed.date === 'string' ? parsed.date : new Date().toISOString().slice(0, 10),
         total: safeTotal, tax: safeTax, amount: safeAmount, taxRate: safeTaxRate,
-        category: typeof parsed.category === 'string' && parsed.category ? parsed.category : '消耗品費',
+        category: typeof parsed.category === 'string' && allowedCategories.includes(parsed.category) ? parsed.category : defaultCategory,
         description: typeof parsed.description === 'string' ? parsed.description : '',
         invoiceNumber: typeof parsed.invoiceNumber === 'string' ? parsed.invoiceNumber : '',
         paymentMethod: typeof parsed.paymentMethod === 'string' ? parsed.paymentMethod : '',
@@ -184,7 +209,7 @@ app.post('/api/receipt-ocr', async (req, res) => {
     });
   } catch (error: any) {
     console.error('OCR Processing Error:', error);
-    return res.status(500).json({ success: false, error: 'レシート・領収書・請求書の解析中にエラーが発生しました。', details: error?.message || String(error) });
+    return res.status(500).json({ success: false, error: '書類の解析中にエラーが発生しました。', details: error?.message || String(error) });
   }
 });
 
