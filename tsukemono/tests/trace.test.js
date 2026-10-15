@@ -34,7 +34,7 @@ test('人物の目印が絵の中に収まり、来る人全員に絵がある',
     assert.ok(BODIES[look.body], look.body);
     if (look.recolor) assert.ok(RECOLORS[look.recolor], look.recolor);
   }
-  for (const set of [PERSON_ANIMS, ...Object.values(POSE_ANIMS)]) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 4);
+  for (const set of [PERSON_ANIMS, ...Object.values(POSE_ANIMS)]) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 6);
 });
 
 test('通りがかりの人: 季節限定の人は、その季節にだけ来る', () => {

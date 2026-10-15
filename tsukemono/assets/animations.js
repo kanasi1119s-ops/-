@@ -300,12 +300,12 @@ export const PERSON_ANIMS = {
   talk_basket: { loop: true, frames: [fr(240, { head: [0, -1], props: BASKET }), fr(240, { props: BASKET })] },
 };
 
-// 歩き: 脚を描き直した4コマ（tools/walk_frames.py）。0 右足が前 → 1 そろう → 2 左足が前 → 3 そろう。そろうコマで1ドット浮く
-const walkCycle = (ms) => ({ loop: true, frames: [0, 1, 2, 3].map((k) => ({ ms, walk: k, dy: k % 2 ? -1 : 0, props: [] })) });
-for (const name of Object.keys(WALK_FRAMES)) {
+// 歩き: ドット絵エディタで描いた6コマ（assets/editor/、tools/editor_walk.mjs）。体の上下はコマの絵に入っている
+for (const [name, frames] of Object.entries(WALK_FRAMES)) {
   if (!POSE_ANIMS[name]) continue;
-  POSE_ANIMS[name].walk = walkCycle(name.startsWith("granny") ? 160 : 130);
-  POSE_ANIMS[name].walk_basket = walkCycle(name.startsWith("granny") ? 160 : 130);
+  const cycle = { loop: true, frames: frames.map((f, k) => ({ ms: f.ms ?? 130, walk: k, dy: 0, props: [] })) };
+  POSE_ANIMS[name].walk = cycle;
+  POSE_ANIMS[name].walk_basket = cycle;
 }
 
 // 吊るし物の揺れ（下ほど大きく、左右に1ドット）。各区切りは SCENE.hanging の ms で別々の周期になる
