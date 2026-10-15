@@ -26,11 +26,37 @@ SYMS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 FRAME_MS = 110
 PAD = 1  # 体が1ドット浮くぶん、上に余白
 # 人ごとの手直し: stride=歩幅の倍率、lift=足を上げる高さの倍率、hip=腰の高さ（行）
-# 長いスカート・着物の人は、すそから脚が出ないよう、歩幅と足の上げ方を小さく
-TUNE = {
-    'woman': {'stride': 0.55, 'lift': 0.35}, 'granny': {'stride': 0.55, 'lift': 0.35}, 'granny2': {'stride': 0.55, 'lift': 0.35},
-    'parasol': {'stride': 0.5, 'lift': 0.3}, 'samurai': {'stride': 0.6, 'lift': 0.4}, 'witch': {'stride': 0.55, 'lift': 0.35},
-    'oldman': {'stride': 0.85},
+# 人ごとの指定（元の絵を方眼で見て決めた）:
+#   cut   … この行から下を脚として描き直す（ズボンは股のあたり、スカート・着物はすそ）
+#   keep  … 消さずに残す持ち物の枠 [上の行, 左の列, 下の行, 右の列]（かご・袋。脚はこの後ろを通る）
+#   skirt … すそから下だけ脚が見える人（腰はすその中に隠れる）
+#   stride / lift … 歩幅・足の上げ方の倍率（長いすその人は小さく）
+SPEC = {
+    'woman': {'cut': 66, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'granny': {'cut': 64, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'granny2': {'cut': 64, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'oldman': {'cut': 47, 'keep': [[44, 0, 67, 12]], 'stride': 0.85},
+    'boy': {'cut': 46, 'keep': [[35, 0, 49, 12]], 'skirt': True, 'color': (205, 140, 100)},  # 脚は肌の色（靴下の白を拾わない）
+    'girl': {'cut': 46, 'keep': [[35, 0, 49, 10]], 'skirt': True},
+    'student': {'cut': 49, 'keep': [[37, 0, 55, 13]], 'skirt': True},
+    'gakuran': {'cut': 46, 'keep': [[37, 0, 56, 13]]},
+    'blazer': {'cut': 51, 'keep': [[41, 0, 58, 13]], 'skirt': True},
+    'yankee': {'cut': 49, 'keep': [[43, 0, 59, 15]]},
+    'suit': {'cut': 48, 'keep': [[46, 0, 63, 14]]},
+    'shades': {'cut': 47, 'keep': [[43, 0, 59, 16]]},
+    'volley': {'cut': 46, 'keep': [[42, 0, 57, 13]], 'skirt': True},
+    'soccer': {'cut': 47, 'keep': [[42, 0, 56, 12]], 'skirt': True},
+    'racer': {'cut': 46, 'keep': [[43, 0, 58, 14]], 'skirt': True},
+    'karate': {'cut': 45, 'keep': [[43, 0, 58, 13]]},
+    'samurai': {'cut': 64, 'keep': [[41, 0, 58, 14]], 'skirt': True, 'stride': 0.6, 'lift': 0.4},
+    'beach': {'cut': 44, 'keep': [[41, 0, 57, 13]], 'skirt': True},
+    'parasol': {'cut': 70, 'keep': [[47, 4, 73, 18]], 'skirt': True, 'stride': 0.5, 'lift': 0.3},
+    'angler': {'cut': 52, 'keep': [[48, 5, 67, 22]]},
+    'hiker': {'cut': 50, 'keep': [[44, 0, 59, 13]]},
+    'knight': {'cut': 52, 'keep': [[47, 0, 61, 14]], 'skirt': True},
+    'alien': {'cut': 47, 'keep': [[39, 0, 56, 12]]},
+    'witch': {'cut': 66, 'keep': [[40, 0, 66, 32]], 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'demon': {'cut': 56, 'keep': [[47, 0, 61, 14]], 'skirt': True},
 }
 
 
@@ -104,17 +130,15 @@ def trace_legs(alpha):
     return {'bottom': bottom, 'top': top, 'legs': legs, 'L': L, 'R': R}
 
 
-def colors_of(a, info):
-    top, bottom = info['top'], info['bottom']
+def colors_of(a, info, cut, kept):
+    """脚の色（前・後ろ）と靴の色。cut の少し下（太もも・すね）と、足元の行から取る。持ち物の枠は見ない。"""
+    bottom = info['bottom']
     mid = (info['L'][1] + info['R'][0]) / 2
     def pix(y0, y1, side):
         out = []
         for y in range(y0, y1 + 1):
-            if y not in info['legs']:
-                continue
-            x0, x1 = info['legs'][y]
-            for x in range(x0, x1 + 1):
-                if a[y, x, 3] and ((x < mid) == (side == 'L')):
+            for x in range(a.shape[1]):
+                if a[y, x, 3] and not kept(y, x) and ((x < mid) == (side == 'L')):
                     out.append(tuple(int(v) for v in a[y, x, :3]))
         return out
     def mode(cs):
@@ -123,11 +147,12 @@ def colors_of(a, info):
         dmin = min(sum(c) for c in cs)
         cs2 = [c for c in cs if sum(c) > dmin + 40] or cs  # ふちの暗い色は除く
         return Counter(cs2).most_common(1)[0][0]
-    shin_end = max(top, min(bottom - 3, top + 3))  # ひざのすぐ下（靴下や靴の色を拾わない）
-    front = mode(pix(top, shin_end, 'R')) or (90, 80, 70)
-    back = mode(pix(top, shin_end, 'L')) or front
-    if abs(sum(back) - sum(front)) < 30:  # 後ろの脚は少し暗く
-        back = tuple(max(0, int(v * 0.78)) for v in front)
+    y0, y1 = cut + 1, min(bottom - 3, cut + 3)
+    if y1 < y0:
+        y0, y1 = max(0, bottom - 4), bottom - 2
+    front = mode(pix(y0, y1, 'R')) or (90, 80, 70)
+    front = tuple(info.get('color') or front)
+    back = tuple(max(0, int(v * 0.75)) for v in front)  # 後ろの脚は前の脚を少し暗く
     shoe = mode(pix(bottom - 1, bottom, 'L') + pix(bottom - 1, bottom, 'R')) or (60, 45, 35)
     return front, back, shoe
 
@@ -164,48 +189,22 @@ def main():
         if not info:
             print('脚が見つからない:', name)
             continue
-        t = TUNE.get(name, {})
-        front, back, shoe = colors_of(a, info)
+        t = SPEC.get(name, {})
         body = a.copy()
         H, W = h0 + PAD, w0
+        cut = t['cut']
+        keep = t.get('keep', [])
+        kept = lambda y, x: any(k[0] <= y <= k[2] and k[1] <= x <= k[3] for k in keep)
+        # からだ: cut の行から下を消す（持ち物の枠は残す）
+        for y in range(cut, h0):
+            for x in range(w0):
+                if not kept(y, x):
+                    body[y, x] = 0
         head0 = next(y for y in range(h0) if a[y, :, 3].any())
-        hip0 = round(info['bottom'] - 0.46 * (info['bottom'] - head0))
-        hip0 = min(hip0, info['top'] - 2)
-        crotch = hip0 + max(2, round(0.12 * (info['bottom'] - hip0)))
-        # からだ: 股から下の脚を外す。足元から上へ、1行に左右1ドットまでしか太らない範囲を脚とみなす
-        #   片側だけ急に広がる行（かご・袋がくっついている）はその側を切り、両側とも広がる行（すそ）で止める
-        al = a[:, :, 3] > 0
-        erase = {}
-        for y, (x0, x1) in info['legs'].items():
-            if y >= info['top']:
-                erase[y] = (x0, x1)
-        p0, p1 = erase[info['top']]
-        for y in range(info['top'] - 1, crotch - 1, -1):
-            rr = [q for q in runs(al[y]) if q[1] >= p0 - 1 and q[0] <= p1 + 1]
-            if not rr:
-                break
-            m0, m1 = min(q[0] for q in rr), max(q[1] for q in rr)
-            grow_l, grow_r = p0 - m0, m1 - p1
-            if grow_l > 2 and grow_r > 2:
-                break  # すそ
-            m0 = max(m0, p0 - 1)
-            m1 = min(m1, p1 + 1)
-            erase[y] = (m0, m1)
-            p0, p1 = m0, m1
-        for y, (x0, x1) in erase.items():
-            body[y, x0:x1 + 1] = 0
-        lx0 = min(x0 for x0, _ in erase.values())
-        lx1 = max(x1 for _, x1 in erase.values())
-        crotch = min(erase)
-        # 消し残りの細い線（脚のふち）を消す
-        for _ in range(2):
-            al = body[:, :, 3] > 0
-            for y in range(crotch, h0):
-                for x in range(lx0, lx1 + 1):
-                    if al[y, x]:
-                        n = sum(1 for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= y + dy < h0 and 0 <= x + dx < w0 and al[y + dy, x + dx])
-                        if n <= 1:
-                            body[y, x] = 0
+        hip0 = round(info['bottom'] - 0.46 * (info['bottom'] - head0)) if t.get('skirt') else cut - 2
+        info['top'] = cut
+        info['color'] = t.get('color')
+        front, back, shoe = colors_of(a, info, cut, kept)
         canvas = np.zeros((H, W, 4), np.uint8)
         canvas[PAD:] = body
         ref = np.zeros((H, W, 4), np.uint8)
@@ -236,7 +235,7 @@ def main():
         bottom = info['bottom'] + PAD  # 靴の底の行
         ankle = bottom - 1
         head = next(y for y in range(H) if canvas[y, :, 3].any())
-        hip_y = hip0 + PAD if 'hip' not in t else t['hip'] + PAD
+        hip_y = hip0 + PAD
         top_runs = runs(a[info['top'], :, 3] > 0)
         lx = (info['L'][0] + info['L'][1]) / 2
         rx = (info['R'][0] + info['R'][1]) / 2
@@ -250,6 +249,8 @@ def main():
         width_total = wl[len(wl) // 2] if wl else 6
         gap = info['R'][0] - info['L'][1] - 1
         leg_w = max(3, min(4, round((width_total - max(0, gap)) / 2)))  # 縁取りをかけても中の色が残る太さ
+        if not t.get('skirt'):
+            leg_w = 4  # ズボンは太め（もも5・すね4）
         # コマごと: 体の上下 dy（+が下）、A（右脚）と B（左脚）の足首の位置、かかと上げ（toe）・持ち上げ（swing）
         keys = [
             {'dy': 1, 'A': (s, 0, 'heel'), 'B': (-s, 0, 'toe')},
