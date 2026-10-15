@@ -23,7 +23,8 @@ export async function loadImages(names, base = 'assets/img/') {
       resolve();
     };
     img.onerror = () => reject(new Error(`画像を読めません: ${base}${name}.png`));
-    img.src = `${base}${name}.png`;
+    // 1つのファイルにまとめた版（scripts/build-single.mjs）では、絵は埋め込みの data URL から読む
+    img.src = globalThis.TSUKEMONO_IMAGES?.[name] ?? `${base}${name}.png`;
   })));
 }
 export function getImage(name) {

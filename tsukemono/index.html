@@ -2,36 +2,34 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>漬物！最強の漬物への道</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 8 8%27%3E%3Crect width=%278%27 height=%278%27 fill=%27%232d4b7c%27/%3E%3Crect x=%272%27 y=%272%27 width=%274%27 height=%274%27 fill=%27%23f6f1e4%27/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 8 8%27%3E%3Crect width=%278%27 height=%278%27 fill=%27%231c2c4c%27/%3E%3Crect x=%272%27 y=%272%27 width=%274%27 height=%274%27 fill=%27%23e7b53c%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="top">
-  <h1>漬物！<small>最強の漬物への道</small></h1>
-  <span class="ver">最小版（試作）</span>
-  <a class="lnk" href="explorer.html">味の確認表</a>
-</header>
-<main class="layout">
-  <section class="stage">
-    <div id="stageWrap" class="stage-wrap"><canvas id="screen" aria-label="漬物店の店先"></canvas></div>
-    <div id="hud" class="hud"></div>
-    <div id="clock" class="clock"></div>
-    <div id="message" class="message" role="status"></div>
-    <div id="guide" class="guide"></div>
-    <div class="card" id="logCard"><h2>販売の結果</h2><div id="log" class="log">まだ売っていません。</div></div>
+<!--GAME-->
+<div id="app" class="app">
+  <div id="hud" class="hud" aria-live="polite"></div>
+  <div id="stageWrap" class="stage">
+    <canvas id="screen" aria-label="漬物屋の店先"></canvas>
+    <div id="chips" class="chips"></div>
+    <div id="floats" class="floats" aria-hidden="true"></div>
+    <div id="title" class="title-screen" hidden></div>
+  </div>
+  <div class="console">
+    <div id="message" class="msgbox" role="status"><span id="msgText"></span><i class="caret" aria-hidden="true">▼</i></div>
+    <nav id="commands" class="commands" aria-label="コマンド"></nav>
+  </div>
+</div>
+<div id="modal" class="modal" hidden>
+  <section class="win" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <header class="win-h"><h2 id="winTitle"></h2><button class="x" id="winClose" aria-label="閉じる">×</button></header>
+    <div id="winBody" class="win-b"></div>
   </section>
-  <aside class="side">
-    <div class="card"><h2>樽 <small>（クリックで選ぶ）</small></h2><div id="barrels" class="barrels"></div><div id="taste"></div></div>
-    <div class="card"><h2>仕込み</h2><div id="brew"></div></div>
-    <div class="card"><h2>ぬか床</h2><div id="nuka"></div></div>
-    <div class="card"><h2>店</h2><div id="shop"></div></div>
-    <div class="card"><h2>図鑑</h2><div id="book"></div></div>
-    <div class="card"><h2>お客の好み</h2><div id="customers"></div></div>
-    <details class="card debug"><summary>確認用の操作</summary><div id="debug"></div></details>
-  </aside>
-</main>
+</div>
+<!--/GAME-->
 <script type="module" src="src/main.js"></script>
 </body>
 </html>
