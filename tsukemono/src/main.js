@@ -22,7 +22,7 @@ const ui = {
   slot: 0,
   recipe: { pickle: 'hakusaizuke', veg: 'hakusai', saltPct: 3, tempC: game.ambientTemp() },
   tempTouched: false,
-  practice: false,
+  practice: true, // 練習モードは既定でON（切ると自分で探る遊びになる）
   override: { manual: false, season: 'spring', time: 'morning', weather: 'sunny' },
   frozen: false,
   busy: false, // 時間経過・販売の最中
@@ -76,7 +76,7 @@ function renderBarrels() {
       <div class="t">樽${i + 1}：${v.name}の${p.name}</div>
       <div class="m">塩${trim(b.saltPct, 1)}% ・ ${b.tempC}℃ ・ ${trim(game.barrelAge(b))}日経過 ・ 残り${b.portions}個</div>
       <div class="btns">
-        <button class="sub" data-act="taste" data-slot="${i}">味見</button>
+        <button class="sub" data-act="taste" data-slot="${i}" ${b.tastedTick === game.tick ? 'disabled' : ''}>${b.tastedTick === game.tick ? '味見済み' : '味見'}</button>
         <button data-act="sell" data-slot="${i}" ${ui.busy || !game.isOpen() ? 'disabled' : ''} title="${game.isOpen() ? '' : '夜は閉店'}">販売する</button>
         <button class="danger" data-act="discard" data-slot="${i}" ${ui.busy ? 'disabled' : ''}>捨てる</button>
       </div></div>`;
@@ -100,9 +100,10 @@ function bars(t, { numbers = false } = {}) {
 function renderTaste() {
   const el = $('taste');
   const slot = ui.lastTaste;
-  if (slot == null || !game.barrels[slot]) { el.innerHTML = '<div class="hint">「味見」を押すと、その樽の今の味がわかります。</div>'; return; }
-  const t = game.tasteOf(slot);
-  el.innerHTML = `<div><b>樽${slot + 1}の味見</b> <span class="stage-tag ${t.stage}">${t.stageLabel}</span></div>${bars(t)}`;
+  if (slot == null || !game.barrels[slot]?.tastedTaste) { el.innerHTML = '<div class="hint">「味見」を押すと、その樽の今の味がわかります（同じ樽の同じ時点では1回まで）。</div>'; return; }
+  const b = game.barrels[slot], t = b.tastedTaste;
+  const when = b.tastedTick === game.tick ? '（今の時点は味見済み。時間が進むとまた味見できます）' : `（${trim((game.tick - b.tastedTick) / C.calendar.ticksPerDay)}日前の味見）`;
+  el.innerHTML = `<div><b>樽${slot + 1}の味見</b> <span class="stage-tag ${t.stage}">${t.stageLabel}</span> <span class="hint">${when}</span></div>${bars(t)}`;
 }
 
 function renderBrew() {
@@ -225,7 +226,7 @@ document.addEventListener('click', (e) => {
   const act = t.dataset.act;
   if (act) {
     const slot = +t.dataset.slot;
-    if (act === 'taste') { ui.lastTaste = slot; ui.slot = slot; renderBarrels(); renderTaste(); renderBrew(); }
+    if (act === 'taste') { game.tasteTest(slot); ui.lastTaste = slot; ui.slot = slot; renderBarrels(); renderTaste(); renderBrew(); }
     if (act === 'sell' && !ui.busy) sell(slot);
     if (act === 'discard') { game.discard(slot); setMessage(`樽${slot + 1}を空にした。`); renderAll(); }
     return;

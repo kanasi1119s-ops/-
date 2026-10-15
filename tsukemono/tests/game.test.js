@@ -104,3 +104,20 @@ test('樽の収支: 空になったとき利益(売上-仕入れ)が確定する
   assert.ok(last.batch.closed);
   assert.equal(last.batch.profit, last.batch.earned - last.batch.cost);
 });
+
+test('味見は同じ樽の同じ時点では1回まで。時間が進めばまたできる', () => {
+  const g = createGame({ seed: 2 });
+  assert.equal(g.tasteTest(0).ok, false); // 空の樽
+  g.brew(0, recipe);
+  const a = g.tasteTest(0);
+  assert.equal(a.already, false);
+  const b = g.tasteTest(0);
+  assert.equal(b.already, true);
+  assert.equal(b.taste, a.taste);
+  g.advance(1);
+  const c = g.tasteTest(0);
+  assert.equal(c.already, false);
+  assert.ok(c.taste.acid > a.taste.acid);
+  g.brew(1, recipe);
+  assert.equal(g.tasteTest(1).already, false); // 別の樽は別
+});

@@ -74,6 +74,19 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return b ? simulate({ ...b, days: g.barrelAge(b) }, cfg) : null;
   };
 
+  /**
+   * 味見。同じ樽の同じ時点では1回まで（時間が進めば、また味見できる）。
+   * 2回目以降は新しい結果を出さず、前回の味見結果を返す。
+   */
+  g.tasteTest = (slot) => {
+    const b = g.barrels[slot];
+    if (!b) return { ok: false, error: '樽が空です' };
+    if (b.tastedTick === g.tick) return { ok: true, already: true, taste: b.tastedTaste };
+    b.tastedTick = g.tick;
+    b.tastedTaste = g.tasteOf(slot);
+    return { ok: true, already: false, taste: b.tastedTaste };
+  };
+
   /** 樽を捨てる（損切り）。 */
   g.discard = (slot) => { g.barrels[slot] = null; };
 
