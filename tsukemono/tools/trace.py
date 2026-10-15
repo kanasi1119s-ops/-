@@ -221,12 +221,17 @@ Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
 # ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
-POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)], 'blazer': [(1290, 552, 1376, 594)]}
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)], 'blazer': [(1290, 552, 1376, 594)], 'yankee': [(960, 412, 1024, 441)]}
 # 影が茶色がかった灰色の絵: 影とみなす明るさの範囲（黒い靴・白いソックスの陰を消さないように）
-WARM_SHADOW = {'boy': (55, 172), 'girl': (55, 172), 'student': (55, 172), 'gakuran': (55, 172), 'blazer': (95, 150)}
+WARM_SHADOW = {'boy': (55, 172), 'girl': (55, 172), 'student': (55, 172), 'gakuran': (55, 172), 'blazer': (95, 150),
+               'yankee': (95, 178, 12)}  # 3つめ: 色味の幅の上限（既定20）
+# 背景との色の差がこれより大きい所を人物とみなす（既定40。背景に近い白い靴などがある絵は下げる）
+FG_DIFF = {}
+# 影とみなす青みの上限（b - r）。青みがかった白い靴の陰を影と間違える絵は下げる
+SHADOW_BLUE = {'yankee': 12}
 # 輪郭のすき間を閉じてから内側を埋める（背景と同じ色の部分がある絵。値は閉じる幅）
-CLOSE_HOLES = {'blazer': 9}
-POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66, 'blazer': 65}
+CLOSE_HOLES = {'blazer': 9, 'yankee': 9}
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66, 'blazer': 65, 'yankee': 70}
 
 
 def extract_poses(name):
@@ -235,12 +240,18 @@ def extract_poses(name):
     bgc = np.median(a[2:10, 2:10].reshape(-1, 3), 0)
     mx, mn = a.max(-1), a.min(-1)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    grid = (g > 235) & (b > 235) & (r < 240)  # 枠線
-    fg = ((np.abs(a - bgc).sum(-1) > 40) & ~grid).astype(np.uint8)
-    shadow = (b >= r - 10) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 70) & (mx < 205)
+    gridc = (g > 235) & (b > 235) & (r < 240)
+    # 枠線: 区切り線の色が縦・横に長く続く列と行だけ（水色っぽい白い靴などを消さないように）
+    grid = np.zeros_like(gridc)
+    grid[:, gridc.mean(0) > 0.5] = True
+    grid[gridc.mean(1) > 0.5, :] = True
+    grid &= gridc
+    fg = ((np.abs(a - bgc).sum(-1) > FG_DIFF.get(name, 40)) & ~grid).astype(np.uint8)
+    # 影は背景より暗い灰色（白い靴や服の明るい陰は背景に近いので、影とみなさない）
+    shadow = (b >= r - 10) & (b - r <= SHADOW_BLUE.get(name, 25)) & ((mx - mn) < 30) & (mx > 70) & (mx < bgc.max() - 20)
     if name in WARM_SHADOW:  # 影が茶色がかった灰色の絵
-        lo, hi = WARM_SHADOW[name]
-        shadow |= ((mx - mn) < 20) & (mx > lo) & (mx < hi)
+        lo, hi, *rest = WARM_SHADOW[name]
+        shadow |= ((mx - mn) < (rest[0] if rest else 20)) & (mx > lo) & (mx < hi)
     for x0e, y0e, x1e, y1e in POSE_ERASE.get(name, []):
         fg[y0e:y1e, x0e:x1e] = 0
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
