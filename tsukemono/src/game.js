@@ -1,7 +1,7 @@
 // ゲームの進行（画面なし）。仕込み→熟成→販売の1周を管理する。
 // 乱数は seed 付きで差し替え可能にして、テストで結果を固定できるようにする。
 import { CONFIG } from './config.js';
-import { simulate } from './model.js';
+import { simulate, filmPerDay, nukaSourPerDay, applyCare } from './model.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
 export function createRng(seed = 1) {
@@ -33,6 +33,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     weather: 'sunny',
     stats: { revenue: 0, cost: 0, sold: 0, visits: 0, spoiled: 0 },
     lastSaleTick: -1, // 販売は1つの時間帯（区切り）に1回まで
+    // ぬか床（店にひとつ）: 塩分、酸味(0〜1)、白い膜(0〜1)、熟成度(0〜1)、最後にかき混ぜた日
+    nuka: { salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0 },
   };
 
   const pickWeather = () => {
@@ -60,25 +62,76 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (!p.vegetables.includes(veg)) return { ok: false, error: `${p.name}に${v.name}は使えません` };
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
     if (g.barrels[slot]) return { ok: false, error: '樽が空いていません' };
-    const cost = g.brewCost({ veg, saltPct });
+    if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
+    const cost = g.brewCost({ veg, saltPct: p.usesNukaBed ? 0 : saltPct });
     if (cost > g.money) return { ok: false, error: 'お金が足りません' };
     g.money -= cost;
     g.stats.cost += cost;
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, startTick: g.tick, portions: cfg.sales.portionsPerBatch, cost, earned: 0 };
+    if (p.usesNukaBed) g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, startTick: g.tick, portions: cfg.sales.portionsPerBatch, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
   /** 時間を進める（ticks区切り）。日が変わると天気を引き直す。 */
   g.advance = (ticks = 1) => {
+    const dt = 1 / cal.ticksPerDay;
     for (let i = 0; i < ticks; i++) {
       g.tick++;
       if (g.tick % cal.ticksPerDay === 0) g.weather = pickWeather();
+      // 白い膜は、放っておくと少しずつ広がる（手入れで取れる）
+      for (const b of g.barrels) {
+        if (b && cfg.pickles[b.pickle].film) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * dt);
+      }
+      // ぬか床は店の中（外気温）。かき混ぜないと酸っぱくなり、膜が張る
+      const n = g.nuka, t = g.ambientTemp();
+      n.sour = Math.min(1, n.sour + nukaSourPerDay(t, n.salt, cfg) * dt);
+      n.film = Math.min(1, n.film + filmPerDay(t, cfg) * dt);
     }
   };
 
   g.tasteOf = (slot) => {
     const b = g.barrels[slot];
-    return b ? simulate({ ...b, days: g.barrelAge(b) }, cfg) : null;
+    if (!b) return null;
+    const p = cfg.pickles[b.pickle];
+    const base = simulate({ ...b, days: g.barrelAge(b) }, cfg);
+    const film = Math.max(b.film ?? 0, p.usesNukaBed ? g.nuka.film : 0);
+    return applyCare(base, { film, bed: p.usesNukaBed ? { sour: g.nuka.sour, maturity: g.nuka.maturity } : null }, cfg);
+  };
+
+  // ---- 手入れ ----
+  /** 樽の手入れ（白い膜を取る）。同じ樽は1つの時間帯に1回まで。 */
+  g.care = (slot) => {
+    const b = g.barrels[slot];
+    if (!b) return { ok: false, error: '樽が空です' };
+    if (!cfg.pickles[b.pickle].film) return { ok: false, error: 'この漬物は手入れがいりません' };
+    if (b.lastCareTick === g.tick) return { ok: false, error: 'さっき手入れしたばかりです' };
+    b.lastCareTick = g.tick;
+    b.film = 0;
+    return { ok: true };
+  };
+  /** ぬか床をかき混ぜる。1日1回で熟成度が上がる（毎日かき混ぜると育つ）。 */
+  g.stirNuka = () => {
+    const n = g.nuka;
+    if (n.lastStirTick === g.tick) return { ok: false, error: 'さっきかき混ぜたばかりです' };
+    n.lastStirTick = g.tick;
+    n.sour = Math.max(0, n.sour - cfg.nuka.stirSourDrop);
+    n.film = 0;
+    if (n.lastStirDay !== g.day()) {
+      n.lastStirDay = g.day();
+      n.maturity = Math.min(1, n.maturity + 1 / cfg.nuka.matureDays);
+    }
+    return { ok: true };
+  };
+  /** ぬか床に塩を足す（酸味が和らぎ、塩分が上がる）。 */
+  g.saltNuka = () => {
+    const n = g.nuka, c = cfg.nuka;
+    if (n.salt >= c.maxSalt) return { ok: false, error: 'これ以上は塩辛くなりすぎます' };
+    if (g.money < c.addSaltCost) return { ok: false, error: 'お金が足りません' };
+    g.money -= c.addSaltCost;
+    g.stats.cost += c.addSaltCost;
+    n.salt = Math.min(c.maxSalt, n.salt + c.addSaltPct);
+    n.sour = Math.max(0, n.sour - c.addSaltSourDrop);
+    return { ok: true };
   };
 
   /**
@@ -148,7 +201,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -164,6 +217,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.weather = s.weather;
     g.stats = { ...g.stats, ...s.stats };
     g.lastSaleTick = Number.isInteger(s.lastSaleTick) ? s.lastSaleTick : -1;
+    const n = s.nuka;
+    if (n && [n.salt, n.sour, n.film, n.maturity].every(Number.isFinite)) g.nuka = { ...g.nuka, ...n };
+    for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; }
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };

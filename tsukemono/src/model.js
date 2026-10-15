@@ -85,7 +85,7 @@ export function simulate(p, cfg = CONFIG) {
   const acid = (100 * progress) / (progress + t.acidHalfProgress);
 
   const absorbed = 1 - Math.exp(-days / t.saltAbsorbTauDays);
-  const saltiness = (100 * p.saltPct * absorbed) / t.saltFullPct;
+  const saltiness = (100 * p.saltPct * (pickle.saltUptake ?? 1) * absorbed) / t.saltFullPct;
 
   const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * days));
 
@@ -109,4 +109,32 @@ export function ripeRangeDays(p, cfg = CONFIG) {
   const per = fermentRate(p, cfg);
   const ripeAt = cfg.pickles[p.pickle].ripeAt;
   return { from: (ripeAt * w.lo) / per, to: (ripeAt * w.hi) / per, sourFrom: (ripeAt * w.sour) / per };
+}
+
+/** 白い膜が1日に増える量（温度で決まる）。 */
+export function filmPerDay(tempC, cfg = CONFIG) {
+  return interpolate(cfg.care.filmPerDay, tempC);
+}
+
+/** ぬか床をかき混ぜないとき、1日に増える酸味。高温・低塩分ほど増える。 */
+export function nukaSourPerDay(tempC, saltPct, cfg = CONFIG) {
+  const n = cfg.nuka;
+  return interpolate(n.sourPerDay, tempC) * (1 + Math.max(0, n.startSalt - saltPct) * n.lowSaltSourBoost);
+}
+
+/**
+ * 手入れの状態を味に反映する（膜・ぬか床）。taste は simulate の結果。
+ * care = { film: 0〜1, bed?: { sour: 0〜1, maturity: 0〜1 } }
+ */
+export function applyCare(taste, care, cfg = CONFIG) {
+  const c = cfg.care;
+  const film = Math.max(0, Math.min(1, care.film ?? 0));
+  const harm = Math.max(0, Math.min(1, (film - c.filmHarmless) / (1 - c.filmHarmless)));
+  const out = { ...taste, film, filmVisible: film >= c.filmVisible, careFactor: 1 - c.filmSatPenalty * harm };
+  out.complexity = taste.complexity * (1 - c.filmComplexityPenalty * harm);
+  if (care.bed) {
+    out.acid = Math.min(100, taste.acid + cfg.nuka.sourAcidBoost * care.bed.sour);
+    out.complexity *= 0.4 + 0.6 * care.bed.maturity;
+  }
+  return out;
 }

@@ -32,6 +32,7 @@ export function satisfaction(taste, pickle, customer, season = 'spring', cfg = C
   const win = cfg.pickles[pickle].window;
   if (taste.ratio < win.lo) sat *= s.unripeMinFactor + (1 - s.unripeMinFactor) * (taste.ratio / win.lo);
   sat *= s.stageFactor[taste.stage] ?? 1;
+  sat *= taste.careFactor ?? 1; // 白い膜が張っていると下がる
   // 傷みリスクは期待値として引く
   sat *= 1 - s.spoilSatPenalty * (taste.spoilRisk / 100);
   return clamp(sat, 0, 100);
@@ -48,6 +49,7 @@ export function priceFor(sat, pickle, cfg = CONFIG) {
 // 客の一言（ズレの種類ごとに数通り。variant で選ぶ） 【仮置き】
 export const LINES = {
   rotten: ['なんだか傷んでない？', '……これ、大丈夫？', 'においが変だよ'],
+  film: ['膜っぽいにおいがするね', '表面がちょっと白いよ', '手入れが足りないんじゃない？'],
   great: ['これだよ、これ！', '最高の漬かり具合だ！', 'また買いに来るよ！'],
   good: ['うん、おいしい', 'いい塩梅だね', 'ご飯が進みそう'],
   acid_high: ['酸っぱいねぇ', 'ちょっと漬かりすぎかな', '酸味が強いなぁ'],
@@ -65,6 +67,7 @@ const pick = (key, variant) => { const l = LINES[key]; return l[((variant % l.le
 export function reactionOf(taste, pickle, customer, sat, season = 'spring', cfg = CONFIG, variant = 0) {
   if (taste.spoilRisk >= 60 && sat < cfg.sales.buyThreshold) return { key: 'rotten', line: pick('rotten', variant) };
   const target = targetFor(customer, season, cfg);
+  if (taste.filmVisible && sat < 60) return { key: 'film', line: pick('film', variant) };
   if (sat >= 80) return { key: 'great', line: pick('great', variant) };
   if (sat >= 60) return { key: 'good', line: pick('good', variant) };
   let worst = null, worstD = 0;
