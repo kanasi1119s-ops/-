@@ -35,7 +35,8 @@ try {
   await page.reload();
   await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
   await page.click('[data-title="new"]');
-  await page.evaluate(() => { const g = window.__game; g.game.weather = 'sunny'; g.ui.override = { manual: true, season: 'spring', time: 'noon', weather: 'sunny' }; g.world.speed = 1; });
+  await page.evaluate(() => { const g = window.__game; g.game.weather = 'sunny'; g.ui.override = { manual: true, season: 'spring', time: 'noon', weather: 'sunny' }; g.world.speed = 1;
+    g.game.money = 20000; g.game.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); g.game.brew(1, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 }); g.renderAll(); }); // 樽: きゅうり・白菜・空
   let n = 0;
   const shot = async () => {
     const url = await page.evaluate(() => document.getElementById('screen').toDataURL('image/png'));
@@ -57,7 +58,7 @@ try {
   for (let i = 0; i < 25; i++) { await page.evaluate(() => window.__spawnNext()); await run(1400); }
   await run(7000);
   // 2. 店を開けて売る
-  await page.evaluate(() => { const g = window.__game; g.game.money = 9000; g.game.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); g.game.advance(5); g.game.weather = 'sunny'; g.renderAll(); g.doSell(0); });
+  await page.evaluate(() => { const g = window.__game; g.game.advance(5); g.game.weather = 'sunny'; g.renderAll(); g.doSell(0); });
   await run(26000);
 } finally {
   await browser.close();

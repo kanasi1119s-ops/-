@@ -129,10 +129,12 @@ export class SceneRenderer {
       const s = SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
       if (!s) return;
       const top = `slot${i}_${b.filled ? (b.top ?? b.veg) : 'empty'}`;
-      if (s.x != null) g.drawImage(getImage(top), s.x, s.y);
+      // 中身の絵は、口より上に盛り上がるぶんと、口の下2行ぶん大きい（tools/barrel_tops.py）。下端をそろえて描く
+      const ty = s.y + s.h + 2 - (getImage(top).height);
+      if (s.x != null) g.drawImage(getImage(top), s.x, ty);
       if (s.x != null && b.film >= 0.15) { // 白い膜（濃さは膜の量）
         g.globalAlpha = Math.min(0.85, b.film);
-        g.drawImage(this.whiteOf(top), s.x, s.y);
+        g.drawImage(this.whiteOf(top), s.x, ty);
         g.globalAlpha = 1;
       }
       const text = b.label ?? (b.selected ? '空' : null);

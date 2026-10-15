@@ -12,7 +12,7 @@ const pngSize = (name) => { const b = fs.readFileSync(new URL(`../assets/img/${n
 test('トレースした画像がそろい、背景の大きさが画面と同じ', () => {
   for (const n of IMAGES) assert.ok(pngSize(n)[0] > 0, n);
   assert.deepEqual(pngSize('bg'), [SCENE.w, SCENE.h]);
-  for (const [i, s] of TRACE.slots.entries()) for (const v of ['empty', 'hakusai', 'kyuri']) assert.deepEqual(pngSize(`slot${i}_${v}`), [s.w, s.h]);
+  for (const [i, s] of TRACE.slots.entries()) for (const v of ['empty', 'hakusai', 'kyuri', 'daikon', 'nozawana', 'nasu', 'takuan']) assert.deepEqual(pngSize(`slot${i}_${v}`), [s.w, s.h + 2 + 4]); // 口の下2行・盛り上がり4行（tools/barrel_tops.py）
 });
 
 test('人物の目印が絵の中に収まり、来る人全員に絵がある', () => {
@@ -34,7 +34,7 @@ test('人物の目印が絵の中に収まり、来る人全員に絵がある',
     assert.ok(BODIES[look.body], look.body);
     if (look.recolor) assert.ok(RECOLORS[look.recolor], look.recolor);
   }
-  for (const set of [PERSON_ANIMS, ...Object.values(POSE_ANIMS)]) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 6);
+  for (const set of [PERSON_ANIMS, ...Object.values(POSE_ANIMS)]) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 8);
 });
 
 test('通りがかりの人: 季節限定の人は、その季節にだけ来る', () => {
