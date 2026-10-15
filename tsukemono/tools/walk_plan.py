@@ -169,8 +169,7 @@ def main():
         fb_, bb_ = set(small_bits(front_px)), set(small_bits(back_px))
         front_px, back_px = ([q for q in front_px if q not in fb_] + [q for q in back_px if q in bb_],
                              [q for q in back_px if q not in bb_] + [q for q in front_px if q in fb_])
-        # 手前の脚で、持ち物（かご等）に隠れていた もも・ひざ を描き足す。隠れていない行の脚の左の縁を直線でのばし、
-        # 色は すぐ下の見えている行の並び（縁の暗い色・中の色）を幅に合わせて引きのばす。元の絵では持ち物の下なので見た目は変わらない
+        # 手前の脚で、持ち物（かご等）に隠れていた もも・ひざ を描き足す（元の絵では持ち物の下なので見た目は変わらない）
         fset = set(front_px)
         def span(y):
             xs = [x for (yy, x) in front_px if yy == y]
@@ -184,29 +183,25 @@ def main():
         fill = []
         hid = [y for y in range(cut, sole + 1) if hidden(y)]
         hid = [y for y in hid if y < sole - 5]  # 足もとは描き足さない
-        if touch.get('autofill', True) and len(hid) >= 2 and len(vis) >= 2 and any(y > max(hid) and y < sole - 4 for y in vis):
-            below = [y for y in vis if y > max(hid)][:6]
-            above = [y for y in vis if y < min(hid)][-3:]
-            pts = above + below
-            ys = np.array(pts, float); xs = np.array([span(y)[0] for y in pts], float)
-            k_, b_ = np.polyfit(ys, xs, 1) if len(set(pts)) > 1 else (0.0, xs.mean())
-            ref = min(below[0], sole - 5)
-            r0, r1 = span(ref)
-            refc = [palette[tuple(int(v) for v in canvas[ref, x, :3])] if canvas[ref, x, 3] else None for x in range(r0, r1 + 1)]
-            maxw = int(np.median([span(y)[1] - span(y)[0] + 1 for y in vis])) + 1  # 見えている脚の太さまで
+        if touch.get('autofill', True) and hid:
+            # 隠れていた行は、奥の脚の同じ行のドット（形・陰影）を写す。奥の脚は前へ傾いているので、
+            # 腰からの行の深さに合わせて、足先が手前の足に重なるまで後ろへずらして写す
+            def fc(px):
+                yb = max(y for y, _ in px)
+                xs = [x for y, x in px if y >= yb - 1]
+                return (min(xs) + max(xs)) / 2
+            shift = fc(front_px) - fc(back_px)
+            ank = sole - max(3, round((sole - hip) * 0.15))
+            brow = {}
+            for (y, x) in back_px:
+                brow.setdefault(y, []).append(x)
             for y in hid:
-                x1 = int(np.ceil(split[y])) - 1
-                x0 = max(0, int(round(k_ * y + b_)), x1 - maxw + 1)
-                if x1 < x0:
-                    continue
-                n = x1 - x0 + 1
-                for x in range(x0, x1 + 1):
-                    if (y, x) in fset:
-                        continue
-                    i = round((x - x0) / max(1, n - 1) * (len(refc) - 1))
-                    c = refc[i] or next(c for c in refc if c)
-                    fill.append((y, x, c))
-                    front_px.append((y, x))
+                k = (min(y, ank) - hip) / max(1, ank - hip)
+                for x in brow.get(y, []):
+                    nx = x + round(shift * k)
+                    if 0 <= nx < W and (y, nx) not in fset:
+                        fill.append((y, nx, palette[tuple(int(v) for v in canvas[y, x, :3])]))
+                        front_px.append((y, nx)); fset.add((y, nx))
             fset = set(front_px)
         # 人ごとの手直し（tools/walk_touch.py）: 手前の脚に描き足すドット
         for (ty, tx, cs) in touch.get('front', []):
@@ -263,9 +258,23 @@ def main():
                         dy = -round(lift * u) if bend else (-lift if y >= ankle - 1 else 0)
                     rows.append((y, round(dx), dy))
                 # 隣の行とのずれは1ドットまで（細い脚がちぎれないように）。足先が届かなければ歩幅を少し小さくする
-                prev = 0
+                # 脚がちぎれないように: 各行を、上の行（ずらした後）とドットが接する範囲までしかずらさない
+                # （太い脚は大きくずらせる、細く斜めの脚は少しずつ）。足は足首と同じだけ
+                px_side = front_px if side == 'front' else back_px
+                rng = {}
+                for (yy, xx) in px_side:
+                    a0, b0 = rng.get(yy, (xx, xx)); rng[yy] = (min(a0, xx), max(b0, xx))
+                prev, above = 0, None
                 for i, (y, dx, dy) in enumerate(rows):
-                    dx = max(prev - 1, min(prev + 1, dx)) if y <= ankle else prev  # 足は足首と同じだけ
+                    if y > ankle:
+                        dx = prev
+                    else:
+                        dx = max(prev - 2, min(prev + 2, dx))
+                        if above and y in rng:
+                            a_, b_ = rng[y]
+                            dx = max(above[0] - 1 - b_, min(above[1] + 1 - a_, dx))
+                    if y in rng:
+                        above = (rng[y][0] + dx, rng[y][1] + dx)
                     rows[i] = (y, dx, dy)
                     prev = dx
                 # 同じずらし方の行をまとめて1回で動かす（上の行から）
