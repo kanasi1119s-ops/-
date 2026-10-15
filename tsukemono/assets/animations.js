@@ -30,6 +30,7 @@
 // バックパッカー: 0歩く 1歩く 2話す 3話す 4歩く 5指さす 6財布を出す 7受け取る
 // 騎士:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 // 宇宙人:     0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
+// ケンタウロス: 0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
@@ -110,6 +111,15 @@ export const POSE_ANIMS = {
   volley: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 3)] },
+    buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
+    talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
+    talk_basket: { loop: true, frames: [p(300, 2), p(300, 3)] },
+  },
+  centaur: {
+    walk: { loop: true, frames: [p(150, 0), p(150, 1)] },
+    walk_basket: { loop: true, frames: [p(150, 0), p(150, 1)] },
     idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
