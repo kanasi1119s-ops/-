@@ -154,7 +154,7 @@ def main():
         for (y0_, x0_, y1_, x1_) in touch.get('toBack', []):
             mv = [q for q in front_px if y0_ <= q[0] <= y1_ and x0_ <= q[1] <= x1_]
             front_px = [q for q in front_px if q not in set(mv)]; back_px += mv
-        # 片方の脚の本体から離れたかけら（3ドットまでの小さなもの、またはもう片方の脚に接しているもの）は、もう片方の脚のもの
+        # 片方の脚の本体から離れたかけらは、もう片方の脚か持ち物のもの
         def small_bits(px, other):
             ps = set(px); seen = set(); bits = []; comps = []
             for p0 in px:
@@ -171,11 +171,18 @@ def main():
                 comps.append(comp)
             comps.sort(key=len, reverse=True)
             for comp in comps[1:]:
-                # いちばん大きなかたまり以外で、3ドットまでの小さなかけら、またはもう片方の脚に接しているかけら
-                if len(comp) <= 3 or any((y + dy, x + dx) in other for (y, x) in comp for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                # いちばん大きなかたまり以外で、もう片方の脚に接しているかけら → もう片方の脚へ
+                # どちらにも接していない3ドットまでのかけら（持ち物の縁の残り）→ 持ち物へ
+                if any((y + dy, x + dx) in other for (y, x) in comp for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
                     bits += comp
+                elif len(comp) <= 3:
+                    for (y, x) in comp:
+                        kept[y, x] = True
+                        tiny.add((y, x))
             return bits
+        tiny = set()
         fb_, bb_ = set(small_bits(front_px, set(back_px))), set(small_bits(back_px, set(front_px)))
+        front_px = [q for q in front_px if q not in tiny]; back_px = [q for q in back_px if q not in tiny]
         front_px, back_px = ([q for q in front_px if q not in fb_] + [q for q in back_px if q in bb_],
                              [q for q in back_px if q not in bb_] + [q for q in front_px if q in fb_])
         # 手前の脚で、持ち物（かご等）に隠れていた もも・ひざ を描き足す（元の絵では持ち物の下なので見た目は変わらない）
