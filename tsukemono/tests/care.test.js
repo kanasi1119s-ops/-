@@ -86,3 +86,13 @@ test('手入れの状態もセーブされる', () => {
   assert.deepEqual(b.nuka, a.nuka);
   assert.equal(b.barrels[0].film, a.barrels[0].film);
 });
+
+test('ぬか漬けの樽は樽の手入れではなく、ぬか床をかき混ぜる', () => {
+  const g = createGame({ seed: 7 });
+  g.brew(0, { veg: 'kyuri', pickle: 'nukazuke', tempC: 20 });
+  g.advance(4 * 5);
+  assert.equal(g.care(0).ok, false);
+  assert.ok(g.tasteOf(0).filmVisible);
+  g.stirNuka();
+  assert.equal(g.tasteOf(0).film, 0);
+});

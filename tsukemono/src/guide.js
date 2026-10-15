@@ -16,6 +16,11 @@ export function nextStep(g) {
   if (g.isOpen() && !soldNow && late.length) return `${late.map(n).join('・')}は酸っぱくなりかけ。早めに売るか、捨てて仕込み直そう。`;
   if (g.isOpen() && !soldNow && ready.length) return `${ready.map(n).join('・')}が食べ頃。味見して「販売する」。`;
   if (soldNow && (ready.length || late.length)) return '同じ時間帯に店を開けられるのは1回。時間を進めよう。';
+  const filmy = items.filter((x) => !cfg.pickles[x.b.pickle].usesNukaBed && x.t.filmVisible && x.b.lastCareTick !== g.tick);
+  if (filmy.length) return `${filmy.map(n).join('・')}に白い膜が出ている。「手入れ」で取ろう。`;
+  const usesBed = items.some((x) => cfg.pickles[x.b.pickle].usesNukaBed) || g.nuka.maturity > 0;
+  if (usesBed && g.nuka.lastStirDay !== g.day()) return 'ぬか床を今日はまだかき混ぜていない。「かき混ぜる」で床が育つ。';
+  if (usesBed && g.nuka.sour >= 0.5) return 'ぬか床が酸っぱくなっている。塩を足すと和らぐ。';
   if (empty >= 0 && g.money >= cheapest) return `樽${empty + 1}が空いている。塩分と温度を決めて仕込もう。`;
   if (empty >= 0 && !items.length) return 'お金が足りず仕込めない…「確認用の操作」から最初からやり直せます。';
   if (items.length) {

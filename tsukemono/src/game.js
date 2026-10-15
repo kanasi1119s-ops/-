@@ -80,7 +80,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       if (g.tick % cal.ticksPerDay === 0) g.weather = pickWeather();
       // 白い膜は、放っておくと少しずつ広がる（手入れで取れる）
       for (const b of g.barrels) {
-        if (b && cfg.pickles[b.pickle].film) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * dt);
+        if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * dt);
       }
       // ぬか床は店の中（外気温）。かき混ぜないと酸っぱくなり、膜が張る
       const n = g.nuka, t = g.ambientTemp();
@@ -104,6 +104,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const b = g.barrels[slot];
     if (!b) return { ok: false, error: '樽が空です' };
     if (!cfg.pickles[b.pickle].film) return { ok: false, error: 'この漬物は手入れがいりません' };
+    if (cfg.pickles[b.pickle].usesNukaBed) return { ok: false, error: 'ぬか漬けは、ぬか床をかき混ぜて手入れします' };
     if (b.lastCareTick === g.tick) return { ok: false, error: 'さっき手入れしたばかりです' };
     b.lastCareTick = g.tick;
     b.film = 0;

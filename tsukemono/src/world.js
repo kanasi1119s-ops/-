@@ -130,6 +130,16 @@ export class World {
     } finally { this.busy--; }
   }
 
+  /** 手入れ（膜を取る・ぬか床をかき混ぜる）。 */
+  async careScene() {
+    this.busy++;
+    try {
+      this.setAnim(this.keeper, 'take');
+      await this.wait(900);
+      this.setAnim(this.keeper, 'idle');
+    } finally { this.busy--; }
+  }
+
   async brewScene() {
     this.busy++;
     try { await this.keeperSalt(); } finally { this.busy--; }

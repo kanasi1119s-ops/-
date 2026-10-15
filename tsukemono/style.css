@@ -39,3 +39,4 @@ button.big{padding:8px 16px;font-size:15px}
 .debug summary{cursor:pointer;font-weight:700;color:var(--indigo2)}.debug .row{margin:8px 0}
 select{font:inherit;padding:2px 4px}
 @media (max-width:960px){.layout{grid-template-columns:minmax(0,1fr);padding:12px}}
+.warn{color:var(--red);font-weight:600}

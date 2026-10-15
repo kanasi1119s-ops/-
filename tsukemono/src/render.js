@@ -81,6 +81,14 @@ export class SceneRenderer {
     return c;
   }
 
+  /** 絵の形のまま白くしたもの（白い膜の表示用）。 */
+  whiteOf(name) {
+    const key = `white:${name}`;
+    let c = this.people.get(key);
+    if (!c) { c = recolor(getImage(name), (r, gg, b, x, y) => ((x * 7 + y * 13) % 5 < 3 ? [236, 238, 232] : [210, 214, 206])); this.people.set(key, c); }
+    return c;
+  }
+
   flipped(name, flip) {
     const key = `img:${name}|${flip}`;
     let c = this.people.get(key);
@@ -118,7 +126,13 @@ export class SceneRenderer {
     // 売り場の樽の中身
     view.barrels.forEach((b, i) => {
       const s = SCENE.slots[i];
-      g.drawImage(getImage(`slot${i}_${b.filled ? b.veg : 'empty'}`), s.x, s.y);
+      const top = `slot${i}_${b.filled ? b.veg : 'empty'}`;
+      g.drawImage(getImage(top), s.x, s.y);
+      if (b.film >= 0.15) { // 白い膜（濃さは膜の量）
+        g.globalAlpha = Math.min(0.85, b.film);
+        g.drawImage(this.whiteOf(top), s.x, s.y);
+        g.globalAlpha = 1;
+      }
       const text = b.label ?? (b.selected ? '空' : null);
       if (text) this.label(text, s.cx, SCENE.labelY, b.selected);
     });

@@ -20,3 +20,17 @@ test('案内: 空き樽→仕込み、熟成中→時間を進める、食べ頃
   g.advance(4 * 8 + 1); // ずっと先の朝
   assert.match(nextStep(g), /酸っぱくなりかけ/);
 });
+
+test('案内: 白い膜が出たら手入れ、ぬか床は毎日かき混ぜる', () => {
+  const g = createGame({ seed: 8 });
+  g.brew(0, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 25 });
+  g.brew(1, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 25 });
+  g.brew(2, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 25 });
+  g.advance(4 * 3);
+  assert.match(nextStep(g), /白い膜.*手入れ/);
+  g.care(0); g.care(1); g.care(2);
+  g.stirNuka();
+  g.advance(4);
+  g.care(0); g.care(1); g.care(2);
+  assert.match(nextStep(g), /ぬか床を今日はまだかき混ぜていない/);
+});
