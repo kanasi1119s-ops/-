@@ -219,7 +219,8 @@ for i, (x0, y0, x1, y1) in enumerate(CLOUDS):
 out = np.dstack([bg, alpha])
 Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
-POSE_SCALE = 76 / 230  # ポーズ集の店主(約230px)を、店先の店主(76px)と同じ背丈にする
+# ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75}
 
 
 def extract_poses(name):
@@ -230,10 +231,12 @@ def extract_poses(name):
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     grid = (g > 235) & (b > 235) & (r < 240)  # 枠線
     fg = ((np.abs(a - bgc).sum(-1) > 40) & ~grid).astype(np.uint8)
-    shadow = (b >= r - 2) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 80) & (mx < 205)
+    shadow = (b >= r - 10) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 70) & (mx < 205)
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     n2, _, st, _ = cv2.connectedComponentsWithStats(fg, 8)
-    boxes = [list(st[i, :4]) for i in range(1, n2) if st[i, 4] > 400]
+    # 絵の端に触れている部品（渡す人の手など、枠の外から入っているもの）は除く
+    boxes = [list(st[i, :4]) for i in range(1, n2)
+             if st[i, 4] > 400 and st[i, 0] > 2 and st[i, 1] > 2 and st[i, 0] + st[i, 2] < w0 - 2 and st[i, 1] + st[i, 3] < h0 - 2]
     merged = True
     while merged:  # 近い部品（袋など）を同じ人物にまとめる
         merged = False
@@ -245,19 +248,22 @@ def extract_poses(name):
                     boxes.pop(j); merged = True; break
             if merged:
                 break
-    boxes = sorted([bx for bx in boxes if bx[3] > 120], key=lambda bx: (bx[1] // 200, bx[0]))  # 上の段から左→右
+    boxes = [bx for bx in boxes if bx[3] > h0 * 0.2]
+    rows = h0 / 2  # 2段
+    boxes.sort(key=lambda bx: (int((bx[1] + bx[3] / 2) // rows), bx[0]))  # 上の段から左→右
+    scale = POSE_HEIGHT[name] / float(np.median([bx[3] for bx in boxes]))
     poses = []
     for i, (x, y, w, h) in enumerate(boxes):
         x0, y0, x1, y1 = max(0, x - 4), max(0, y - 4), min(w0, x + w + 4), min(h0, y + h + 4)
         m = fg[y0:y1, x0:x1].copy()
         sh = shadow[y0:y1, x0:x1].copy()
-        sh[:max(0, (y1 - y0) - 34)] = False  # 足元の影だけ落とす
+        sh[:max(0, (y1 - y0) - int(34 * h0 / 572))] = False  # 足元の影だけ落とす
         m[sh] = 0
         inv = (1 - m).astype(np.uint8)
         cv2.floodFill(inv, np.zeros((inv.shape[0] + 2, inv.shape[1] + 2), np.uint8), (0, 0), 2)
         m[inv == 1] = 1  # 内側の穴（白い服の影など）を埋める
         m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(np.float32)
-        tw, th = max(1, round((x1 - x0) * POSE_SCALE)), max(1, round((y1 - y0) * POSE_SCALE))
+        tw, th = max(1, round((x1 - x0) * scale)), max(1, round((y1 - y0) * scale))
         rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
         ms = cv2.resize(m, (tw, th), interpolation=cv2.INTER_AREA)
         cs = cv2.resize(rgbf, (tw, th), interpolation=cv2.INTER_AREA) / np.maximum(ms[..., None], 1e-6)
@@ -273,7 +279,7 @@ def extract_poses(name):
     return poses
 
 
-POSES = {n: extract_poses(n) for n in ('keeper', 'woman', 'granny')}
+POSES = {n: extract_poses(n) for n in POSE_HEIGHT}
 
 meta = {'size': [W, H], 'poses': POSES, 'chars': placed, 'clouds': cloud_meta, 'hanging': hang_meta, 'slots': slot_meta}
 with open(os.path.join(ROOT, 'assets/trace.js'), 'w') as f:

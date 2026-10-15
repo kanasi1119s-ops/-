@@ -1,13 +1,15 @@
 // 動きの定義（2〜4コマのコマ送り。拡大縮小はしない）。
 //
 // POSE_ANIMS … ポーズ集の絵を差し替えるコマ。{ ms, pose: 絵の番号, dy: 上下のずれ, props: 持ち物 }
-// PERSON_ANIMS … 1枚の絵をずらして作るコマ（子ども・男の客）。
+// PERSON_ANIMS … 1枚の絵をずらして作るコマ（子ども）。
 //   up: 腰より上を (dx,dy) / head: 頭だけ / legs: [左脚dx, 右脚dx] / props: 持ち物
 
 // ---- ポーズ集の番号 ----
 // 店主:       0腕組み 1手を挙げる 2トングで取る 3袋に詰める 4袋を持つ 5袋を渡す 6お辞儀
 // 女性:       0歩く 1歩く 2話す 3手を出す(かご) 4歩く(かご) 5指さす 6袋を受け取る
 // おばあちゃん: 0歩く 1歩く 2立つ 3手を振る 4手を振る(巾着) 5お辞儀 6指さす 7袋を受け取る
+// 頭巾のおばあちゃん: 0歩く 1歩く 2手を振る(かご) 3手を振る 4立つ 5指さす 6財布を出す 7袋を受け取る
+// おじいさん:   0歩く 1歩く 2話す 3話す(袋) 4歩く 5指さす 6財布を出す 7受け取る
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
@@ -39,6 +41,24 @@ export const POSE_ANIMS = {
     buy: { loop: false, frames: [p(400, 7), p(700, 7, { dy: -1 })] },
     talk: { loop: true, frames: [p(300, 3), p(300, 4)] },
     talk_basket: { loop: true, frames: [p(300, 3), p(300, 4)] },
+  },
+  granny2: {
+    walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
+    walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
+    idle: { loop: true, frames: [p(800, 4), p(800, 4, { dy: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 4)] },
+    buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
+    talk: { loop: true, frames: [p(300, 3), p(300, 2)] },
+    talk_basket: { loop: true, frames: [p(300, 2), p(300, 3)] },
+  },
+  oldman: {
+    walk: { loop: true, frames: [p(190, 0), p(190, 1)] },
+    walk_basket: { loop: true, frames: [p(190, 0), p(190, 1)] },
+    idle: { loop: true, frames: [p(800, 2), p(800, 2, { dy: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 2)] },
+    buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
+    talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
+    talk_basket: { loop: true, frames: [p(300, 3), p(300, 2)] },
   },
 };
 
