@@ -280,8 +280,9 @@ function renderBrewKeepFocus(id) { renderBrew(); const el = $(id); el.focus(); }
 // ------------------------------------------------------------ 描画ループ
 function fit() {
   const w = $('stageWrap').clientWidth - 6;
-  const s = integerScale(w, 99999, SCENE.w, SCENE.h);
-  canvas.style.width = `${SCENE.w * s}px`; canvas.style.height = `${SCENE.h * s}px`;
+  // ふだんは整数倍（ドットの大きさがそろう）。画面より狭いスマホでは幅に合わせて縮める（ぼかさない）
+  const s = w >= SCENE.w ? integerScale(w, 99999, SCENE.w, SCENE.h) : w / SCENE.w;
+  canvas.style.width = `${Math.floor(SCENE.w * s)}px`; canvas.style.height = `${Math.floor(SCENE.h * s)}px`;
 }
 window.addEventListener('resize', fit);
 
