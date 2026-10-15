@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>味のモデル 確認用</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+ body{font:14px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;background:#fbf7ee;color:#2b2118}
+ label{display:inline-block;margin:0 14px 6px 0} input[type=range]{vertical-align:middle;width:160px}
+ table{border-collapse:collapse;margin-top:10px;font-variant-numeric:tabular-nums} th,td{border:1px solid #cdbf9f;padding:2px 8px;text-align:right} th{background:#eadfc6}
+ td.s{text-align:left} .ripe{background:#dff1c8} .raw{background:#f4efe0} .over{background:#f7e3b5} .sour{background:#f2b9a8}
+ .no{color:#aaa} a{color:#8a4b12}
+</style></head><body>
+<h1>味のモデル 確認用</h1>
+<p><a href="./">ゲームへ</a> ／ 係数は <code>src/config.js</code>。塩分・温度・野菜・漬物を変えて、日数ごとの味と客ごとの満足度/支払額を見る。</p>
+<div id="ctl"></div><div id="out"></div>
+<script type="module">
+import { CONFIG } from './src/config.js';
+import { simulate, daysToRipe, ripeRangeDays } from './src/model.js';
+import { satisfaction, priceFor } from './src/sales.js';
+const st = { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, season: 'spring' };
+const opt = (o, v) => Object.entries(o).map(([k, x]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${x.name}</option>`).join('');
+const ctl = document.getElementById('ctl');
+ctl.innerHTML = `<label>野菜 <select id="veg">${opt(CONFIG.vegetables, st.veg)}</select></label>
+<label>漬物 <select id="pickle">${opt(CONFIG.pickles, st.pickle)}</select></label>
+<label>季節(客の好み) <select id="season">${opt(CONFIG.season, st.season)}</select></label><br>
+<label>塩分 <input id="saltPct" type="range" min="1" max="20" step="0.5" value="3"> <b id="saltV"></b>%</label>
+<label>温度 <input id="tempC" type="range" min="4" max="40" step="1" value="20"> <b id="tempV"></b>℃</label>`;
+const draw = () => {
+  document.getElementById('saltV').textContent = st.saltPct;
+  document.getElementById('tempV').textContent = st.tempC;
+  const r = ripeRangeDays(st);
+  const days = [0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 18, 21, 28, 35, 42];
+  const sorted = [...new Set([...days, +daysToRipe(st).toFixed(1)])].sort((a, b) => a - b);
+  let h = `<p>食べ頃の中心: <b>${daysToRipe(st).toFixed(1)}日</b>（食べ頃の範囲 ${r.from.toFixed(1)}〜${r.to.toFixed(1)}日 / 酸っぱすぎ ${r.sourFrom.toFixed(1)}日〜）</p>
+  <table><tr><th>日数</th><th>段階</th><th>酸味</th><th>塩味</th><th>食感</th><th>複雑</th><th>傷み%</th>${CONFIG.customers.map((c) => `<th>${c.name}<br>満足/円</th>`).join('')}</tr>`;
+  for (const d of sorted) {
+    const t = simulate({ ...st, days: d });
+    h += `<tr class="${t.stage}"><td>${d}</td><td class="s">${t.stageLabel}</td><td>${t.acid.toFixed(0)}</td><td>${t.saltiness.toFixed(0)}</td><td>${t.texture.toFixed(0)}</td><td>${t.complexity.toFixed(0)}</td><td>${t.spoilRisk.toFixed(0)}</td>`;
+    for (const c of CONFIG.customers) { const s = satisfaction(t, st.pickle, c, st.season), p = priceFor(s, st.pickle); h += `<td class="${p ? '' : 'no'}">${s.toFixed(0)} / ${p}</td>`; }
+    h += '</tr>';
+  }
+  document.getElementById('out').innerHTML = h + '</table>';
+};
+for (const id of ['veg', 'pickle', 'season', 'saltPct', 'tempC']) document.getElementById(id).addEventListener('input', (e) => {
+  st[id] = e.target.type === 'range' ? +e.target.value : e.target.value;
+  if (id === 'pickle' && !CONFIG.pickles[st.pickle].vegetables.includes(st.veg)) { st.veg = CONFIG.pickles[st.pickle].vegetables[0]; document.getElementById('veg').value = st.veg; }
+  if (id === 'veg' && !CONFIG.pickles[st.pickle].vegetables.includes(st.veg)) { st.pickle = 'asazuke'; document.getElementById('pickle').value = st.pickle; }
+  draw();
+});
+draw();
+</script></body></html>

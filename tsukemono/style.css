@@ -1,0 +1,40 @@
+:root{--bg:#f3ead6;--card:#fffaf0;--line:#d8c8a2;--ink:#2b2118;--sub:#7a6a52;--indigo:#2d4b7c;--indigo2:#1d3257;--red:#c63d2f;--green:#4f8a3a;--gold:#c9962a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Hiragino Sans","Noto Sans JP","Yu Gothic",Meiryo,system-ui,sans-serif}
+.top{display:flex;align-items:baseline;gap:12px;padding:10px 16px;background:var(--indigo2);color:#f6f1e4}
+.top h1{margin:0;font-size:20px;letter-spacing:.05em}.top h1 small{font-size:12px;font-weight:400;margin-left:8px;opacity:.8}
+.ver{font-size:12px;opacity:.7}.lnk{margin-left:auto;color:#f1d58a;font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+.stage-wrap{background:#3a2a1c;border:3px solid #5a381b;border-radius:4px;line-height:0;overflow:hidden;display:flex;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.hud{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:10px 0 4px}
+.hud b{font-size:16px;font-variant-numeric:tabular-nums}.hud .k{color:var(--sub);font-size:12px;margin-right:4px}
+.clock{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.message{min-height:22px;color:var(--indigo2);font-weight:600;margin:4px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:12px}
+.card h2{margin:0 0 8px;font-size:15px;color:var(--indigo2)}.card h2 small{font-weight:400;color:var(--sub)}
+button{font:inherit;cursor:pointer;border:1px solid var(--indigo2);background:var(--indigo);color:#fff;border-radius:4px;padding:5px 10px}
+button:hover:not(:disabled){background:var(--indigo2)}button:disabled{opacity:.4;cursor:not-allowed}
+button.sub{background:#fff;color:var(--indigo2)}button.sub:hover:not(:disabled){background:#eef1f7}
+button.danger{background:#fff;color:var(--red);border-color:var(--red)}button.danger:hover:not(:disabled){background:#fbeae7}
+button.big{padding:8px 16px;font-size:15px}
+.barrels{display:grid;gap:8px}
+.barrel{border:2px solid var(--line);border-radius:6px;padding:8px;background:#fff;cursor:pointer}
+.barrel.sel{border-color:var(--red);background:#fff4ee}.barrel .t{font-weight:700}.barrel .m{color:var(--sub);font-size:12px}
+.barrel .btns{display:flex;gap:6px;margin-top:6px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+.row label.n{width:52px;color:var(--sub);font-size:12px}.row input[type=range]{flex:1;min-width:120px}.row output{width:56px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.seg{display:flex;gap:6px}.seg label{border:1px solid var(--line);border-radius:4px;padding:3px 10px;cursor:pointer;background:#fff}
+.seg input{display:none}.seg input:checked+span{font-weight:700;color:var(--indigo2)}.seg label:has(input:checked){border-color:var(--indigo);background:#e8eef9}.seg label:has(input:disabled){opacity:.35;cursor:not-allowed}
+.hint{color:var(--sub);font-size:12px}
+.bar{display:grid;grid-template-columns:70px 1fr 78px;gap:6px;align-items:center;margin:3px 0;font-size:12px}
+.bar i{display:block;height:8px;background:#eadfc6;border-radius:2px;position:relative;overflow:hidden}.bar i s{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.stage-tag{display:inline-block;padding:1px 8px;border-radius:10px;background:#e8eef9;color:var(--indigo2);font-weight:700;font-size:12px}
+.stage-tag.ripe{background:#dff1c8;color:#2f6a1a}.stage-tag.over{background:#f7e3b5;color:#7a5a10}.stage-tag.sour{background:#f2b9a8;color:#8a2a1a}
+#taste{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.cust{padding:5px 0;border-bottom:1px dotted var(--line)}.cust:last-child{border:0}.cust b{margin-right:6px}
+.log table{width:100%;border-collapse:collapse;font-size:13px}.log th,.log td{padding:3px 6px;border-bottom:1px solid #eee3c8;text-align:left}.log td.r,.log th.r{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--green);font-weight:700}.neg{color:var(--red);font-weight:700}
+.debug summary{cursor:pointer;font-weight:700;color:var(--indigo2)}.debug .row{margin:8px 0}
+select{font:inherit;padding:2px 4px}
+@media (max-width:960px){.layout{grid-template-columns:1fr;padding:12px}}
