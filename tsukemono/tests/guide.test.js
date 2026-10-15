@@ -34,3 +34,13 @@ test('案内: 白い膜が出たら手入れ、ぬか床は毎日かき混ぜる
   g.care(0); g.care(1); g.care(2);
   assert.match(nextStep(g), /ぬか床を今日はまだかき混ぜていない/);
 });
+
+test('案内: 樽が全部使用中でお金に余裕があれば、投資をすすめる', () => {
+  const g = createGame({ seed: 3 });
+  g.brew(0, recipe); g.brew(1, recipe); g.brew(2, recipe);
+  assert.doesNotMatch(nextStep(g), /余裕/);
+  g.money = 20000;
+  assert.match(nextStep(g), /余裕がある.*樽を増やす/);
+  g.buyBarrel();
+  assert.match(nextStep(g), /樽4が空いている/);
+});

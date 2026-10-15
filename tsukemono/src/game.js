@@ -21,7 +21,7 @@ export function createRng(seed = 1) {
 
 export const SAVE_VERSION = 1;
 
-export const BARREL_COUNT = 3; // 【仮置き】
+export const BARREL_COUNT = CONFIG.barrelsInvest.start; // 最初の樽の数（投資で増やせる）
 
 export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {}) {
   const cal = cfg.calendar;
@@ -35,6 +35,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     lastSaleTick: -1, // 販売は1つの時間帯（区切り）に1回まで
     // ぬか床（店にひとつ）: 塩分、酸味(0〜1)、白い膜(0〜1)、熟成度(0〜1)、最後にかき混ぜた日
     nuka: { salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0 },
+    reputation: cfg.reputation.start, // 評判 0〜100
+    places: Object.keys(cfg.places).filter((k) => cfg.places[k].cost === 0), // 使える置き場所
   };
 
   const pickWeather = () => {
@@ -54,9 +56,45 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.weather = pickWeather();
 
   /** 仕込みの費用（円）。 */
-  g.brewCost = ({ veg, saltPct }) => cfg.vegetables[veg].cost + Math.round(saltPct * cfg.sales.saltCostPerPct);
+  // ---- 市場（旬） ----
+  const seasonFactor = (veg) => cfg.market.priceBySeason[veg]?.[g.season()] ?? 1;
+  /** 今の季節の仕入れ値（円）。旬は安い。 */
+  g.vegCost = (veg) => Math.round((cfg.vegetables[veg].cost * seasonFactor(veg)) / 10) * 10;
+  /** 今の季節の品質（食感に掛ける）。旬は高い。 */
+  g.vegQuality = (veg) => { const [lo, hi] = cfg.market.qualityRange; return Math.min(hi, Math.max(lo, 2 - seasonFactor(veg))); };
+  g.inSeason = (veg) => seasonFactor(veg) < 1;
+  g.brewCost = ({ veg, saltPct }) => g.vegCost(veg) + Math.round(saltPct * cfg.sales.saltCostPerPct);
 
-  g.brew = (slot, { veg, pickle, saltPct, tempC }) => {
+  // ---- 置き場所 ----
+  /** 置き場所の温度（℃）。 */
+  g.placeTemp = (id) => { const pl = cfg.places[id]; return pl.fixed ?? g.ambientTemp() + pl.offset; };
+  g.buyPlace = (id) => {
+    const pl = cfg.places[id];
+    if (!pl) return { ok: false, error: 'その置き場所はありません' };
+    if (g.places.includes(id)) return { ok: false, error: 'もう持っています' };
+    if (g.money < pl.cost) return { ok: false, error: 'お金が足りません' };
+    g.money -= pl.cost; g.stats.cost += pl.cost; g.stats.invest = (g.stats.invest ?? 0) + pl.cost;
+    g.places.push(id);
+    return { ok: true, cost: pl.cost };
+  };
+
+  // ---- 樽を増やす ----
+  g.nextBarrelCost = () => cfg.barrelsInvest.addCost[g.barrels.length - cfg.barrelsInvest.start] ?? null;
+  g.buyBarrel = () => {
+    const cost = g.nextBarrelCost();
+    if (cost == null || g.barrels.length >= cfg.barrelsInvest.max) return { ok: false, error: 'これ以上は置けません' };
+    if (g.money < cost) return { ok: false, error: 'お金が足りません' };
+    g.money -= cost; g.stats.cost += cost; g.stats.invest = (g.stats.invest ?? 0) + cost;
+    g.barrels.push(null);
+    return { ok: true, cost };
+  };
+
+  g.brew = (slot, { veg, pickle, saltPct, tempC, place }) => {
+    if (place != null) {
+      if (!cfg.places[place]) return { ok: false, error: 'その置き場所はありません' };
+      if (!g.places.includes(place)) return { ok: false, error: 'その置き場所はまだ使えません' };
+      tempC = g.placeTemp(place);
+    }
     const v = cfg.vegetables[veg], p = cfg.pickles[pickle];
     if (!v || !p) return { ok: false, error: '野菜か漬物が不正です' };
     if (!p.vegetables.includes(veg)) return { ok: false, error: `${p.name}に${v.name}は使えません` };
@@ -68,7 +106,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.money -= cost;
     g.stats.cost += cost;
     if (p.usesNukaBed) g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, startTick: g.tick, portions: cfg.sales.portionsPerBatch, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, quality: g.vegQuality(veg), startTick: g.tick, portions: cfg.sales.portionsPerBatch, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -163,7 +201,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.lastSaleTick = g.tick;
     const taste = g.tasteOf(slot);
     const season = g.season();
-    const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()];
+    const rep = cfg.reputation;
+    const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()]
+      * (rep.visitMin + (rep.visitMax - rep.visitMin) * (g.reputation / 100)); // 評判が高いほど客が来る
     // 名前のない客がランダムに来る。来た客の好みのタイプもランダム
     const coming = [];
     for (let i = 0; i < cfg.visit.slots; i++) {
@@ -194,15 +234,20 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     b.earned += revenue;
     const closed = spoiled || b.portions <= 0;
     if (spoiled) g.stats.spoiled++;
+    // 評判: 満足した客が多いと上がり、傷んだ物を出すと下がる
+    const repBefore = g.reputation, rc = cfg.reputation;
+    if (spoiled) g.reputation -= rc.spoiledPenalty;
+    else for (const v of visitors) if (!v.soldOut) g.reputation += (v.sat - rc.neutral) * rc.perVisitor;
+    g.reputation = Math.min(100, Math.max(0, g.reputation));
     if (closed) g.barrels[slot] = null;
     // 樽の収支（空になったときだけ確定）
     const batch = { cost: b.cost, earned: b.earned, profit: b.earned - b.cost, closed };
-    return { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay() };
+    return { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay(), reputation: { before: repBefore, after: g.reputation } };
   };
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -210,7 +255,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.restore = (s) => {
     const okBarrel = (b) => b === null || (b && cfg.vegetables[b.veg] && cfg.pickles[b.pickle] && Number.isFinite(b.saltPct) && Number.isFinite(b.tempC) && Number.isFinite(b.startTick) && Number.isFinite(b.portions));
     if (!s || s.v !== SAVE_VERSION || !Number.isInteger(s.tick) || s.tick < 0 || !Number.isFinite(s.money)
-      || !Array.isArray(s.barrels) || s.barrels.length !== BARREL_COUNT || !s.barrels.every(okBarrel)
+      || !Array.isArray(s.barrels) || s.barrels.length < BARREL_COUNT || s.barrels.length > cfg.barrelsInvest.max || !s.barrels.every(okBarrel)
       || !cal.weathers.includes(s.weather) || !s.stats) return false;
     g.tick = s.tick;
     g.money = s.money;
@@ -220,7 +265,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.lastSaleTick = Number.isInteger(s.lastSaleTick) ? s.lastSaleTick : -1;
     const n = s.nuka;
     if (n && [n.salt, n.sour, n.film, n.maturity].every(Number.isFinite)) g.nuka = { ...g.nuka, ...n };
-    for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; }
+    for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; b.quality ??= 1; }
+    if (Number.isFinite(s.reputation)) g.reputation = Math.min(100, Math.max(0, s.reputation));
+    if (Array.isArray(s.places)) g.places = [...new Set([...g.places, ...s.places.filter((k) => cfg.places[k])])];
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };

@@ -36,8 +36,7 @@ const world = new World();
 
 const ui = {
   slot: 0,
-  recipe: { pickle: 'hakusaizuke', veg: 'hakusai', saltPct: 3, tempC: game.ambientTemp() },
-  tempTouched: false,
+  recipe: { pickle: 'hakusaizuke', veg: 'hakusai', saltPct: 3, place: 'doma' },
   practice: true, // 練習モードは既定でON（切ると自分で探る遊びになる）
   override: { manual: false, season: 'spring', time: 'morning', weather: 'sunny' },
   frozen: false,
@@ -45,7 +44,7 @@ const ui = {
   shownMoney: game.money,
   log: savedLog ?? [],
   lastTaste: null,
-  message: savedLog ? '前回の続きから。' : '樽を選んで、塩分と温度を決めて仕込もう。',
+  message: savedLog ? '前回の続きから。' : '樽を選んで、塩分と置き場所を決めて仕込もう。',
 };
 
 // ------------------------------------------------------------ 表示用の状態
@@ -76,6 +75,7 @@ function renderHud() {
     <span><span class="k">時間</span><b>${C.timeName[game.timeOfDay()]}</b></span>
     <span><span class="k">天気</span><b>${C.weatherName[game.weather]}</b></span>
     <span><span class="k">外気温</span><b>${game.ambientTemp()}℃</b></span>
+    <span><span class="k">評判</span><b>${Math.round(game.reputation)}</b></span>
     <span><span class="k">所持金</span><b>${yen(ui.shownMoney)}</b></span>
     <span><span class="k">累計利益</span><b class="${st.revenue - st.cost >= 0 ? 'pos' : 'neg'}">${yen(st.revenue - st.cost)}</b></span>`;
   $('clock').innerHTML = [
@@ -144,7 +144,10 @@ function renderTaste() {
 }
 
 /** 仕込みに使う条件（ぬか漬けはぬか床の塩分）。 */
-const effRecipe = () => (C.pickles[ui.recipe.pickle].usesNukaBed ? { ...ui.recipe, saltPct: game.nuka.salt } : ui.recipe);
+const effRecipe = () => {
+  const r = { ...ui.recipe, tempC: game.placeTemp(ui.recipe.place) };
+  return C.pickles[r.pickle].usesNukaBed ? { ...r, saltPct: game.nuka.salt } : r;
+};
 const brewCostOf = (r) => game.brewCost({ ...r, saltPct: C.pickles[r.pickle].usesNukaBed ? 0 : r.saltPct });
 function renderBrew() {
   const r = effRecipe(), p = C.pickles[r.pickle];
@@ -154,7 +157,7 @@ function renderBrew() {
   let practice = '';
   if (ui.practice) {
     const days = daysToRipe(r), range = ripeRangeDays(r);
-    let t = simulate({ ...r, days });
+    let t = simulate({ ...r, quality: game.vegQuality(r.veg), days });
     if (p.usesNukaBed) t = applyCare(t, { film: game.nuka.film, bed: { sour: game.nuka.sour, maturity: game.nuka.maturity } });
     practice = `<div style="margin-top:8px;padding:8px;background:#f6f0df;border-radius:4px">
       <div><b>練習モード（予測）</b> 食べ頃は <b>${trim(days, 1)}日</b> 後（${trim(range.from, 1)}〜${trim(range.to, 1)}日）、${trim(range.sourFrom, 1)}日を過ぎると酸っぱすぎ</div>
@@ -162,13 +165,26 @@ function renderBrew() {
   }
   $('brew').innerHTML = `
     <div class="row"><label class="n">漬物</label><div class="seg">${Object.entries(C.pickles).map(([id, x]) => `<label><input type="radio" name="pickle" value="${id}" ${r.pickle === id ? 'checked' : ''}><span>${x.name}</span></label>`).join('')}</div></div>
-    <div class="row"><label class="n">野菜</label><div class="seg">${vegs.map(([id, x]) => `<label><input type="radio" name="veg" value="${id}" ${r.veg === id ? 'checked' : ''} ${p.vegetables.includes(id) ? '' : 'disabled'}><span>${x.name}</span></label>`).join('')}</div></div>
+    <div class="row"><label class="n">野菜</label><div class="seg">${vegs.map(([id, x]) => `<label><input type="radio" name="veg" value="${id}" ${r.veg === id ? 'checked' : ''} ${p.vegetables.includes(id) ? '' : 'disabled'}><span>${x.name}${game.inSeason(id) ? '<em class="shun">旬</em>' : ''} ${yen(game.vegCost(id))}</span></label>`).join('')}</div></div>
     <div class="row"><label class="n">塩分</label><input id="salt" type="range" min="1" max="15" step="0.5" value="${r.saltPct}" ${p.usesNukaBed ? 'disabled' : ''}><output id="saltV">${trim(r.saltPct, 1)}%</output></div>${p.usesNukaBed ? '<div class="hint">ぬか漬けの塩分はぬか床の塩分で決まる（下の「ぬか床」で塩を足せる）。</div>' : ''}
-    <div class="row"><label class="n">温度</label><input id="temp" type="range" min="4" max="40" step="1" value="${r.tempC}"><output id="tempV">${r.tempC}℃</output></div>
-    <div class="hint">${p.name}の目安：塩${p.saltHint}。外気温は今 ${game.ambientTemp()}℃ <button class="sub" id="ambient" style="padding:1px 6px;font-size:12px">外気温にする</button></div>
+    <div class="row"><label class="n">置き場所</label><div class="seg">${Object.entries(C.places).map(([id, x]) => { const own = game.places.includes(id); return `<label title="${own ? '' : '「店」の欄で買うと使える'}"><input type="radio" name="place" value="${id}" ${ui.recipe.place === id ? 'checked' : ''} ${own ? '' : 'disabled'}><span>${x.name} ${own ? `${game.placeTemp(id)}℃` : '未購入'}</span></label>`; }).join('')}</div></div>
+    <div class="hint">${p.name}の目安：塩${p.saltHint}。外気温は今 ${game.ambientTemp()}℃（屋外は外気温+${C.places.outdoor.offset}℃、土間は${C.places.doma.offset}℃）。旬の野菜は安くて質が良い。</div>
     <div class="row" style="margin-top:10px"><button class="big" id="brewBtn" ${ui.busy || !free ? 'disabled' : ''}>樽${ui.slot + 1}に仕込む（${yen(cost)}）</button>
       <span class="hint">${free ? '' : 'この樽は使用中です'}</span></div>
     <label class="hint"><input type="checkbox" id="practice" ${ui.practice ? 'checked' : ''}> 練習モード：仕込む前に予測を表示する</label>${practice}`;
+}
+
+function renderShop() {
+  const rep = Math.round(game.reputation), next = game.nextBarrelCost();
+  const buys = Object.entries(C.places).filter(([, x]) => x.cost > 0).map(([id, x]) => game.places.includes(id)
+    ? `<span class="hint">${x.name}（${x.fixed}℃）：購入済み</span>`
+    : `<button class="sub" data-buy="${id}" ${ui.busy || game.money < x.cost ? 'disabled' : ''}>${x.name}を買う（${yen(x.cost)}・いつでも${x.fixed}℃）</button>`);
+  buys.push(next == null ? `<span class="hint">樽はこれ以上置けない（${game.barrels.length}個）</span>`
+    : `<button class="sub" data-buy="barrel" ${ui.busy || game.money < next ? 'disabled' : ''}>樽を増やす（${yen(next)}・今${game.barrels.length}個）</button>`);
+  $('shop').innerHTML = `
+    <div class="row"><label class="n">評判</label><div class="repbar"><i style="width:${rep}%"></i></div><b style="margin-left:6px">${rep}</b></div>
+    <div class="hint">満足したお客が多いほど評判が上がり、評判が高いほど客が来る。傷んだものを出すと大きく下がる。</div>
+    <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">${buys.join('')}</div>`;
 }
 
 function renderCustomers() {
@@ -203,7 +219,7 @@ function renderDebug() {
     <div class="hint">見た目の固定は遊びに影響しません（天気・季節の数値は実際の進行どおり）。</div>`;
 }
 
-function renderAll() { renderGuide(); renderHud(); renderBarrels(); renderNuka(); renderTaste(); renderBrew(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
+function renderAll() { renderGuide(); renderHud(); renderBarrels(); renderNuka(); renderTaste(); renderBrew(); renderShop(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
 
 // ------------------------------------------------------------ 操作
 const clampSlotRecipe = () => { // 漬物に合わない野菜なら入れ替える
@@ -215,7 +231,6 @@ async function advance(ticks) {
   ui.busy = true; renderHud(); renderBarrels(); renderBrew();
   for (let i = 0; i < ticks; i++) {
     game.advance(1);
-    if (!ui.tempTouched) ui.recipe.tempC = game.ambientTemp();
     renderHud();
     await world.wait(ticks > 1 ? 160 : 0);
   }
@@ -252,6 +267,7 @@ async function stir() {
   ui.busy = false; renderAll();
 }
 
+const repNote = (r) => { const d = Math.round(r.after) - Math.round(r.before); return d ? ` ・ 評判 ${d > 0 ? '+' : ''}${d}` : ''; };
 async function sell(slot) {
   const res = game.sell(slot);
   if (!res.ok) { setMessage(res.error); return; }
@@ -264,7 +280,7 @@ async function sell(slot) {
   await world.saleScene(res.visitors, res.season, () => {});
   ui.shownMoney = game.money;
   ui.log.unshift({
-    day: game.day(), time: C.timeName[res.time], weather: C.weatherName[res.weather], what: res.spoiled ? '傷んでいた！' : `${res.sold}個売れた`,
+    day: game.day(), time: C.timeName[res.time], weather: C.weatherName[res.weather], what: (res.spoiled ? '傷んでいた！' : `${res.sold}個売れた`) + repNote(res.reputation),
     rows: res.visitors.map((v) => ({ name: v.customer.name, line: v.reaction.line, sat: v.soldOut || res.spoiled ? null : v.sat, price: v.price })),
     revenue: res.revenue, batch: res.batch.closed ? res.batch : null,
   });
@@ -281,7 +297,12 @@ document.addEventListener('click', (e) => {
   if (!t) return;
   if (t.dataset.adv) { if (!ui.busy) advance(+t.dataset.adv); return; }
   if (t.id === 'brewBtn') { brew(); return; }
-  if (t.id === 'ambient') { ui.recipe.tempC = game.ambientTemp(); ui.tempTouched = false; renderBrew(); return; }
+  if (t.dataset.buy && !ui.busy) {
+    const id = t.dataset.buy, r = id === 'barrel' ? game.buyBarrel() : game.buyPlace(id);
+    if (r.ok) { ui.shownMoney = game.money; if (id === 'barrel') ui.slot = game.barrels.length - 1; else ui.recipe.place = id; }
+    setMessage(r.ok ? (id === 'barrel' ? `樽を増やした（${yen(r.cost)}）。` : `${C.places[id].name}を買った（${yen(r.cost)}）。`) : r.error);
+    renderAll(); return;
+  }
   if (t.id === 'stir' && !ui.busy) { stir(); return; }
   if (t.id === 'saltNuka' && !ui.busy) { const r = game.saltNuka(); setMessage(r.ok ? 'ぬか床に塩を足した。酸味が和らいだ。' : r.error); ui.shownMoney = game.money; renderAll(); return; }
   if (t.id === 'reset') {
@@ -312,7 +333,7 @@ document.addEventListener('input', (e) => {
     renderBrew();
   } else if (t.name === 'veg') { r.veg = t.value; renderBrew(); }
   else if (t.id === 'salt') { r.saltPct = +t.value; $('saltV').textContent = `${trim(r.saltPct, 1)}%`; if (ui.practice) renderBrewKeepFocus('salt'); else $('brewBtn').textContent = `樽${ui.slot + 1}に仕込む（${yen(brewCostOf(effRecipe()))}）`; }
-  else if (t.id === 'temp') { r.tempC = +t.value; ui.tempTouched = r.tempC !== game.ambientTemp(); $('tempV').textContent = `${r.tempC}℃`; if (ui.practice) renderBrewKeepFocus('temp'); }
+  else if (t.name === 'place') { r.place = t.value; renderBrew(); }
   else if (t.id === 'practice') { ui.practice = t.checked; renderBrew(); }
   else if (t.id === 'manual') { ui.override.manual = t.checked; }
   else if (t.id === 'dSeason') ui.override.season = t.value;

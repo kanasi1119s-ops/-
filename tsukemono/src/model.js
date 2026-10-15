@@ -89,7 +89,7 @@ export function simulate(p, cfg = CONFIG) {
 
   const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * days));
 
-  const crisp = veg.crisp0 * Math.exp(-progress / veg.crispTau);
+  const crisp = veg.crisp0 * (p.quality ?? 1) * Math.exp(-progress / veg.crispTau); // quality = 旬の品質
   const texture = crisp * (1 - cfg.texture.spoilPenalty * (spoilRisk / 100));
 
   const maturity = Math.sqrt(Math.min(1, ratio));

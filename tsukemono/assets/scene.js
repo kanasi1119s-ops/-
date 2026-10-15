@@ -13,6 +13,8 @@ export const SCENE = {
   keeperFeet: { x: 195, y: 191 },
   // 売り場の樽（樽1〜3）。中身の絵を差し替えて、空・白菜・きゅうりを見せる
   slots: TRACE.slots.map((s) => ({ ...s, cx: s.x + Math.round(s.w / 2) })),
+  // 増やした樽（4・5個目）。絵は背景の右側の樽をそのまま使い、ラベルだけ出す
+  extraSlots: [{ cx: 271 }, { cx: 317 }],
   labelY: 199,
   // 吊るし物。panels = 別々に揺れる区切り（画像内のx範囲）
   hanging: [

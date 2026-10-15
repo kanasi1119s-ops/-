@@ -63,6 +63,18 @@ try {
   }
   check('販売して、結果（満足度・支払）が出る', sold);
 
+  // 投資: 樽を増やす・冷蔵庫を買う → 置き場所に冷蔵庫が出て、4個目の樽に仕込める
+  await page.evaluate(() => { window.__game.game.money = 20000; window.__game.renderAll(); });
+  await page.click('[data-buy="barrel"]');
+  await page.click('[data-buy="fridge"]');
+  const inv = await page.evaluate(() => ({ n: window.__game.game.barrels.length, places: window.__game.game.places, place: window.__game.ui.recipe.place }));
+  check('樽を増やし、冷蔵庫を買える', inv.n === 4 && inv.places.includes('fridge') && inv.place === 'fridge', JSON.stringify(inv));
+  await page.click('#brewBtn'); await idle();
+  const b4 = await page.evaluate(() => window.__game.game.barrels[3]);
+  check('4個目の樽に冷蔵庫で仕込める', !!b4 && b4.tempC === 4 && b4.place === 'fridge');
+  await page.waitForTimeout(300);
+  check('樽が4個でも描画が落ちない', errors.length === 0, errors.join(' / '));
+
   // セーブ
   const before = await page.evaluate(() => JSON.stringify(window.__game.game.snapshot()));
   await page.reload(); await ready();

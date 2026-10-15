@@ -125,10 +125,11 @@ export class SceneRenderer {
     if (theme.puddles) for (const [x, y] of [[20, 205], [150, 209], [300, 204], [355, 210], [70, 212]]) g.drawImage(getSprite('puddle'), x, y);
     // 売り場の樽の中身
     view.barrels.forEach((b, i) => {
-      const s = SCENE.slots[i];
+      const s = SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
+      if (!s) return;
       const top = `slot${i}_${b.filled ? b.veg : 'empty'}`;
-      g.drawImage(getImage(top), s.x, s.y);
-      if (b.film >= 0.15) { // 白い膜（濃さは膜の量）
+      if (s.x != null) g.drawImage(getImage(top), s.x, s.y);
+      if (s.x != null && b.film >= 0.15) { // 白い膜（濃さは膜の量）
         g.globalAlpha = Math.min(0.85, b.film);
         g.drawImage(this.whiteOf(top), s.x, s.y);
         g.globalAlpha = 1;
