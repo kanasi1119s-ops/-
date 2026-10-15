@@ -223,7 +223,7 @@ document.addEventListener('click', (e) => {
   if (t.dataset.adv) { if (!ui.busy) advance(+t.dataset.adv); return; }
   if (t.id === 'brewBtn') { brew(); return; }
   if (t.id === 'ambient') { ui.recipe.tempC = game.ambientTemp(); ui.tempTouched = false; renderBrew(); return; }
-  if (t.id === 'ambientVisit') { if (!world.busy) world.ambientVisit(); return; }
+  if (t.id === 'ambientVisit') { if (!world.busy) world.ambientVisit(view().season); return; }
   const act = t.dataset.act;
   if (act) {
     const slot = +t.dataset.slot;
@@ -274,7 +274,7 @@ function frame(now) {
 
 // 画面を開いて少し経つと、通りがかりの客が買っていく（デモ。ゲームの状態は変えない）
 setTimeout(function loop() {
-  if (!world.busy && !ui.busy && !ui.frozen && view().time !== 'night') world.ambientVisit();
+  if (!world.busy && !ui.busy && !ui.frozen && view().time !== 'night') world.ambientVisit(view().season);
   setTimeout(loop, 14000);
 }, 2500);
 

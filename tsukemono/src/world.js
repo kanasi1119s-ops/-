@@ -136,11 +136,11 @@ export class World {
   }
 
   /** デモ用: 通りがかりの人が1つ買って帰る（ゲームの状態は変えない）。 */
-  async ambientVisit() {
+  async ambientVisit(season = null) {
     this.busy++;
     try {
       const line = AMBIENT_LINES[Math.floor(Math.random() * AMBIENT_LINES.length)];
-      await this.serve({ customer: { id: 'ambient' }, bought: true, reaction: { line } }, { look: randomLook(), line });
+      await this.serve({ customer: { id: 'ambient' }, bought: true, reaction: { line } }, { look: randomLook(Math.random, season), line });
     } finally { this.busy--; }
   }
 }

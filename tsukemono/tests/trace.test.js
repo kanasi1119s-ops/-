@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { IMAGES, SCENE } from '../assets/scene.js';
 import { TRACE } from '../assets/trace.js';
-import { BODIES, CUSTOMER_LOOKS, RECOLORS } from '../assets/characters.js';
+import { BODIES, CUSTOMER_LOOKS, RECOLORS, PASSERS, randomLook } from '../assets/characters.js';
 import { PERSON_ANIMS, POSE_ANIMS } from '../assets/animations.js';
 import { CONFIG } from '../src/config.js';
 
@@ -31,4 +31,11 @@ test('人物の目印が絵の中に収まり、客全員に絵がある', () =>
     if (look.recolor) assert.ok(RECOLORS[look.recolor], c.id);
   }
   for (const set of [PERSON_ANIMS, ...Object.values(POSE_ANIMS)]) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 4);
+});
+
+test('通りがかりの人: 季節限定の人は、その季節にだけ来る', () => {
+  for (const p of PASSERS) assert.ok(BODIES[p.body], p.body);
+  const seen = (season) => new Set(Array.from({ length: 400 }, (_, i) => randomLook(() => (i % 100) / 100, season).body));
+  assert.ok(seen('summer').has('beach'));
+  assert.ok(!seen('winter').has('beach'));
 });
