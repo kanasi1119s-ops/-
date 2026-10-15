@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { IMAGES, SCENE } from '../assets/scene.js';
 import { TRACE } from '../assets/trace.js';
 import { BODIES, CUSTOMER_LOOKS, RECOLORS } from '../assets/characters.js';
-import { PERSON_ANIMS } from '../assets/animations.js';
+import { PERSON_ANIMS, POSE_ANIMS } from '../assets/animations.js';
 import { CONFIG } from '../src/config.js';
 
 const pngSize = (name) => { const b = fs.readFileSync(new URL(`../assets/img/${name}.png`, import.meta.url)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
@@ -17,7 +17,12 @@ test('トレースした画像がそろい、背景の大きさが画面と同�
 
 test('人物の目印が絵の中に収まり、客全員に絵がある', () => {
   for (const [k, b] of Object.entries(BODIES)) {
-    const [w, h] = pngSize(b.img.replace(/^/, ''));
+    if (b.kind === 'poses') {
+      for (const p of b.poses) assert.deepEqual(pngSize(p.img), [p.w, p.h], p.img);
+      for (const a of Object.values(POSE_ANIMS[k])) for (const f of a.frames) assert.ok(b.poses[f.pose], `${k} pose ${f.pose}`);
+      continue;
+    }
+    const [w, h] = pngSize(b.img);
     assert.ok(b.headY < b.hipY && b.hipY < h && b.legX > 0 && b.legX < w, k);
   }
   for (const c of CONFIG.customers) {
@@ -25,5 +30,5 @@ test('人物の目印が絵の中に収まり、客全員に絵がある', () =>
     assert.ok(look && BODIES[look.body], c.id);
     if (look.recolor) assert.ok(RECOLORS[look.recolor], c.id);
   }
-  for (const set of Object.values(PERSON_ANIMS)) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 4);
+  for (const set of [PERSON_ANIMS, ...Object.values(POSE_ANIMS)]) for (const a of Object.values(set)) assert.ok(a.frames.length >= 2 && a.frames.length <= 4);
 });

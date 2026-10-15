@@ -1,13 +1,15 @@
 """参考画像をドット絵にトレースする。
   背景: assets/reference/shop_background.jpg（人のいない店先）
   人物: assets/reference/shop_reference.jpg（店主・客がいる店先）から切り抜く
+  ポーズ: assets/reference/pose_*.jpg（店主・女性・おばあちゃんのポーズ集。無地の背景）
 
   python3 tools/trace.py      # 必要: pip install opencv-python-headless pillow numpy
 
 出力（assets/img/）:
   bg.png              背景 384×216（人物を抜いて埋め直し、空は透明）
   cloud_*.png         空に浮かぶ雲（流すために背景から抜いたもの）
-  char_*.png          人物（店主・客）。動きは JS 側でコマを作る
+  char_kid*.png       子ども3人（店先の絵から切り抜き。動きは JS 側でずらしてコマを作る）
+  pose_*_N.png        店主・女性・おばあちゃんのポーズ（ポーズ集から切り抜き）
   basket.png          かご
 
 手順: 縮小(384×216) → 128色に減色 → GrabCut で人物を切り抜く → 吊るし物・樽の口・雲を抜く → 空を抜く。
@@ -43,14 +45,10 @@ def snap(arr):
 
 # ---------------------------------------------------------------- 人物の切り抜き
 BOXES = {
-    'keeper': (175, 112, 214, 194), 'woman': (228, 138, 265, 214),
     'kid1': (280, 154, 304, 214), 'kid2': (312, 156, 341, 214), 'kid3': (346, 154, 381, 214),
     'basket': (229, 170, 248, 196),
 }
 HINTS = {  # fg: (cx, cy, r) / bg: (x0, y0, x1, y1)
-    'keeper': {'fg': [(195, 124, 6), (195, 138, 6), (195, 160, 6), (187, 181, 2), (203, 181, 2), (203, 172, 2), (204, 185, 2), (187, 172, 2), (187, 189, 2), (204, 189, 2), (181, 142, 2), (209, 142, 2)],
-               'bg': [(175, 112, 182, 135), (207, 112, 214, 135), (191, 176, 199, 186), (175, 150, 183, 194), (210, 150, 214, 190), (175, 192, 183, 194), (193, 191, 199, 194), (209, 192, 214, 194)]},
-    'woman': {'fg': [(250, 155, 5), (250, 180, 5)], 'bg': [(228, 182, 238, 214), (228, 138, 236, 160)]},
     'kid1': {'fg': [(291, 163, 5), (292, 180, 3), (292, 197, 2)], 'bg': [(288, 154, 300, 158), (298, 154, 304, 176), (280, 154, 284, 165), (298, 206, 304, 214)]},
     'kid2': {'fg': [(325, 165, 6), (327, 185, 4), (327, 195, 3)], 'bg': [(336, 156, 341, 172)]},
     'kid3': {'fg': [(362, 163, 6), (360, 182, 4), (358, 195, 3), (371, 180, 3)], 'bg': [(368, 154, 381, 168), (377, 170, 381, 190)]},
@@ -60,7 +58,6 @@ HINTS = {  # fg: (cx, cy, r) / bg: (x0, y0, x1, y1)
 
 # 384×216 での手直し（切り抜きの足りない所・余計な所）
 FORCE = {
-    'keeper': {'fg': [(184, 172, 192, 186), (199, 172, 207, 186)], 'bg': [(178, 191, 214, 194)]},
 }
 
 
@@ -221,7 +218,64 @@ for i, (x0, y0, x1, y1) in enumerate(CLOUDS):
 
 out = np.dstack([bg, alpha])
 Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
-meta = {'size': [W, H], 'chars': placed, 'clouds': cloud_meta, 'hanging': hang_meta, 'slots': slot_meta}
+# ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
+POSE_SCALE = 76 / 230  # ポーズ集の店主(約230px)を、店先の店主(76px)と同じ背丈にする
+
+
+def extract_poses(name):
+    a = np.asarray(Image.open(os.path.join(ROOT, f'assets/reference/pose_{name}.jpg')).convert('RGB')).astype(int)
+    h0, w0, _ = a.shape
+    bgc = np.median(a[2:10, 2:10].reshape(-1, 3), 0)
+    mx, mn = a.max(-1), a.min(-1)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    grid = (g > 235) & (b > 235) & (r < 240)  # 枠線
+    fg = ((np.abs(a - bgc).sum(-1) > 40) & ~grid).astype(np.uint8)
+    shadow = (b >= r - 2) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 80) & (mx < 205)
+    fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n2, _, st, _ = cv2.connectedComponentsWithStats(fg, 8)
+    boxes = [list(st[i, :4]) for i in range(1, n2) if st[i, 4] > 400]
+    merged = True
+    while merged:  # 近い部品（袋など）を同じ人物にまとめる
+        merged = False
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                x1, y1, w1, h1 = boxes[i]; x2, y2, w2, h2 = boxes[j]
+                if x1 - 12 < x2 + w2 and x2 - 12 < x1 + w1 and y1 - 12 < y2 + h2 and y2 - 12 < y1 + h1:
+                    boxes[i] = [min(x1, x2), min(y1, y2), max(x1 + w1, x2 + w2) - min(x1, x2), max(y1 + h1, y2 + h2) - min(y1, y2)]
+                    boxes.pop(j); merged = True; break
+            if merged:
+                break
+    boxes = sorted([bx for bx in boxes if bx[3] > 120], key=lambda bx: (bx[1] // 200, bx[0]))  # 上の段から左→右
+    poses = []
+    for i, (x, y, w, h) in enumerate(boxes):
+        x0, y0, x1, y1 = max(0, x - 4), max(0, y - 4), min(w0, x + w + 4), min(h0, y + h + 4)
+        m = fg[y0:y1, x0:x1].copy()
+        sh = shadow[y0:y1, x0:x1].copy()
+        sh[:max(0, (y1 - y0) - 34)] = False  # 足元の影だけ落とす
+        m[sh] = 0
+        inv = (1 - m).astype(np.uint8)
+        cv2.floodFill(inv, np.zeros((inv.shape[0] + 2, inv.shape[1] + 2), np.uint8), (0, 0), 2)
+        m[inv == 1] = 1  # 内側の穴（白い服の影など）を埋める
+        m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(np.float32)
+        tw, th = max(1, round((x1 - x0) * POSE_SCALE)), max(1, round((y1 - y0) * POSE_SCALE))
+        rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
+        ms = cv2.resize(m, (tw, th), interpolation=cv2.INTER_AREA)
+        cs = cv2.resize(rgbf, (tw, th), interpolation=cv2.INTER_AREA) / np.maximum(ms[..., None], 1e-6)
+        alpha = ms > 0.5
+        ys, xs = np.nonzero(alpha)
+        cs, alpha = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1], alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        img = Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8))
+        q = np.asarray(img.quantize(colors=24, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+        rgba = np.dstack([q, alpha * 255]).astype(np.uint8)
+        Image.fromarray(rgba).save(os.path.join(OUT, f'pose_{name}_{i}.png'))
+        feet = np.nonzero(alpha[-4:].any(0))[0]  # 足元の中心
+        poses.append({'w': int(alpha.shape[1]), 'h': int(alpha.shape[0]), 'ax': int(round(feet.mean()))})
+    return poses
+
+
+POSES = {n: extract_poses(n) for n in ('keeper', 'woman', 'granny')}
+
+meta = {'size': [W, H], 'poses': POSES, 'chars': placed, 'clouds': cloud_meta, 'hanging': hang_meta, 'slots': slot_meta}
 with open(os.path.join(ROOT, 'assets/trace.js'), 'w') as f:
     f.write('// tools/trace.py が書き出す。手で編集しない（トレースし直すと上書きされる）。\n')
     f.write('export const TRACE = ' + __import__('json').dumps(meta, ensure_ascii=False) + ';\n')

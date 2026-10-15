@@ -1,7 +1,6 @@
 // 店先の人の動かし方（段取り）。ゲームの結果を受けて、客と店主を動かすだけ。
 // 状態は一切書き換えない。止めても遊びは進む（結果は game.js が先に確定している）。
 import { SCENE } from '../assets/scene.js';
-import { TRACE } from '../assets/trace.js';
 import { CUSTOMER_LOOKS, KEEPER_LOOK, randomLook, AMBIENT_LINES } from '../assets/characters.js';
 
 const WALK_SPEED = 70; // px/秒 【仮置き】
@@ -15,13 +14,14 @@ export class World {
     this.moves = [];
     this.busy = 0; // 実行中の場面の数
     this.standFree = Promise.resolve();
-    // 店主は、絵に描かれていた場所（入口）に立つ。座標は足元の中心
-    const [kx, ky, kw, kh] = TRACE.chars.keeper;
-    this.keeper = this.spawn('keeper', KEEPER_LOOK, kx + kw / 2, ky + kh, 'idle');
+    this.queue = []; // 並んで待っている客（先頭が次に買う）
+    // 店主は、のれんの下の入口に立つ。座標は足元の中心。客のいる右を向く
+    this.keeper = this.spawn('keeper', KEEPER_LOOK, SCENE.keeperFeet.x, SCENE.keeperFeet.y, 'idle');
+    this.keeper.dir = 1;
   }
 
   spawn(kind, look, x, y, anim) {
-    const a = { kind, look, x, y, flip: false, anim, animT0: this.now(), bubble: null };
+    const a = { kind, look, x, y, dir: -1, anim, animT0: this.now(), bubble: null };
     this.actors.push(a);
     return a;
   }
@@ -44,8 +44,22 @@ export class World {
 
   wait(ms) { return new Promise((resolve) => this.waits.push({ left: ms, resolve })); }
   walkTo(actor, x, speed = WALK_SPEED) {
-    actor.flip = x > actor.x; // 絵は左向き。右へ歩くときは反転
+    if (x !== actor.x) actor.dir = x > actor.x ? 1 : -1; // 進む向き（絵の向きと逆なら描くときに反転）
+    // 歩いている途中で行き先が変わったら、前の歩きは打ち切る
+    for (const m of this.moves.filter((m) => m.actor === actor)) m.resolve();
+    this.moves = this.moves.filter((m) => m.actor !== actor);
     return new Promise((resolve) => this.moves.push({ actor, x, speed, resolve }));
+  }
+
+  /** 列の位置（先頭から順に右へ並ぶ）。 */
+  queueX(i) { return SCENE.lane.queueX + i * SCENE.lane.queueGap; }
+  /** 列が進んだら、後ろの客を詰めさせる。 */
+  stepQueue() {
+    this.queue.forEach((c, i) => {
+      if (c.x === this.queueX(i)) return;
+      this.setAnim(c, 'walk');
+      this.walkTo(c, this.queueX(i)).then(() => { if (c.x === this.queueX(this.queue.indexOf(c))) { c.dir = -1; this.setAnim(c, 'idle'); } });
+    });
   }
 
   // ---- 店主（入口から動かず、コマ送りで動く）----
@@ -54,13 +68,17 @@ export class World {
     await this.wait(1800);
     this.setAnim(this.keeper, 'idle');
   }
+  async keeperGreet() {
+    this.setAnim(this.keeper, 'greet');
+    await this.wait(750);
+  }
   async keeperTake() {
     this.setAnim(this.keeper, 'take');
     await this.wait(1000);
   }
   async keeperGive() {
     this.setAnim(this.keeper, 'give');
-    await this.wait(900);
+    await this.wait(1350);
     this.setAnim(this.keeper, 'idle');
   }
 
@@ -72,13 +90,17 @@ export class World {
     const prevFree = this.standFree;
     let release;
     this.standFree = new Promise((r) => { release = r; });
-    await this.walkTo(c, lane.queueX);
-    this.setAnim(c, 'idle');
+    this.queue.push(c);
+    await this.walkTo(c, this.queueX(this.queue.indexOf(c)));
+    if (this.queue.includes(c)) { c.dir = -1; this.setAnim(c, 'idle'); }
     await prevFree;
+    this.queue.splice(this.queue.indexOf(c), 1);
+    this.stepQueue();
     this.setAnim(c, 'walk');
     await this.walkTo(c, lane.standX);
+    c.dir = -1; // 店のほうを向く
     this.setAnim(c, 'look');
-    await this.wait(700);
+    await this.keeperGreet();
     if (!v.soldOut) {
       await this.keeperTake();
       await this.keeperGive();

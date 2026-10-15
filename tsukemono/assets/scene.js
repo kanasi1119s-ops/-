@@ -3,15 +3,14 @@
 import { TRACE } from './trace.js';
 
 const [W, H] = TRACE.size;
-const at = (name) => ({ x: TRACE.chars[name][0], y: TRACE.chars[name][1] });
 
 export const SCENE = {
   w: W, h: H,
   skyBottom: 112, // 空のグラデーションを描く高さ（背景の空は透明）
   groundY: 196, // これより下が地面（季節の色替えで使う）
   roofRect: [68, 28, 322, 84], // 屋根（冬に雪をのせる範囲）
-  // 店主は、絵の中で立っていた場所（のれんの下の入口）にそのまま立つ
-  keeper: at('keeper'),
+  // 店主は、のれんの下の入口に立つ（足元の中心）
+  keeperFeet: { x: 195, y: 191 },
   // 売り場の樽（樽1〜3）。中身の絵を差し替えて、空・白菜・きゅうりを見せる
   slots: TRACE.slots.map((s) => ({ ...s, cx: s.x + Math.round(s.w / 2) })),
   labelY: 199,
@@ -25,7 +24,7 @@ export const SCENE = {
   // 浮いている雲（速さはバラバラ）
   clouds: TRACE.clouds.map(([x, y], i) => ({ img: `cloud_${i}`, x0: x, y, speed: [4.5, 2.4][i] ?? 3 })),
   // 客の通り道: 右から来て、樽の前で止まり、右へ帰る（足元のy）
-  lane: { y: 213, startX: W + 20, queueX: 300, standX: 266, endX: W + 24 },
+  lane: { y: 213, startX: W + 20, queueX: 298, queueGap: 26, standX: 264, endX: W + 24 },
   doorLight: { x: 195, y: 128 }, // 夕方・夜に店の奥が灯る位置
   sunPos: { morning: [52, 40], noon: [190, 14], evening: [330, 40] },
   moonPos: [318, 20],
@@ -37,7 +36,8 @@ function pos(name) { const [x, y] = TRACE.hanging[name]; return { x, y }; }
 /** 読み込む画像（assets/img/*.png）。 */
 export const IMAGES = [
   'bg', 'basket', 'cloud_0', 'cloud_1',
-  'char_keeper', 'char_woman', 'char_kid1', 'char_kid2', 'char_kid3',
+  'char_kid1', 'char_kid2', 'char_kid3',
+  ...Object.entries(TRACE.poses).flatMap(([n, ps]) => ps.map((_, i) => `pose_${n}_${i}`)),
   'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
   ...[0, 1, 2].flatMap((i) => ['empty', 'hakusai', 'kyuri'].map((v) => `slot${i}_${v}`)),
 ];

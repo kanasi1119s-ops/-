@@ -1,41 +1,59 @@
-// 動きの定義。トレースした1枚の絵を、部分ごとに1〜2ドットずらしたコマで動かす（拡大縮小はしない）。
-//   up: 腰より上を (dx,dy) ずらす / head: 頭だけずらす / legs: [左脚dx, 右脚dx] / props: 持ち物
-const fr = (ms, o = {}) => ({ ms, up: [0, 0], head: [0, 0], legs: [0, 0], props: [], ...o });
+// 動きの定義（2〜4コマのコマ送り。拡大縮小はしない）。
+//
+// POSE_ANIMS … ポーズ集の絵を差し替えるコマ。{ ms, pose: 絵の番号, dy: 上下のずれ, props: 持ち物 }
+// PERSON_ANIMS … 1枚の絵をずらして作るコマ（子ども・男の客）。
+//   up: 腰より上を (dx,dy) / head: 頭だけ / legs: [左脚dx, 右脚dx] / props: 持ち物
 
+// ---- ポーズ集の番号 ----
+// 店主:       0腕組み 1手を挙げる 2トングで取る 3袋に詰める 4袋を持つ 5袋を渡す 6お辞儀
+// 女性:       0歩く 1歩く 2話す 3手を出す(かご) 4歩く(かご) 5指さす 6袋を受け取る
+// おばあちゃん: 0歩く 1歩く 2立つ 3手を振る 4手を振る(巾着) 5お辞儀 6指さす 7袋を受け取る
+const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
+const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
+
+export const POSE_ANIMS = {
+  keeper: {
+    idle: { loop: true, frames: [p(900, 0), p(900, 0, { dy: -1 })] },
+    greet: { loop: false, frames: [p(250, 1, { dy: -1 }), p(500, 1)] },
+    take: { loop: false, frames: [p(350, 2), p(350, 2, { dy: 1 }), p(400, 3)] },
+    salt: { loop: true, frames: [
+      p(170, 2, { props: [SALT('salt_a', 0)] }), p(170, 2, { dy: 1, props: [SALT('salt_b', 2)] }),
+      p(170, 2, { props: [SALT('salt_c', 4)] }), p(170, 2, { dy: 1 }),
+    ] },
+    give: { loop: false, frames: [p(300, 4), p(500, 5), p(550, 6)] },
+  },
+  woman: {
+    walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
+    walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
+    idle: { loop: true, frames: [p(800, 4), p(800, 4, { dy: -1 })] },
+    look: { loop: true, frames: [p(600, 5), p(500, 4)] },
+    buy: { loop: false, frames: [p(400, 6), p(700, 6, { dy: -1 })] },
+    talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
+    talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -1 })] },
+  },
+  granny: {
+    walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
+    walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
+    idle: { loop: true, frames: [p(800, 2), p(800, 2, { dy: -1 })] },
+    look: { loop: true, frames: [p(600, 6), p(600, 5)] },
+    buy: { loop: false, frames: [p(400, 7), p(700, 7, { dy: -1 })] },
+    talk: { loop: true, frames: [p(300, 3), p(300, 4)] },
+    talk_basket: { loop: true, frames: [p(300, 3), p(300, 4)] },
+  },
+};
+
+const fr = (ms, o = {}) => ({ ms, up: [0, 0], head: [0, 0], legs: [0, 0], props: [], ...o });
 const WALK = [fr(140), fr(140, { up: [0, -1], legs: [1, -1] }), fr(140), fr(140, { up: [0, -1], legs: [-1, 1] })];
 const BASKET = [{ s: 'basket', at: 'hand', dx: -8, dy: -3 }];
 
 export const PERSON_ANIMS = {
-  // ---- 客（歩く・品を見る・買う・しゃべる）----
-  customer: {
-    walk: { loop: true, frames: WALK },
-    walk_basket: { loop: true, frames: WALK.map((f) => ({ ...f, props: BASKET })) },
-    idle: { loop: true, frames: [fr(700), fr(700, { up: [0, -1] })] },
-    look: { loop: true, frames: [fr(550, { head: [-1, 0] }), fr(450, { head: [-1, 1] }), fr(500)] },
-    buy: { loop: false, frames: [fr(350, { up: [-1, 0] }), fr(350, { up: [-1, 0], props: BASKET }), fr(400, { props: BASKET })] },
-    talk: { loop: true, frames: [fr(240, { head: [0, -1] }), fr(240)] },
-    talk_basket: { loop: true, frames: [fr(240, { head: [0, -1], props: BASKET }), fr(240, { props: BASKET })] },
-  },
-  // ---- 店主（樽から取る・塩をふる・客に渡す）----
-  keeper: {
-    idle: { loop: true, frames: [fr(800), fr(800, { up: [0, -1] })] },
-    take: { loop: false, frames: [
-      fr(300, { up: [-1, 1] }),
-      fr(320, { up: [-2, 2], props: [{ s: 'pickle_piece', at: 'handL', dx: -3, dy: 1 }] }),
-      fr(380, { up: [-1, 0], props: [{ s: 'pickle_piece', at: 'handL', dx: 2, dy: -6 }] }),
-    ] },
-    salt: { loop: true, frames: [
-      fr(170, { up: [-1, 1], props: [{ s: 'salt_a', at: 'handL', dx: -4, dy: 2 }] }),
-      fr(170, { up: [-2, 1], props: [{ s: 'salt_b', at: 'handL', dx: -5, dy: 4 }] }),
-      fr(170, { up: [-1, 1], props: [{ s: 'salt_c', at: 'handL', dx: -4, dy: 6 }] }),
-      fr(170, { up: [0, 0] }),
-    ] },
-    give: { loop: false, frames: [
-      fr(280, { up: [1, 0], props: [{ s: 'plate', at: 'handR', dx: 1, dy: 0 }] }),
-      fr(320, { up: [2, 0], props: [{ s: 'plate', at: 'handR', dx: 2, dy: 0 }, { s: 'pickle_piece', at: 'handR', dx: 3, dy: -2 }] }),
-      fr(320, { up: [1, 0], props: [{ s: 'plate', at: 'handR', dx: 1, dy: 0 }] }),
-    ] },
-  },
+  walk: { loop: true, frames: WALK },
+  walk_basket: { loop: true, frames: WALK.map((f) => ({ ...f, props: BASKET })) },
+  idle: { loop: true, frames: [fr(700), fr(700, { up: [0, -1] })] },
+  look: { loop: true, frames: [fr(550, { head: [-1, 0] }), fr(450, { head: [-1, 1] }), fr(500)] },
+  buy: { loop: false, frames: [fr(350, { up: [-1, 0] }), fr(350, { up: [-1, 0], props: BASKET }), fr(400, { props: BASKET })] },
+  talk: { loop: true, frames: [fr(240, { head: [0, -1] }), fr(240)] },
+  talk_basket: { loop: true, frames: [fr(240, { head: [0, -1], props: BASKET }), fr(240, { props: BASKET })] },
 };
 
 // 吊るし物の揺れ（下ほど大きく、左右に1ドット）。各区切りは SCENE.hanging の ms で別々の周期になる

@@ -1,7 +1,7 @@
 // 店先の描画。ゲームの状態は読むだけで、書き換えない（動きを切っても遊びに影響しない）。
 // 絵は参考画像のトレース（assets/img/）。季節は色の置き換え、時間帯は色のかけ合わせ。
 import { SCENE } from '../assets/scene.js';
-import { PERSON_ANIMS, SWAY_SEQ } from '../assets/animations.js';
+import { PERSON_ANIMS, POSE_ANIMS, SWAY_SEQ } from '../assets/animations.js';
 import { BODIES, RECOLORS } from '../assets/characters.js';
 import { resolveTheme, mix, hex } from '../assets/themes.js';
 import { makeCanvas, getSprite, getText, getImage, recolor, rgbToHsl, hslToRgb } from './pixel.js';
@@ -70,12 +70,12 @@ export class SceneRenderer {
     return c;
   }
 
-  personImage(look, outfit, flip) {
-    const body = BODIES[look.body];
-    const key = `${look.body}|${look.recolor ?? ''}|${outfit ?? ''}|${flip}`;
+  /** 人物の絵（色の差し替え・季節の服・左右反転を済ませたもの。キャッシュ）。 */
+  personImage(img, look, outfit, flip) {
+    const key = `${img}|${look.recolor ?? ''}|${outfit ?? ''}|${flip}`;
     let c = this.people.get(key);
     if (!c) {
-      c = recolor(getImage(body.img), personRecolor(RECOLORS[look.recolor], outfit), { flip });
+      c = recolor(getImage(img), personRecolor(RECOLORS[look.recolor], outfit), { flip });
       this.people.set(key, c);
     }
     return c;
@@ -166,46 +166,65 @@ export class SceneRenderer {
     g.restore();
   }
 
-  /** 1枚の絵を、頭・胴・左右の脚に分けて少しずつずらして描く。 */
+  /** 人を描く。ポーズ集の人は絵を差し替え、それ以外は1枚の絵を部分ごとにずらす。 */
   drawPerson(a, theme, tMs) {
-    const g = this.ctx;
-    const set = PERSON_ANIMS[a.kind];
+    const body = BODIES[a.look.body];
+    const set = body.kind === 'poses' ? POSE_ANIMS[a.look.body] : PERSON_ANIMS;
     const anim = set[a.anim] ?? set.idle;
     const total = anim.frames.reduce((s, f) => s + f.ms, 0);
     let t = Math.max(0, tMs - a.animT0);
     t = anim.loop ? t % total : Math.min(t, total - 1);
     let f = anim.frames[anim.frames.length - 1];
     for (const fr of anim.frames) { if (t < fr.ms) { f = fr; break; } t -= fr.ms; }
+    // 絵の向きと進む向きが逆なら左右反転
+    const flip = body.faces === 'right' ? (a.dir ?? -1) < 0 : body.faces === 'left' ? (a.dir ?? -1) > 0 : false;
+    const outfit = a.kind === 'customer' ? theme.outfit : null;
+    const top = body.kind === 'poses' ? this.drawPose(a, body, f, flip, outfit) : this.drawShift(a, body, f, flip, outfit);
+    // 雨・雪の日の傘
+    let headTop = top.y;
+    if (a.kind === 'customer' && theme.weather !== 'sunny') {
+      const u = getSprite('umbrella', { pal: { u: a.look.umbrella, U: mix(a.look.umbrella, '#000000', 0.3) } });
+      const ux = Math.round(top.cx - u.width / 2), uy = top.y - 6;
+      this.ctx.drawImage(u, ux, uy);
+      if (theme.weather === 'snow') this.ctx.drawImage(getSprite('umbrella_snow'), ux, uy);
+      headTop -= 6;
+    }
+    a.headTop = headTop;
+  }
 
-    const body = BODIES[a.look.body];
-    const flip = !!a.flip;
-    const img = this.personImage(a.look, a.kind === 'customer' ? theme.outfit : null, flip);
+  drawProps(props, body, X, Y, w, flip, ox = 0, oy = 0) {
+    for (const p of props) {
+      const spr = p.s === 'basket' ? this.flipped('basket', flip) : getSprite(p.s, { flip });
+      const [hx, hy] = body[p.at] ?? body.hand ?? [0, 0];
+      const px = flip ? w - hx - (p.dx + spr.width) : hx + p.dx;
+      this.ctx.drawImage(spr, X + ox + px, Y + oy + hy + p.dy);
+    }
+  }
+
+  drawPose(a, body, f, flip, outfit) {
+    const pose = body.poses[f.pose];
+    const img = this.personImage(pose.img, a.look, outfit, flip);
+    const ax = flip ? pose.w - 1 - pose.ax : pose.ax;
+    const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + f.dy);
+    this.ctx.drawImage(img, X, Y);
+    this.drawProps(f.props, body, X, Y, pose.w, flip);
+    return { y: Y, cx: X + pose.w / 2 };
+  }
+
+  /** 1枚の絵を、頭・胴・左右の脚に分けて少しずつずらして描く。 */
+  drawShift(a, body, f, flip, outfit) {
+    const g = this.ctx;
+    const img = this.personImage(body.img, a.look, outfit, flip);
     const w = img.width, h = img.height, sx = flip ? -1 : 1;
     const X = Math.round(a.x - w / 2), Y = Math.round(a.y - h);
     const legX = flip ? w - body.legX : body.legX;
     const [ux, uy] = [f.up[0] * sx, f.up[1]];
-    // 脚
     g.drawImage(img, 0, body.hipY, legX, h - body.hipY, X + f.legs[0] * sx, Y + body.hipY, legX, h - body.hipY);
     g.drawImage(img, legX, body.hipY, w - legX, h - body.hipY, X + legX + f.legs[1] * sx, Y + body.hipY, w - legX, h - body.hipY);
-    // 胴
     g.drawImage(img, 0, body.headY, w, body.hipY - body.headY, X + ux, Y + body.headY + uy, w, body.hipY - body.headY);
-    // 頭
     g.drawImage(img, 0, 0, w, body.headY, X + ux + f.head[0] * sx, Y + uy + f.head[1], w, body.headY);
-    // 持ち物
-    for (const p of f.props) {
-      const spr = p.s === 'basket' ? this.flipped('basket', flip) : getSprite(p.s, { flip });
-      const [hx, hy] = body[p.at] ?? body.hand ?? [0, 0];
-      const px = flip ? w - hx - (p.dx + spr.width) : hx + p.dx;
-      g.drawImage(spr, X + ux + px, Y + uy + hy + p.dy);
-    }
-    // 雨・雪の日の傘
-    if (a.kind === 'customer' && theme.weather !== 'sunny') {
-      const u = getSprite('umbrella', { pal: { u: a.look.umbrella, U: mix(a.look.umbrella, '#000000', 0.3) } });
-      const ux2 = X + Math.round(w / 2 - u.width / 2) + ux, uy2 = Y + uy - 6;
-      g.drawImage(u, ux2, uy2);
-      if (theme.weather === 'snow') g.drawImage(getSprite('umbrella_snow'), ux2, uy2);
-    }
-    a.headTop = Y + uy - (a.kind === 'customer' && theme.weather !== 'sunny' ? 6 : 0);
+    this.drawProps(f.props, body, X, Y, w, flip, ux, uy);
+    return { y: Y + uy, cx: X + w / 2 };
   }
 
   drawParticles(theme, tMs) {
