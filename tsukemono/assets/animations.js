@@ -31,6 +31,8 @@
 // 騎士:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 // 宇宙人:     0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 // ケンタウロス: 0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
+// 魔女:       0歩く(ほうき) 1歩く(ほうき) 2話す 3笑う 4歩く 5ほうきで指す 6財布を出す(ほうき) 7受け取る
+//            ほうきは 歩く・見る・財布 で持ち、受け取る・話す では置いている
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
@@ -260,6 +262,15 @@ export const POSE_ANIMS = {
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -1 })] },
     talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -1 })] },
+  },
+  witch: {
+    walk: { loop: true, frames: [p(190, 0), p(190, 1)] },
+    walk_basket: { loop: true, frames: [p(190, 0), p(190, 1)] },
+    idle: { loop: true, frames: [p(800, 5), p(800, 5, { dy: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 5, { dy: -1 })] },
+    buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
+    talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
+    talk_basket: { loop: true, frames: [p(300, 2), p(300, 3)] },
   },
 };
 
