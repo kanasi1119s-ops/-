@@ -117,19 +117,24 @@ def main():
                 # いちばん大きなすき間
                 gaps = [(rr[i + 1][0] - rr[i][1], (rr[i][1] + rr[i + 1][0]) / 2) for i in range(len(rr) - 1)]
                 split[y] = max(gaps)[1]
+        # くっついている行は、その行の脚の幅のまん中で分ける（2本が並んでいる）。分かれている行の境とつながるよう、
+        # 上下の分かれている行に近いほど、その境に寄せる
         known = sorted(split)
         if not known:
             print('脚が分けられない:', name)
             continue
         for y in range(cut, sole + 1):
-            if y not in split:
-                below = [k for k in known if k > y]
-                above = [k for k in known if k < y]
-                if below and above:
-                    a0, b0 = above[-1], below[0]
-                    split[y] = split[a0] + (split[b0] - split[a0]) * (y - a0) / (b0 - a0)
-                else:
-                    split[y] = split[below[0]] if below else split[above[-1]]
+            if y in split:
+                continue
+            rr = runs_of(leg[y])
+            if not rr:
+                split[y] = split[min(known, key=lambda k: abs(k - y))]
+                continue
+            x0 = min(r[0] for r in rr); x1 = max(r[1] for r in rr)
+            mid = (x0 + x1 + 1) / 2
+            near = min(known, key=lambda k: abs(k - y))
+            wgt = max(0.0, 1 - abs(near - y) / 4)  # 4行はなれたら真ん中だけ
+            split[y] = mid * (1 - wgt) + split[near] * wgt
         back_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x < split[y]]
         front_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x >= split[y]]
         def foot_center(px):
