@@ -1,8 +1,8 @@
 // 登場人物（参考画像からトレースした絵）と、動かすための目印。
 //
 // 種類は2つ:
-//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん）
-//   shift … 1枚の絵を頭・胴・左右の脚に分けて、1〜2ドットずらしてコマを作る（子ども）
+//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子）
+//   shift … 1枚の絵を頭・胴・左右の脚に分けて、1〜2ドットずらしてコマを作る（通りがかりの子ども）
 //     hipY: ここから下が脚 / legX: 左脚と右脚の境目 / headY: ここから上が頭 / hand: かごを持つ位置
 // faces: 絵の向き。'right' / 'left' / 'front'。進む向きに合わせて左右反転する。
 import { TRACE } from './trace.js';
@@ -15,6 +15,7 @@ export const BODIES = {
   granny: { kind: 'poses', faces: 'right', poses: posesOf('granny') },
   granny2: { kind: 'poses', faces: 'right', poses: posesOf('granny2') },
   oldman: { kind: 'poses', faces: 'right', poses: posesOf('oldman') },
+  boy: { kind: 'poses', faces: 'right', poses: posesOf('boy') },
   kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 38, legX: 9, headY: 16, hand: [-4, 22] },
   kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 38, legX: 10, headY: 15, hand: [-4, 22] },
   kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 38, legX: 11, headY: 15, hand: [-4, 22] },
@@ -36,7 +37,7 @@ export const CUSTOMER_LOOKS = {
   ume: { body: 'granny2', umbrella: '#c63d2f' },
   gen: { body: 'oldman', recolor: 'genOutfit', umbrella: '#2d4b7c' },
   kiku: { body: 'woman', umbrella: '#e0b43c' },
-  ken: { body: 'kid3', umbrella: '#3f8a4a' },
+  ken: { body: 'boy', umbrella: '#3f8a4a' },
   shige: { body: 'oldman', umbrella: '#5a5a66' },
 };
 export const KEEPER_LOOK = { body: 'keeper' };
