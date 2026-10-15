@@ -39,3 +39,10 @@ test('通りがかりの人: 季節限定の人は、その季節にだけ来る
   assert.ok(seen('summer').has('beach'));
   assert.ok(!seen('winter').has('beach'));
 });
+
+test('通りがかりの人: 来やすさ（weight）が低い人はめったに来ない', () => {
+  let alien = 0, n = 2000;
+  for (let i = 0; i < n; i++) if (randomLook(() => i / n, 'spring').body === 'alien') alien++;
+  const others = PASSERS.filter((p) => !p.seasons || p.seasons.includes('spring')).length - 1;
+  assert.ok(alien > 0 && alien < n / others, `alien ${alien}`);
+});

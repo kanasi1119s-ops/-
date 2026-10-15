@@ -1,7 +1,7 @@
 // 登場人物（参考画像からトレースした絵）と、動かすための目印。
 //
 // 種類は2つ:
-//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子・麦わら帽子の女の子・セーラー服の女の子・学生服の男の子・ブレザーの女の子・紫の服のお兄さん・スーツのおじいさん・サングラスのおじさん・バレー部の女の子・サッカー部の男の子・レースクイーン風のお姉さん・空手着の男の子・お侍さん・水着の女の子・日傘の女の子・釣り人のおじさん・バックパッカーのお兄さん・甲冑の騎士）
+//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子・麦わら帽子の女の子・セーラー服の女の子・学生服の男の子・ブレザーの女の子・紫の服のお兄さん・スーツのおじいさん・サングラスのおじさん・バレー部の女の子・サッカー部の男の子・レースクイーン風のお姉さん・空手着の男の子・お侍さん・水着の女の子・日傘の女の子・釣り人のおじさん・バックパッカーのお兄さん・甲冑の騎士・宇宙人）
 //   shift … 1枚の絵を頭・胴・左右の脚に分けて、1〜2ドットずらしてコマを作る（通りがかりの子ども）
 //     hipY: ここから下が脚 / legX: 左脚と右脚の境目 / headY: ここから上が頭 / hand: かごを持つ位置
 // faces: 絵の向き。'right' / 'left' / 'front'。進む向きに合わせて左右反転する。
@@ -33,6 +33,7 @@ export const BODIES = {
   angler: { kind: 'poses', faces: 'right', poses: posesOf('angler') },
   hiker: { kind: 'poses', faces: 'right', poses: posesOf('hiker') },
   knight: { kind: 'poses', faces: 'right', poses: posesOf('knight') },
+  alien: { kind: 'poses', faces: 'right', poses: posesOf('alien') },
   kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 38, legX: 9, headY: 16, hand: [-4, 22] },
   kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 38, legX: 10, headY: 15, hand: [-4, 22] },
   kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 38, legX: 11, headY: 15, hand: [-4, 22] },
@@ -61,6 +62,7 @@ export const KEEPER_LOOK = { body: 'keeper' };
 
 // 通りがかりの人（デモ用・遊びには影響しない）。seasons があれば、その季節にだけ来る。
 // ownUmbrella: 自分の傘を持っている絵なので、雨・雪の日に傘を重ねない
+// weight: 来やすさ（既定1）。0.2 なら他の人の5分の1くらい
 export const PASSERS = [
   { body: 'woman', umbrella: '#c63d2f' }, { body: 'granny', umbrella: '#2d4b7c' }, { body: 'oldman', umbrella: '#5a5a66' },
   { body: 'girl', umbrella: '#e0b43c' }, { body: 'student', umbrella: '#2d4b7c' }, { body: 'gakuran', umbrella: '#5a5a66' }, { body: 'blazer', umbrella: '#c63d2f' }, { body: 'yankee', umbrella: '#8a4b9a' },
@@ -71,10 +73,14 @@ export const PASSERS = [
   { body: 'parasol', ownUmbrella: true, seasons: ['spring', 'summer'] }, // 日傘を持っているので傘は重ねない
   { body: 'angler', umbrella: '#3f8a4a' }, { body: 'hiker', umbrella: '#3f8a4a' },
   { body: 'knight', umbrella: '#8f2a20' },
+  { body: 'alien', umbrella: '#7aa3cc', weight: 0.2 }, // めったに来ない
   { body: 'kid1', umbrella: '#e0b43c' }, { body: 'kid2', umbrella: '#c63d2f' }, { body: 'kid3', umbrella: '#3f8a4a' },
 ];
 export function randomLook(rand = Math.random, season = null) {
   const list = PASSERS.filter((p) => !p.seasons || !season || p.seasons.includes(season));
-  return list[Math.floor(rand() * list.length)];
+  const total = list.reduce((s, p) => s + (p.weight ?? 1), 0);
+  let r = rand() * total;
+  for (const p of list) { r -= p.weight ?? 1; if (r < 0) return p; }
+  return list[list.length - 1];
 }
 export const AMBIENT_LINES = ['いい色だねぇ', 'おいしそう！', 'ひとつください', '今日は何が漬かってる？', 'ちょうどいい塩梅だ'];
