@@ -1,7 +1,7 @@
 // ドット絵エディタ（tools/pixel-editor.html。claude.ai の「ドット絵エディタ」と同じもの）をブラウザで動かして、
 // 元の絵の脚をそのまま動かした歩くアニメを作る。  node tools/editor_walk.mjs [名前...]
 //   先に python3 tools/walk_plan.py で段取り（assets/editor/<名前>.orig.json / .plan.json / .ref.png）を作っておく。
-// 新しく描き足す線はなく、元のドットを「切り取り・貼り付け・左右反転・動かす」で動かし、影は「だ円（塗り）」で描く。
+// 持ち物に隠れていた脚だけ えんぴつで描き足し、ほかは元のドットを「切り取り・貼り付け・左右反転・動かす」で動かし、影は「だ円（塗り）」で描く。
 // エディタでの手順（人ごと。8コマの中身は tools/walk_plan.py の説明）:
 //   1. 「作品を開く」で元の絵を開く。「下絵」にも元の絵を敷く。左右対称を切る
 //   2. レイヤーを足す: 影（いちばん下・不透明度32%）、後ろ脚・前脚・持ち物（からだの上）
@@ -110,6 +110,27 @@ for (const name of names) {
   }
   await eraseRuns(LAYER.back, plan.eraseBack);
   await eraseRuns(LAYER.front, plan.eraseFront);
+  // 手前の脚の、持ち物に隠れていた もも・ひざ を「えんぴつ」で描き足す（色ごと、横につながる所は1回でなぞる）
+  if (plan.fillFront?.length) {
+    await cel(LAYER.front, 0);
+    await key('Escape');
+    await tool('pencil');
+    const bySym = {};
+    for (const [y, x, c] of plan.fillFront) (bySym[c] ??= []).push([y, x]);
+    for (const [sym, pts] of Object.entries(bySym)) {
+      await pickColor(sym);
+      pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      for (let i = 0; i < pts.length;) {
+        let j = i;
+        while (j + 1 < pts.length && pts[j + 1][0] === pts[i][0] && pts[j + 1][1] === pts[j][1] + 1) j++;
+        const a = await at(pts[i][0], pts[i][1]), b = await at(pts[j][0], pts[j][1]);
+        await page.mouse.move(a.x, a.y); await page.mouse.down();
+        if (j > i) await page.mouse.move(b.x, b.y);
+        await page.mouse.up();
+        i = j + 1;
+      }
+    }
+  }
   // 4. フレームを8つに
   await cel(LAYER.body, 0);
   for (let i = 1; i < plan.frames; i++) await page.click('#frameDup');

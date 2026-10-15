@@ -148,40 +148,15 @@
    23
   ]
  ],
+ "fillFront": [],
  "ops": [
-  {
-   "frame": 0,
-   "layer": "back",
-   "rect": [
-    48,
-    0,
-    61,
-    27
-   ],
-   "flip": false,
-   "dx": 1,
-   "dy": 0
-  },
-  {
-   "frame": 0,
-   "layer": "front",
-   "rect": [
-    48,
-    0,
-    61,
-    27
-   ],
-   "flip": false,
-   "dx": 1,
-   "dy": 0
-  },
   {
    "frame": 1,
    "layer": "back",
    "rect": [
-    58,
+    48,
     0,
-    61,
+    60,
     27
    ],
    "flip": false,
@@ -190,42 +165,16 @@
   },
   {
    "frame": 1,
-   "layer": "front",
+   "layer": "back",
    "rect": [
-    48,
-    0,
-    57,
-    27
-   ],
-   "flip": false,
-   "dx": 1,
-   "dy": 0
-  },
-  {
-   "frame": 1,
-   "layer": "front",
-   "rect": [
-    58,
-    0,
-    58,
-    27
-   ],
-   "flip": false,
-   "dx": 2,
-   "dy": 0
-  },
-  {
-   "frame": 1,
-   "layer": "front",
-   "rect": [
-    59,
+    61,
     0,
     61,
     27
    ],
    "flip": false,
-   "dx": 2,
-   "dy": -1
+   "dx": -2,
+   "dy": 0
   },
   {
    "frame": 2,
@@ -246,7 +195,7 @@
    "rect": [
     49,
     0,
-    54,
+    51,
     27
    ],
    "flip": false,
@@ -257,13 +206,26 @@
    "frame": 2,
    "layer": "back",
    "rect": [
-    55,
+    52,
+    0,
+    58,
+    27
+   ],
+   "flip": false,
+   "dx": -3,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    59,
     0,
     61,
     27
    ],
    "flip": false,
-   "dx": -3,
+   "dx": -4,
    "dy": 0
   },
   {
@@ -328,7 +290,7 @@
     27
    ],
    "flip": false,
-   "dx": 5,
+   "dx": 3,
    "dy": -1
   },
   {
@@ -341,7 +303,7 @@
     27
    ],
    "flip": false,
-   "dx": 5,
+   "dx": 3,
    "dy": -2
   },
   {
@@ -354,7 +316,7 @@
     27
    ],
    "flip": false,
-   "dx": 4,
+   "dx": 3,
    "dy": -3
   },
   {
@@ -415,25 +377,12 @@
    "rect": [
     56,
     0,
-    58,
-    27
-   ],
-   "flip": false,
-   "dx": -5,
-   "dy": 0
-  },
-  {
-   "frame": 3,
-   "layer": "back",
-   "rect": [
-    59,
-    0,
     60,
     27
    ],
    "flip": false,
    "dx": -5,
-   "dy": -1
+   "dy": 0
   },
   {
    "frame": 3,
@@ -446,7 +395,7 @@
    ],
    "flip": false,
    "dx": -6,
-   "dy": -1
+   "dy": 0
   },
   {
    "frame": 3,
@@ -493,7 +442,7 @@
    "rect": [
     51,
     0,
-    51,
+    52,
     27
    ],
    "flip": false,
@@ -504,9 +453,9 @@
    "frame": 3,
    "layer": "front",
    "rect": [
-    52,
+    53,
     0,
-    52,
+    56,
     27
    ],
    "flip": false,
@@ -517,9 +466,9 @@
    "frame": 3,
    "layer": "front",
    "rect": [
-    53,
+    57,
     0,
-    53,
+    58,
     27
    ],
    "flip": false,
@@ -530,39 +479,26 @@
    "frame": 3,
    "layer": "front",
    "rect": [
-    54,
-    0,
-    55,
-    27
-   ],
-   "flip": false,
-   "dx": 7,
-   "dy": 0
-  },
-  {
-   "frame": 3,
-   "layer": "front",
-   "rect": [
-    56,
-    0,
-    58,
-    27
-   ],
-   "flip": false,
-   "dx": 8,
-   "dy": 0
-  },
-  {
-   "frame": 3,
-   "layer": "front",
-   "rect": [
     59,
+    0,
+    60,
+    27
+   ],
+   "flip": false,
+   "dx": 6,
+   "dy": -1
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    61,
     0,
     61,
     27
    ],
    "flip": false,
-   "dx": 9,
+   "dx": 7,
    "dy": -1
   },
   {
@@ -623,7 +559,7 @@
    "rect": [
     52,
     0,
-    52,
+    53,
     27
    ],
    "flip": false,
@@ -634,9 +570,9 @@
    "frame": 4,
    "layer": "back",
    "rect": [
-    53,
+    54,
     0,
-    56,
+    57,
     27
    ],
    "flip": false,
@@ -647,9 +583,9 @@
    "frame": 4,
    "layer": "back",
    "rect": [
-    57,
+    58,
     0,
-    59,
+    60,
     27
    ],
    "flip": false,
@@ -660,7 +596,7 @@
    "frame": 4,
    "layer": "back",
    "rect": [
-    60,
+    61,
     0,
     61,
     27
@@ -727,7 +663,7 @@
    "rect": [
     52,
     0,
-    52,
+    53,
     27
    ],
    "flip": false,
@@ -738,9 +674,9 @@
    "frame": 4,
    "layer": "front",
    "rect": [
-    53,
+    54,
     0,
-    53,
+    57,
     27
    ],
    "flip": false,
@@ -751,9 +687,9 @@
    "frame": 4,
    "layer": "front",
    "rect": [
-    54,
+    58,
     0,
-    54,
+    60,
     27
    ],
    "flip": false,
@@ -764,39 +700,13 @@
    "frame": 4,
    "layer": "front",
    "rect": [
-    55,
-    0,
-    56,
-    27
-   ],
-   "flip": false,
-   "dx": 8,
-   "dy": 0
-  },
-  {
-   "frame": 4,
-   "layer": "front",
-   "rect": [
-    57,
-    0,
-    58,
-    27
-   ],
-   "flip": false,
-   "dx": 9,
-   "dy": 0
-  },
-  {
-   "frame": 4,
-   "layer": "front",
-   "rect": [
-    59,
+    61,
     0,
     61,
     27
    ],
    "flip": false,
-   "dx": 10,
+   "dx": 8,
    "dy": 0
   },
   {
@@ -857,7 +767,7 @@
    "rect": [
     52,
     0,
-    53,
+    54,
     27
    ],
    "flip": false,
@@ -868,9 +778,9 @@
    "frame": 5,
    "layer": "back",
    "rect": [
-    54,
+    55,
     0,
-    57,
+    58,
     27
    ],
    "flip": false,
@@ -881,19 +791,6 @@
    "frame": 5,
    "layer": "back",
    "rect": [
-    58,
-    0,
-    58,
-    27
-   ],
-   "flip": false,
-   "dx": -7,
-   "dy": 0
-  },
-  {
-   "frame": 5,
-   "layer": "back",
-   "rect": [
     59,
     0,
     61,
@@ -901,7 +798,7 @@
    ],
    "flip": false,
    "dx": -7,
-   "dy": -1
+   "dy": 0
   },
   {
    "frame": 5,
@@ -948,7 +845,7 @@
    "rect": [
     51,
     0,
-    51,
+    53,
     27
    ],
    "flip": false,
@@ -959,9 +856,9 @@
    "frame": 5,
    "layer": "front",
    "rect": [
-    52,
+    54,
     0,
-    52,
+    58,
     27
    ],
    "flip": false,
@@ -972,9 +869,9 @@
    "frame": 5,
    "layer": "front",
    "rect": [
-    53,
+    59,
     0,
-    54,
+    61,
     27
    ],
    "flip": false,
@@ -982,29 +879,16 @@
    "dy": 0
   },
   {
-   "frame": 5,
-   "layer": "front",
+   "frame": 6,
+   "layer": "back",
    "rect": [
-    55,
+    49,
     0,
-    57,
+    49,
     27
    ],
    "flip": false,
-   "dx": 7,
-   "dy": 0
-  },
-  {
-   "frame": 5,
-   "layer": "front",
-   "rect": [
-    58,
-    0,
-    61,
-    27
-   ],
-   "flip": false,
-   "dx": 8,
+   "dx": -1,
    "dy": 0
   },
   {
@@ -1013,7 +897,7 @@
    "rect": [
     50,
     0,
-    52,
+    51,
     27
    ],
    "flip": false,
@@ -1024,7 +908,7 @@
    "frame": 6,
    "layer": "back",
    "rect": [
-    53,
+    52,
     0,
     53,
     27
@@ -1039,7 +923,7 @@
    "rect": [
     54,
     0,
-    55,
+    54,
     27
    ],
    "flip": false,
@@ -1050,7 +934,7 @@
    "frame": 6,
    "layer": "back",
    "rect": [
-    56,
+    55,
     0,
     57,
     27
@@ -1078,7 +962,7 @@
    "rect": [
     59,
     0,
-    60,
+    59,
     27
    ],
    "flip": false,
@@ -1089,7 +973,7 @@
    "frame": 6,
    "layer": "back",
    "rect": [
-    61,
+    60,
     0,
     61,
     27
@@ -1117,7 +1001,7 @@
    "rect": [
     49,
     0,
-    49,
+    51,
     27
    ],
    "flip": false,
@@ -1128,9 +1012,9 @@
    "frame": 6,
    "layer": "front",
    "rect": [
-    50,
+    52,
     0,
-    50,
+    58,
     27
    ],
    "flip": false,
@@ -1141,9 +1025,9 @@
    "frame": 6,
    "layer": "front",
    "rect": [
-    51,
+    59,
     0,
-    54,
+    61,
     27
    ],
    "flip": false,
@@ -1151,29 +1035,16 @@
    "dy": 0
   },
   {
-   "frame": 6,
-   "layer": "front",
+   "frame": 7,
+   "layer": "back",
    "rect": [
-    55,
+    48,
     0,
-    59,
+    58,
     27
    ],
    "flip": false,
-   "dx": 5,
-   "dy": 0
-  },
-  {
-   "frame": 6,
-   "layer": "front",
-   "rect": [
-    60,
-    0,
-    61,
-    27
-   ],
-   "flip": false,
-   "dx": 6,
+   "dx": -1,
    "dy": 0
   },
   {
@@ -1186,7 +1057,7 @@
     27
    ],
    "flip": false,
-   "dx": 0,
+   "dx": -1,
    "dy": -1
   },
   {
@@ -1195,7 +1066,7 @@
    "rect": [
     48,
     0,
-    48,
+    55,
     27
    ],
    "flip": false,
@@ -1206,53 +1077,14 @@
    "frame": 7,
    "layer": "front",
    "rect": [
-    49,
+    56,
     0,
-    52,
+    61,
     27
    ],
    "flip": false,
    "dx": 2,
    "dy": 0
-  },
-  {
-   "frame": 7,
-   "layer": "front",
-   "rect": [
-    53,
-    0,
-    58,
-    27
-   ],
-   "flip": false,
-   "dx": 3,
-   "dy": 0
-  },
-  {
-   "frame": 7,
-   "layer": "front",
-   "rect": [
-    59,
-    0,
-    60,
-    27
-   ],
-   "flip": false,
-   "dx": 3,
-   "dy": -1
-  },
-  {
-   "frame": 7,
-   "layer": "front",
-   "rect": [
-    61,
-    0,
-    61,
-    27
-   ],
-   "flip": false,
-   "dx": 4,
-   "dy": -1
   }
  ],
  "shadows": [
@@ -1260,7 +1092,7 @@
    "frame": 0,
    "rect": [
     61,
-    5,
+    4,
     63,
     27
    ]
@@ -1269,7 +1101,7 @@
    "frame": 1,
    "rect": [
     61,
-    16,
+    4,
     63,
     26
    ]
@@ -1284,16 +1116,7 @@
    ]
   },
   {
-   "frame": 4,
-   "rect": [
-    61,
-    10,
-    63,
-    24
-   ]
-  },
-  {
-   "frame": 5,
+   "frame": 3,
    "rect": [
     61,
     12,
@@ -1302,12 +1125,39 @@
    ]
   },
   {
-   "frame": 6,
+   "frame": 4,
+   "rect": [
+    61,
+    10,
+    63,
+    22
+   ]
+  },
+  {
+   "frame": 5,
    "rect": [
     61,
     10,
     63,
     20
+   ]
+  },
+  {
+   "frame": 6,
+   "rect": [
+    61,
+    8,
+    63,
+    18
+   ]
+  },
+  {
+   "frame": 7,
+   "rect": [
+    61,
+    6,
+    63,
+    16
    ]
   }
  ],
@@ -1339,5 +1189,5 @@
    0
   ]
  },
- "note": "腰 33行・足の裏 61行・歩幅 4.5・上げ 3"
+ "note": "腰 33行・足の裏 61行・歩幅 3.8・上げ 3"
 }

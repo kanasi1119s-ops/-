@@ -139,6 +139,44 @@ def main():
         # 元の絵（右向き・少し手前向き）では、左側の脚が手前、右側（前に出ている足）が奥
         front_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x < split[y]]
         back_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x >= split[y]]
+        # 手前の脚で、持ち物（かご等）に隠れていた もも・ひざ を描き足す。隠れていない行の脚の左の縁を直線でのばし、
+        # 色は すぐ下の見えている行の並び（縁の暗い色・中の色）を幅に合わせて引きのばす。元の絵では持ち物の下なので見た目は変わらない
+        fset = set(front_px)
+        def span(y):
+            xs = [x for (yy, x) in front_px if yy == y]
+            return (min(xs), max(xs)) if xs else None
+        def hidden(y):
+            sp = span(y)
+            if sp is None:
+                return kept[y, :int(split[y])].any()
+            return sp[0] > 0 and kept[y, sp[0] - 1]
+        vis = [y for y in range(cut, sole + 1) if span(y) and not hidden(y)]
+        fill = []
+        hid = [y for y in range(cut, sole + 1) if hidden(y)]
+        hid = [y for y in hid if y < sole - 5]  # 足もとは描き足さない
+        if len(hid) >= 2 and len(vis) >= 2 and any(y > max(hid) and y < sole - 4 for y in vis):
+            below = [y for y in vis if y > max(hid)][:6]
+            above = [y for y in vis if y < min(hid)][-3:]
+            pts = above + below
+            ys = np.array(pts, float); xs = np.array([span(y)[0] for y in pts], float)
+            k_, b_ = np.polyfit(ys, xs, 1) if len(set(pts)) > 1 else (0.0, xs.mean())
+            ref = min(below[0], sole - 5)
+            r0, r1 = span(ref)
+            refc = [palette[tuple(int(v) for v in canvas[ref, x, :3])] if canvas[ref, x, 3] else None for x in range(r0, r1 + 1)]
+            for y in hid:
+                x0 = max(0, int(round(k_ * y + b_)))
+                x1 = int(np.ceil(split[y])) - 1
+                if x1 < x0:
+                    continue
+                n = x1 - x0 + 1
+                for x in range(x0, x1 + 1):
+                    if (y, x) in fset:
+                        continue
+                    i = round((x - x0) / max(1, n - 1) * (len(refc) - 1))
+                    c = refc[i] or next(c for c in refc if c)
+                    fill.append((y, x, c))
+                    front_px.append((y, x))
+            fset = set(front_px)
         def foot_center(px):
             ys = [y for y, _ in px]
             yb = max(ys)
@@ -146,24 +184,22 @@ def main():
             return (min(xs) + max(xs)) / 2
         fb, ff = foot_center(back_px), foot_center(front_px)
         # 脚はそれぞれ自分の腰の下で前後に振る（手前の脚は手前の列、奥の脚は奥の列。前に出た足が反対の足の位置に行かない）
-        top = cut + max(2, (sole - cut) // 4)
-        def hip_center(px):
-            xs = [x for y, x in px if y <= top]
-            return sum(xs) / len(xs)
-        hips = {'back': hip_center(back_px), 'front': hip_center(front_px)}
-        s = max(2.0, ((fb - hips['back']) + (hips['front'] - ff)) / 2 * t.get('stride', 1.0))
+        # 1歩の振り幅 s は元の絵の両足の開きの28%。手前の脚は ff+s、奥の脚は fb−s を中心に振るので、
+        # 反対の一歩では手前の足が奥の足を少しだけ越えて前に出る
+        s = max(2.0, (fb - ff) * 0.28 * t.get('stride', 1.0))
+        hips = {'front': ff + s, 'back': fb - s}
         L = max(2, min(3, round((sole - hip) * 0.12 * t.get('lift', 1.0))))  # 足を上げる高さ（脚が切れないよう3ドットまで）
         # 8コマの足の位置（腰からの横の位置を歩幅 s の倍数で。上げる高さ）。前=手前の脚、奥=奥の脚
         # 参考（歩きのドット絵の基本）: すれ違いでは、支える脚は体の真下でまっすぐ、浮いた脚は ひざを前・足を体の後ろで持ち上げる
         keys = [  # (手前 x, 手前 上げ, 奥 x, 奥 上げ)。元の絵は 手前の足が後ろ・奥の足が前
             (-1.0, 0, 1.0, 0),      # 0 一歩: 奥の足がかかとから着く・手前の足はつま先（元の絵）
-            (-0.9, 1, 0.6, 0),      # 1 体が沈む・手前の足のかかとが上がる
+            (-0.9, 0, 0.6, 0),      # 1 体が沈む・手前の足のかかとが上がる
             (-0.3, L, 0.0, 0),      # 2 すれ違い: 奥の脚は真下でまっすぐ、手前の足は体の後ろで持ち上がる（ひざは前）
-            (0.75, 1, -0.5, 1),     # 3 手前の足が前へ伸びる・奥のかかとが上がる
+            (0.75, 1, -0.5, 0),     # 3 手前の足が前へ伸びる・奥のかかとが上がる
             (1.0, 0, -1.0, 0),      # 4 反対の一歩: 手前の足が前に着く・奥の足はつま先
-            (0.6, 0, -0.9, 1),      # 5 体が沈む・奥の足のかかとが上がる
+            (0.6, 0, -0.9, 0),      # 5 体が沈む・奥の足のかかとが上がる
             (0.0, 0, -0.3, L),      # 6 すれ違い: 手前の脚は真下でまっすぐ、奥の足は体の後ろで持ち上がる
-            (-0.5, 1, 0.75, 1),     # 7 奥の足が前へ伸びる・手前のかかとが上がる
+            (-0.5, 0, 0.75, 1),     # 7 奥の足が前へ伸びる・手前のかかとが上がる
         ]
         orig_x = {'front': (ff - hips['front']) / s, 'back': (fb - hips['back']) / s}
         ops, shadows = [], []
@@ -222,6 +258,7 @@ def main():
                 'legs': [cut, 0, H - 1, W - 1],  # 脚のレイヤーへ切り取る範囲
                 'eraseBack': runs_px(front_px),  # 奥の脚のレイヤーから消す（手前の脚のぶん）
                 'eraseFront': runs_px(back_px),  # 手前の脚のレイヤーから消す（奥の脚のぶん）
+                'fillFront': [[y, x, c] for (y, x, c) in fill],  # 手前の脚に描き足す（えんぴつ）
                 'ops': ops, 'shadows': shadows, 'bob': body_ops, 'hem': hem,
                 'note': f'腰 {hip}行・足の裏 {sole}行・歩幅 {s:.1f}・上げ {L}'}
         with open(os.path.join(OUT, f'{name}.orig.json'), 'w', encoding='utf8') as f:
