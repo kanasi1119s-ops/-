@@ -1,4 +1,6 @@
-"""参考画像（assets/reference/shop_reference.jpg）をドット絵にトレースする。
+"""参考画像をドット絵にトレースする。
+  背景: assets/reference/shop_background.jpg（人のいない店先）
+  人物: assets/reference/shop_reference.jpg（店主・客がいる店先）から切り抜く
 
   python3 tools/trace.py      # 必要: pip install opencv-python-headless pillow numpy
 
@@ -8,7 +10,7 @@
   char_*.png          人物（店主・客）。動きは JS 側でコマを作る
   basket.png          かご
 
-手順: 縮小(384×216) → 128色に減色 → GrabCut で人物を切り抜く → 背景を補修 → 空を抜く。
+手順: 縮小(384×216) → 128色に減色 → GrabCut で人物を切り抜く → 吊るし物・樽の口・雲を抜く → 空を抜く。
 人物の切り抜きのヒント（確実に人物/背景の場所）は、下の HINTS に 384×216 の座標で書く。
 """
 import os
@@ -18,6 +20,7 @@ from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 SRC = os.path.join(ROOT, 'assets/reference/shop_reference.jpg')
+BG_SRC = os.path.join(ROOT, 'assets/reference/shop_background.jpg')
 OUT = os.path.join(ROOT, 'assets/img')
 W, H = 384, 216
 
@@ -112,70 +115,15 @@ def save_sprite(name, mask):
 os.makedirs(OUT, exist_ok=True)
 placed = {n: save_sprite(n, m) for n, m in masks.items()}
 
-# ---------------------------------------------------------------- 背景の補修
-hole = np.zeros((H, W), bool)
-for n in ('keeper', 'woman', 'kid1', 'kid2', 'kid3', 'basket'):
-    hole |= cv2.dilate(masks[n].astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
-bg = base.copy()
-
-
-def mirror(x0, x1, y0, y1, cx):
-    """樽などの左右対称なものを、反対側から写して埋める。"""
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            sx = int(round(2 * cx - x))
-            if hole[y, x] and 0 <= sx < W and not hole[y, sx]:
-                bg[y, x] = bg[y, sx]
-                hole[y, x] = False
-
-
-def copy(x0, y0, x1, y1, dx, dy):
-    """別の場所から写す。"""
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            if hole[y, x] and not hole[y + dy, x + dx]:
-                bg[y, x] = bg[y + dy, x + dx]
-                hole[y, x] = False
-
-
-def mark(x0, y0, x1, y1):
-    """影なども埋め直す対象にする。"""
-    hole[y0:y1, x0:x1] = True
-
-
-def paste(x0, y0, x1, y1, dx, dy):
-    """埋めた後でも上書きして写す。"""
-    bg[y0:y1, x0:x1] = bg[y0 + dy:y1 + dy, x0 + dx:x1 + dx].copy()
-    hole[y0:y1, x0:x1] = False
-
-
-def band(x0, x1, rows, lines=None):
-    """横帯の色で埋める（店の奥の壁・土間など）。rows = [[y0, y1, [r,g,b]], ...]"""
-    for y0, y1, col in rows:
-        for y in range(y0, y1):
-            for x in range(x0, x1):
-                if hole[y, x]:
-                    bg[y, x] = col
-                    hole[y, x] = False
-    for lx, ly0, ly1, col in (lines or []):
-        bg[ly0:ly1, lx] = col
-
-
-OPS = {'mirror': mirror, 'copy': copy, 'mark': mark, 'paste': paste, 'band': band}
-for op in __import__('json').load(open(os.path.join(os.path.dirname(__file__), 'patches.json'))):
-    OPS[op[0]](*op[1:])
-
-# 残りは周りから埋めて、パレットの色に戻す
-rest = hole.astype(np.uint8) * 255
-filled = cv2.inpaint(cv2.cvtColor(bg, cv2.COLOR_RGB2BGR), rest, 3, cv2.INPAINT_TELEA)
-filled = cv2.cvtColor(filled, cv2.COLOR_BGR2RGB)
-bg[hole] = snap(filled[hole].reshape(-1, 1, 3)).reshape(-1, 3)
+# ---------------------------------------------------------------- 背景（人のいない絵から）
+bg_rgb = Image.open(BG_SRC).convert('RGB').resize((W, H), Image.BOX)
+bg = np.asarray(bg_rgb.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')).copy()
 
 # ---------------------------------------------------------------- 吊るし物（揺らすので背景から抜く）
 DARK = np.array([37, 25, 32])
 HANGING = {  # 名前: (x0, y0, x1, y1, 判定)  判定=その画素が吊るし物か
-    'noren': (100, 86, 294, 115, lambda r, g, b: (b > r + 8 and b > 70) or (r > 150 and g > 150 and b > 150)),
-    'daikon': (102, 112, 148, 139, lambda r, g, b: (r + g + b) > 260 or (g > r + 15 and g > 70)),
+    'noren': (97, 86, 292, 115, lambda r, g, b: (b > r + 8 and b > 70) or (r > 150 and g > 150 and b > 150)),
+    'daikon': (99, 111, 147, 140, lambda r, g, b: (r + g + b) > 260 or (g > r + 15 and g > 70)),
     'chili_l': (147, 111, 172, 139, lambda r, g, b: r > g + 55),
     'chili_r': (278, 111, 295, 141, lambda r, g, b: r > g + 55),
 }
@@ -193,7 +141,7 @@ for name, (x0, y0, x1, y1, test) in HANGING.items():
     hang_meta[name] = (x0, y0)
 
 # ---------------------------------------------------------------- 売り場の樽（3つ）の中身: 空/白菜/きゅうり
-TOPS = {'tomato': (98, 164, 133, 174), 'kyuri': (136, 163, 171, 173), 'hakusai': (214, 164, 253, 174)}
+TOPS = {'tomato': (99, 161, 133, 171), 'kyuri': (132, 162, 166, 172), 'hakusai': (212, 163, 249, 173)}
 SLOTS = ['tomato', 'kyuri', 'hakusai']  # 樽1〜3 に使う樽
 
 
@@ -259,7 +207,7 @@ while stack:
     stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
 
 # 浮いている雲（全体が空に囲まれているもの）を抜き出して流す
-CLOUDS = json_clouds = __import__('json').load(open(os.path.join(os.path.dirname(__file__), 'clouds.json')))
+CLOUDS = [(120, 11, 143, 22), (217, 5, 297, 28)]
 alpha = np.where(sky, 0, 255).astype(np.uint8)
 cloud_meta = []
 for i, (x0, y0, x1, y1) in enumerate(CLOUDS):

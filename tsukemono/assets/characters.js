@@ -3,7 +3,7 @@
 //   headY: ここから上が頭（見る・しゃべるで動かす） / hand: かご・漬物を持つ位置
 // 絵は左向き（店のほうを向いている）。右へ帰るときは左右反転する。
 export const BODIES = {
-  keeper: { img: 'char_keeper', hipY: 58, legX: 17, headY: 22, handL: [-1, 36], handR: [31, 36] },
+  keeper: { img: 'char_keeper', hipY: 58, legX: 17, headY: 22, hand: [2, 36], handL: [-1, 36], handR: [31, 36] },
   woman: { img: 'char_woman', hipY: 60, legX: 12, headY: 20, hand: [-6, 36] },
   kid1: { img: 'char_kid1', hipY: 38, legX: 9, headY: 16, hand: [-4, 22] },
   kid2: { img: 'char_kid2', hipY: 38, legX: 10, headY: 15, hand: [-4, 22] },

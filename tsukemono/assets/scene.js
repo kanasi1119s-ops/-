@@ -1,4 +1,5 @@
 // 店先の配置（384×216 のドット座標）。絵は参考画像をトレースしたもの（assets/img/、tools/trace.py）。
+// 背景は人のいない絵、人物は人のいる絵から切り抜いたもの。
 import { TRACE } from './trace.js';
 
 const [W, H] = TRACE.size;
@@ -16,8 +17,8 @@ export const SCENE = {
   labelY: 199,
   // 吊るし物。panels = 別々に揺れる区切り（画像内のx範囲）
   hanging: [
-    { img: 'hang_noren', ...pos('noren'), panels: [[0, 44], [44, 85], [85, 109], [109, 134], [134, 158], [158, 194]], ms: [1000, 1200, 900, 1300, 1100, 950] },
-    { img: 'hang_daikon', ...pos('daikon'), panels: [[0, 15], [15, 29], [29, 46]], ms: [800, 1000, 1150] },
+    { img: 'hang_noren', ...pos('noren'), panels: [[0, 40], [40, 75], [75, 107], [107, 130], [130, 151], [151, 181], [181, 195]], ms: [1000, 1200, 900, 1300, 1100, 950, 1150] },
+    { img: 'hang_daikon', ...pos('daikon'), panels: [[0, 17], [17, 31], [31, 48]], ms: [800, 1000, 1150] },
     { img: 'hang_chili_l', ...pos('chili_l'), panels: [[0, 12], [12, 25]], ms: [900, 1250] },
     { img: 'hang_chili_r', ...pos('chili_r'), panels: [[0, 17]], ms: [1050] },
   ],
