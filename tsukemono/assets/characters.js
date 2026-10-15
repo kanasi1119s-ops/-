@@ -104,4 +104,15 @@ export function randomLook(rand = Math.random, season = null, type = null) {
   for (const p of list) { r -= w(p); if (r < 0) return p; }
   return list[list.length - 1];
 }
+/** 常連の見た目。常連ごとの番号（look）から毎回同じ人を選ぶ（季節限定の人は選ばない）。 */
+export function regularLook(look, type = null) {
+  let a = look >>> 0; // mulberry32
+  const rand = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const list = PASSERS.filter((p) => !p.seasons);
+  const w = (p) => (p.weight ?? 1) * (type && p.likes?.includes(type) ? LIKE_BOOST : 1);
+  let r = rand() * list.reduce((s, p) => s + w(p), 0);
+  for (const p of list) { r -= w(p); if (r < 0) return p; }
+  return list[list.length - 1];
+}
+export const REGULAR_LINES = { hello: ['また来たよ', 'いつもの、ある？', 'こんにちは、今日は何がある？'], joined: 'また来るね！', left: '…しばらく来ないかな' };
 export const AMBIENT_LINES = ['いい色だねぇ', 'おいしそう！', 'ひとつください', '今日は何が漬かってる？', 'ちょうどいい塩梅だ'];

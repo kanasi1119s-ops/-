@@ -1,7 +1,7 @@
 // 店先の人の動かし方（段取り）。ゲームの結果を受けて、客と店主を動かすだけ。
 // 状態は一切書き換えない。止めても遊びは進む（結果は game.js が先に確定している）。
 import { SCENE } from '../assets/scene.js';
-import { KEEPER_LOOK, randomLook, AMBIENT_LINES } from '../assets/characters.js';
+import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES } from '../assets/characters.js';
 
 const WALK_SPEED = 70; // px/秒 【仮置き】
 
@@ -86,7 +86,8 @@ export class World {
   /** 客1人の来店〜退店。v = { customer, bought, soldOut, reaction }。見た目は look（なければランダム）。 */
   async serve(v, { look, line, onTalk, season = null } = {}) {
     const lane = SCENE.lane;
-    const c = this.spawn('customer', look ?? randomLook(Math.random, season, v.customer?.id), lane.startX, lane.y, 'walk');
+    const who = look ?? (v.regular ? regularLook(v.regular.look, v.customer?.id) : randomLook(Math.random, season, v.customer?.id));
+    const c = this.spawn('customer', who, lane.startX, lane.y, 'walk');
     const prevFree = this.standFree;
     let release;
     this.standFree = new Promise((r) => { release = r; });
@@ -100,6 +101,11 @@ export class World {
     await this.walkTo(c, lane.standX);
     c.dir = -1; // 店のほうを向く
     this.setAnim(c, 'look');
+    if (v.regular && !v.regular.joined) { // 常連はあいさつしてくる
+      c.bubble = REGULAR_LINES.hello[Math.floor(Math.random() * REGULAR_LINES.hello.length)];
+      await this.wait(1000);
+      c.bubble = null;
+    }
     await this.keeperGreet();
     if (!v.soldOut) {
       await this.keeperTake();
@@ -110,6 +116,8 @@ export class World {
     c.bubble = line ?? v.reaction.line;
     onTalk?.(v);
     await this.wait(1900);
+    const after = v.regular?.joined ? REGULAR_LINES.joined : v.regular?.left ? REGULAR_LINES.left : null;
+    if (after) { c.bubble = after; await this.wait(1200); }
     c.bubble = null;
     release();
     this.setAnim(c, v.bought ? 'walk_basket' : 'walk');

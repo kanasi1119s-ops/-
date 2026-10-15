@@ -184,6 +184,8 @@ function renderShop() {
   $('shop').innerHTML = `
     <div class="row"><label class="n">評判</label><div class="repbar"><i style="width:${rep}%"></i></div><b style="margin-left:6px">${rep}</b></div>
     <div class="hint">満足したお客が多いほど評判が上がり、評判が高いほど客が来る。傷んだものを出すと大きく下がる。</div>
+    <div class="row" style="margin-top:6px"><label class="n">常連</label><span>${game.regulars.length ? game.regulars.map((r) => `${C.customers.find((c) => c.id === r.type).name}（${r.visits}回）`).join('・') : '<span class="hint">まだいない</span>'}</span></div>
+    <div class="hint">とても満足したお客はときどき常連になり、評判に関係なくまた来て少し多く払う。がっかりさせ続けると離れる。</div>
     <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">${buys.join('')}</div>`;
 }
 
@@ -281,7 +283,7 @@ async function sell(slot) {
   ui.shownMoney = game.money;
   ui.log.unshift({
     day: game.day(), time: C.timeName[res.time], weather: C.weatherName[res.weather], what: (res.spoiled ? '傷んでいた！' : `${res.sold}個売れた`) + repNote(res.reputation),
-    rows: res.visitors.map((v) => ({ name: v.customer.name, line: v.reaction.line, sat: v.soldOut || res.spoiled ? null : v.sat, price: v.price })),
+    rows: res.visitors.map((v) => ({ name: (v.regular ? (v.regular.joined ? '★新しい常連・' : v.regular.left ? '常連（離れた）・' : `常連${v.regular.visits}回目・`) : '') + v.customer.name, line: v.reaction.line, sat: v.soldOut || res.spoiled ? null : v.sat, price: v.price })),
     revenue: res.revenue, batch: res.batch.closed ? res.batch : null,
   });
   ui.log.length = Math.min(ui.log.length, 8);

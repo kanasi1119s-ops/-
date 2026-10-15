@@ -75,6 +75,13 @@ try {
   await page.waitForTimeout(300);
   check('樽が4個でも描画が落ちない', errors.length === 0, errors.join(' / '));
 
+  // 常連: 常連がいると、その人が来て記録に「常連」と出る
+  await page.evaluate(() => { const g = window.__game.game; g.regulars.push({ id: 99, type: 'light', look: 12345, visits: 2, misses: 0, since: 1 }); g.nextRegularId = 100; g.cfg.regulars.visit = 10; });
+  await page.evaluate(() => { const g = window.__game.game; g.money = 20000; g.weather = 'sunny'; g.brew(1, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); g.advance(4); while (g.timeOfDay() !== 'noon') g.advance(1); window.__game.renderAll(); });
+  await page.click('[data-slot="1"] [data-act="sell"]'); await idle();
+  await page.evaluate(() => { window.__game.game.cfg.regulars.visit = 0.45; });
+  check('常連が来て記録に出る', (await page.evaluate(() => document.querySelector('#log').textContent)).includes('常連'));
+
   // セーブ
   const before = await page.evaluate(() => JSON.stringify(window.__game.game.snapshot()));
   await page.reload(); await ready();

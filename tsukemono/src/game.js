@@ -36,6 +36,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     // ぬか床（店にひとつ）: 塩分、酸味(0〜1)、白い膜(0〜1)、熟成度(0〜1)、最後にかき混ぜた日
     nuka: { salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0 },
     reputation: cfg.reputation.start, // 評判 0〜100
+    regulars: [], // 常連客 { id, type, look, visits, misses, since }
+    nextRegularId: 1,
     places: Object.keys(cfg.places).filter((k) => cfg.places[k].cost === 0), // 使える置き場所
   };
 
@@ -205,28 +207,36 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()]
       * (rep.visitMin + (rep.visitMax - rep.visitMin) * (g.reputation / 100)); // 評判が高いほど客が来る
     // 名前のない客がランダムに来る。来た客の好みのタイプもランダム
+    const rc0 = cfg.regulars;
     const coming = [];
-    for (let i = 0; i < cfg.visit.slots; i++) {
-      if (rng() < visitP) coming.push(cfg.customers[Math.floor(rng() * cfg.customers.length)]);
+    // 常連が先に来る（来店率は評判に関係なく、天気と時間だけで決まる）
+    const regP = rc0.visit * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()];
+    for (const r of g.regulars) {
+      if (coming.length < cfg.visit.slots && rng() < regP) coming.push({ c: cfg.customers.find((x) => x.id === r.type), regular: r });
+    }
+    for (let i = coming.length; i < cfg.visit.slots; i++) {
+      if (rng() < visitP) coming.push({ c: cfg.customers[Math.floor(rng() * cfg.customers.length)] });
     }
     g.stats.visits += coming.length;
     const spoiled = coming.length > 0 && rng() * 100 < taste.spoilRisk;
     const visitors = [];
     let revenue = 0, sold = 0;
-    for (const c of coming) {
+    for (const { c, regular } of coming) {
       const sat = satisfaction(taste, b.pickle, c, season, cfg);
+      const reg = regular ? { id: regular.id, look: regular.look, visits: regular.visits + 1 } : null;
       if (spoiled) {
-        visitors.push({ customer: c, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: ['うっ、傷んでるよ！', 'これは食べられないよ…', 'すっぱい匂いがする…'][Math.floor(rng() * 3)] } });
+        visitors.push({ customer: c, regular: reg, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: ['うっ、傷んでるよ！', 'これは食べられないよ…', 'すっぱい匂いがする…'][Math.floor(rng() * 3)] } });
         continue;
       }
       if (b.portions <= 0) {
-        visitors.push({ customer: c, sat, price: 0, bought: false, soldOut: true, reaction: { key: 'soldout', line: '売り切れかぁ' } });
+        visitors.push({ customer: c, regular: reg, sat, price: 0, bought: false, soldOut: true, reaction: { key: 'soldout', line: '売り切れかぁ' } });
         continue;
       }
-      const price = priceFor(sat, b.pickle, cfg);
+      const base = priceFor(sat, b.pickle, cfg);
+      const price = regular && base > 0 ? Math.round(base * (1 + rc0.tip)) : base;
       const bought = price > 0;
       if (bought) { b.portions--; revenue += price; sold++; }
-      visitors.push({ customer: c, sat, price, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
+      visitors.push({ customer: c, regular: reg, sat, price, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
     }
     g.money += revenue;
     g.stats.revenue += revenue;
@@ -239,6 +249,20 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (spoiled) g.reputation -= rc.spoiledPenalty;
     else for (const v of visitors) if (!v.soldOut) g.reputation += (v.sat - rc.neutral) * rc.perVisitor;
     g.reputation = Math.min(100, Math.max(0, g.reputation));
+    // 常連: 来た常連は回数を数え、不満が続くと離れる。とても満足した客はときどき常連になる
+    for (const v of visitors) {
+      if (v.soldOut) continue;
+      const r = v.regular && g.regulars.find((x) => x.id === v.regular.id);
+      if (r) {
+        r.visits++;
+        r.misses = spoiled || v.sat < rc0.leaveSat ? r.misses + 1 : 0;
+        if (r.misses >= rc0.leaveAfter) { g.regulars = g.regulars.filter((x) => x !== r); v.regular.left = true; }
+      } else if (!spoiled && v.bought && v.sat >= rc0.joinSat && g.regulars.length < rc0.max && rng() < rc0.joinChance) {
+        const nr = { id: g.nextRegularId++, type: v.customer.id, look: Math.floor(rng() * 1e9), visits: 1, misses: 0, since: g.day() };
+        g.regulars.push(nr);
+        v.regular = { id: nr.id, look: nr.look, visits: 1, joined: true };
+      }
+    }
     if (closed) g.barrels[slot] = null;
     // 樽の収支（空になったときだけ確定）
     const batch = { cost: b.cost, earned: b.earned, profit: b.earned - b.cost, closed };
@@ -247,7 +271,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -268,6 +292,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; b.quality ??= 1; }
     if (Number.isFinite(s.reputation)) g.reputation = Math.min(100, Math.max(0, s.reputation));
     if (Array.isArray(s.places)) g.places = [...new Set([...g.places, ...s.places.filter((k) => cfg.places[k])])];
+    if (Array.isArray(s.regulars)) {
+      g.regulars = s.regulars.filter((r) => r && Number.isInteger(r.id) && cfg.customers.some((c) => c.id === r.type) && Number.isFinite(r.look))
+        .slice(0, cfg.regulars.max).map((r) => ({ ...r, visits: r.visits ?? 0, misses: r.misses ?? 0, since: r.since ?? 1 }));
+      g.nextRegularId = Math.max(Number.isInteger(s.nextRegularId) ? s.nextRegularId : 1, ...g.regulars.map((r) => r.id + 1));
+    }
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };
