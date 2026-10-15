@@ -6,14 +6,20 @@ import { satisfaction, priceFor, reactionOf } from './sales.js';
 
 export function createRng(seed = 1) {
   let a = seed >>> 0;
-  return () => {
+  const rng = () => {
     a = (a + 0x6d2b79f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  // セーブ用: 乱数の状態を読み書きする
+  rng.getState = () => a;
+  rng.setState = (v) => { a = v >>> 0; };
+  return rng;
 }
+
+export const SAVE_VERSION = 1;
 
 export const BARREL_COUNT = 3; // 【仮置き】
 
@@ -135,6 +141,27 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     // 樽の収支（空になったときだけ確定）
     const batch = { cost: b.cost, earned: b.earned, profit: b.earned - b.cost, closed };
     return { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay() };
+  };
+
+  /** セーブ用の状態（JSONにできる形）。 */
+  g.snapshot = () => JSON.parse(JSON.stringify({
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats,
+    rng: rng.getState ? rng.getState() : null,
+  }));
+
+  /** セーブから戻す。形がおかしければ何もせず false。 */
+  g.restore = (s) => {
+    const okBarrel = (b) => b === null || (b && cfg.vegetables[b.veg] && cfg.pickles[b.pickle] && Number.isFinite(b.saltPct) && Number.isFinite(b.tempC) && Number.isFinite(b.startTick) && Number.isFinite(b.portions));
+    if (!s || s.v !== SAVE_VERSION || !Number.isInteger(s.tick) || s.tick < 0 || !Number.isFinite(s.money)
+      || !Array.isArray(s.barrels) || s.barrels.length !== BARREL_COUNT || !s.barrels.every(okBarrel)
+      || !cal.weathers.includes(s.weather) || !s.stats) return false;
+    g.tick = s.tick;
+    g.money = s.money;
+    g.barrels = s.barrels.map((b) => (b ? { ...b } : null));
+    g.weather = s.weather;
+    g.stats = { ...g.stats, ...s.stats };
+    if (s.rng != null && rng.setState) rng.setState(s.rng);
+    return true;
   };
 
   return g;

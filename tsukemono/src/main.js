@@ -14,6 +14,20 @@ const trim = (n, d = 2) => String(+n.toFixed(d));
 const C = CONFIG;
 
 const game = createGame({ seed: (Date.now() & 0xffffffff) >>> 0 });
+
+// ---- セーブ（ブラウザに自動保存。使えない環境では保存しないだけで遊べる）
+const SAVE_KEY = 'tsukemono.save.v1';
+function loadSave() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
+    if (s && game.restore(s.game)) return Array.isArray(s.log) ? s.log.slice(0, 8) : [];
+  } catch { /* 読めなければ最初から */ }
+  return null;
+}
+function save() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ game: game.snapshot(), log: ui.log })); } catch { /* 保存できなくても遊べる */ }
+}
+const savedLog = loadSave();
 const canvas = $('screen');
 await loadImages(IMAGES);
 const renderer = new SceneRenderer(canvas);
@@ -28,9 +42,9 @@ const ui = {
   frozen: false,
   busy: false, // 時間経過・販売の最中
   shownMoney: game.money,
-  log: [],
+  log: savedLog ?? [],
   lastTaste: null,
-  message: '樽を選んで、塩分と温度を決めて仕込もう。',
+  message: savedLog ? '前回の続きから。' : '樽を選んで、塩分と温度を決めて仕込もう。',
 };
 
 // ------------------------------------------------------------ 表示用の状態
@@ -159,10 +173,11 @@ function renderDebug() {
     <div class="row"><button class="sub" id="ambientVisit">通りがかりの客を呼ぶ</button>
       速度 <select id="speed"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option></select>
       <label><input type="checkbox" id="freeze" ${ui.frozen ? 'checked' : ''}> 動きを止める</label></div>
+    <div class="row"><button class="danger" id="reset">最初からやり直す</button><span class="hint">自動で保存しています（このブラウザの中だけ）</span></div>
     <div class="hint">見た目の固定は遊びに影響しません（天気・季節の数値は実際の進行どおり）。</div>`;
 }
 
-function renderAll() { renderHud(); renderBarrels(); renderTaste(); renderBrew(); renderCustomers(); renderLog(); setMessage(ui.message); }
+function renderAll() { renderHud(); renderBarrels(); renderTaste(); renderBrew(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
 
 // ------------------------------------------------------------ 操作
 const clampSlotRecipe = () => { // 漬物に合わない野菜なら入れ替える
@@ -224,6 +239,13 @@ document.addEventListener('click', (e) => {
   if (t.dataset.adv) { if (!ui.busy) advance(+t.dataset.adv); return; }
   if (t.id === 'brewBtn') { brew(); return; }
   if (t.id === 'ambient') { ui.recipe.tempC = game.ambientTemp(); ui.tempTouched = false; renderBrew(); return; }
+  if (t.id === 'reset') {
+    if (!ui.busy && confirm('最初からやり直しますか？（今の店の状態は消えます）')) {
+      try { localStorage.removeItem(SAVE_KEY); } catch { /* 消せなくても読み直す */ }
+      location.reload();
+    }
+    return;
+  }
   if (t.id === 'ambientVisit') { if (!world.busy) world.ambientVisit(view().season); return; }
   const act = t.dataset.act;
   if (act) {

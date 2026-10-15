@@ -139,3 +139,28 @@ test('客は名前なしでランダムに来て、好みのタイプもばら�
   const avg = total / 200;
   assert.ok(avg > 3 && avg < 5, `平均 ${avg}人`); // 最大5人 × 来店率0.8
 });
+
+test('セーブして戻すと、同じ状態から同じ結果で続けられる', () => {
+  const a = createGame({ seed: 21 });
+  a.brew(0, recipe);
+  a.brew(1, { ...recipe, veg: 'kyuri', pickle: 'asazuke' });
+  a.advance(9);
+  a.tasteTest(0);
+  const snap = JSON.parse(JSON.stringify(a.snapshot())); // localStorage を通したのと同じ
+  const b = createGame({ seed: 999 });
+  assert.equal(b.restore(snap), true);
+  assert.deepEqual(b.snapshot(), a.snapshot());
+  a.advance(5); b.advance(5); // 夕方（夜は閉店）
+  const ra = a.sell(1), rb = b.sell(1);
+  assert.deepEqual(rb.visitors.map((v) => [v.customer.id, v.price]), ra.visitors.map((v) => [v.customer.id, v.price]));
+  assert.equal(b.money, a.money);
+});
+
+test('壊れたセーブは読まない', () => {
+  const g = createGame();
+  const before = g.snapshot();
+  for (const bad of [null, {}, { ...before, v: 99 }, { ...before, tick: -1 }, { ...before, barrels: [1, 2, 3] }, { ...before, weather: 'storm' }]) {
+    assert.equal(g.restore(bad), false);
+  }
+  assert.deepEqual(g.snapshot(), before);
+});
