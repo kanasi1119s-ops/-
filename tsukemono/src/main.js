@@ -5,6 +5,7 @@ import { simulate, daysToRipe, ripeRangeDays } from './model.js';
 import { SceneRenderer } from './render.js';
 import { World } from './world.js';
 import { integerScale, loadImages } from './pixel.js';
+import { nextStep } from './guide.js';
 import { SCENE, IMAGES } from '../assets/scene.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
 
@@ -65,6 +66,7 @@ function view() {
 
 // ------------------------------------------------------------ 画面の作り直し
 function setMessage(t) { ui.message = t; $('message').textContent = t; }
+function renderGuide() { $('guide').textContent = ui.busy ? '' : `次にやること: ${nextStep(game)}`; }
 
 function renderHud() {
   const st = game.stats;
@@ -177,7 +179,7 @@ function renderDebug() {
     <div class="hint">見た目の固定は遊びに影響しません（天気・季節の数値は実際の進行どおり）。</div>`;
 }
 
-function renderAll() { renderHud(); renderBarrels(); renderTaste(); renderBrew(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
+function renderAll() { renderGuide(); renderHud(); renderBarrels(); renderTaste(); renderBrew(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
 
 // ------------------------------------------------------------ 操作
 const clampSlotRecipe = () => { // 漬物に合わない野菜なら入れ替える
