@@ -1,257 +1,658 @@
 {
  "name": "knight",
  "w": 34,
- "h": 73,
- "pad": 1,
+ "h": 75,
+ "padTop": 1,
+ "padBottom": 2,
  "frameMs": 110,
- "shoe": "Z",
- "frames": [
+ "frames": 8,
+ "shadow": {
+  "sym": "d",
+  "opacity": 0.32
+ },
+ "keep": [
+  [
+   48,
+   0,
+   62,
+   14
+  ]
+ ],
+ "back": [
+  53,
+  0,
+  74,
+  17
+ ],
+ "front": [
+  53,
+  18,
+  74,
+  33
+ ],
+ "ops": [
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "d",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      55,
-      14
-     ],
-     "ankle": [
-      71,
-      9
-     ],
-     "shoe": "toe"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "O",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      55,
-      24
-     ],
-     "ankle": [
-      71,
-      28
-     ],
-     "shoe": "heel"
-    }
-   }
+   "frame": 1,
+   "layer": "back",
+   "rect": [
+    59,
+    7,
+    63,
+    17
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
   },
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "d",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      56,
-      21
-     ],
-     "ankle": [
-      69,
-      12
-     ],
-     "shoe": "toe"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "O",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      55,
-      24
-     ],
-     "ankle": [
-      71,
-      22
-     ],
-     "shoe": "flat"
-    }
-   }
+   "frame": 1,
+   "layer": "front",
+   "rect": [
+    59,
+    18,
+    63,
+    26
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
   },
   {
-   "dy": 0,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "d",
-     "width": 4,
-     "hip": [
-      39,
-      18
-     ],
-     "knee": [
-      52,
-      28
-     ],
-     "ankle": [
-      65,
-      19
-     ],
-     "shoe": "swing"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "O",
-     "width": 4,
-     "hip": [
-      39,
-      18
-     ],
-     "knee": [
-      55,
-      18
-     ],
-     "ankle": [
-      71,
-      16
-     ],
-     "shoe": "flat"
-    }
-   }
+   "frame": 1,
+   "layer": "back",
+   "rect": [
+    64,
+    7,
+    69,
+    16
+   ],
+   "flip": false,
+   "dx": 3,
+   "dy": 0
   },
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "d",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      55,
-      24
-     ],
-     "ankle": [
-      71,
-      28
-     ],
-     "shoe": "heel"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "O",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      55,
-      14
-     ],
-     "ankle": [
-      71,
-      9
-     ],
-     "shoe": "toe"
-    }
-   }
+   "frame": 1,
+   "layer": "front",
+   "rect": [
+    64,
+    21,
+    69,
+    31
+   ],
+   "flip": false,
+   "dx": -3,
+   "dy": 0
   },
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "d",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      55,
-      24
-     ],
-     "ankle": [
-      71,
-      22
-     ],
-     "shoe": "flat"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "O",
-     "width": 4,
-     "hip": [
-      40,
-      18
-     ],
-     "knee": [
-      56,
-      21
-     ],
-     "ankle": [
-      69,
-      12
-     ],
-     "shoe": "toe"
-    }
-   }
+   "frame": 1,
+   "layer": "back",
+   "rect": [
+    70,
+    4,
+    72,
+    16
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": -1
   },
   {
-   "dy": 0,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "d",
-     "width": 4,
-     "hip": [
-      39,
-      18
-     ],
-     "knee": [
-      55,
-      18
-     ],
-     "ankle": [
-      71,
-      16
-     ],
-     "shoe": "flat"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "O",
-     "width": 4,
-     "hip": [
-      39,
-      18
-     ],
-     "knee": [
-      52,
-      28
-     ],
-     "ankle": [
-      65,
-      19
-     ],
-     "shoe": "swing"
-    }
-   }
+   "frame": 1,
+   "layer": "front",
+   "rect": [
+    70,
+    23,
+    72,
+    33
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    53,
+    15,
+    58,
+    17
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    53,
+    18,
+    58,
+    26
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    59,
+    7,
+    63,
+    17
+   ],
+   "flip": false,
+   "dx": 2,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    59,
+    18,
+    63,
+    26
+   ],
+   "flip": false,
+   "dx": -2,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    64,
+    7,
+    69,
+    16
+   ],
+   "flip": false,
+   "dx": 5,
+   "dy": -1
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    64,
+    21,
+    69,
+    31
+   ],
+   "flip": false,
+   "dx": -5,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    70,
+    4,
+    72,
+    16
+   ],
+   "flip": false,
+   "dx": 9,
+   "dy": -2
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    70,
+    23,
+    72,
+    33
+   ],
+   "flip": false,
+   "dx": -9,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "back",
+   "rect": [
+    59,
+    7,
+    63,
+    17
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    59,
+    18,
+    63,
+    26
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "back",
+   "rect": [
+    64,
+    7,
+    69,
+    16
+   ],
+   "flip": false,
+   "dx": 3,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    64,
+    21,
+    69,
+    31
+   ],
+   "flip": false,
+   "dx": -3,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "back",
+   "rect": [
+    70,
+    4,
+    72,
+    16
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": -1
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    70,
+    23,
+    72,
+    33
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "back",
+   "rect": [
+    59,
+    7,
+    63,
+    17
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "front",
+   "rect": [
+    59,
+    18,
+    63,
+    26
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "back",
+   "rect": [
+    64,
+    7,
+    69,
+    16
+   ],
+   "flip": false,
+   "dx": 3,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "front",
+   "rect": [
+    64,
+    21,
+    69,
+    31
+   ],
+   "flip": false,
+   "dx": -3,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "back",
+   "rect": [
+    70,
+    4,
+    72,
+    16
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "front",
+   "rect": [
+    70,
+    23,
+    72,
+    33
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": -1
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    53,
+    15,
+    58,
+    17
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    53,
+    18,
+    58,
+    26
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    59,
+    7,
+    63,
+    17
+   ],
+   "flip": false,
+   "dx": 2,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    59,
+    18,
+    63,
+    26
+   ],
+   "flip": false,
+   "dx": -2,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    64,
+    7,
+    69,
+    16
+   ],
+   "flip": false,
+   "dx": 5,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    64,
+    21,
+    69,
+    31
+   ],
+   "flip": false,
+   "dx": -5,
+   "dy": -1
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    70,
+    4,
+    72,
+    16
+   ],
+   "flip": false,
+   "dx": 9,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    70,
+    23,
+    72,
+    33
+   ],
+   "flip": false,
+   "dx": -9,
+   "dy": -2
+  },
+  {
+   "frame": 7,
+   "layer": "back",
+   "rect": [
+    59,
+    7,
+    63,
+    17
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "front",
+   "rect": [
+    59,
+    18,
+    63,
+    26
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "back",
+   "rect": [
+    64,
+    7,
+    69,
+    16
+   ],
+   "flip": false,
+   "dx": 3,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "front",
+   "rect": [
+    64,
+    21,
+    69,
+    31
+   ],
+   "flip": false,
+   "dx": -3,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "back",
+   "rect": [
+    70,
+    4,
+    72,
+    16
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "front",
+   "rect": [
+    70,
+    23,
+    72,
+    33
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": -1
   }
  ],
- "note": "腰 39行・脚の長さ 32・歩幅 9.6・脚の太さ 4"
+ "shadows": [
+  {
+   "frame": 0,
+   "rect": [
+    72,
+    3,
+    74,
+    33
+   ]
+  },
+  {
+   "frame": 1,
+   "rect": [
+    72,
+    7,
+    74,
+    30
+   ]
+  },
+  {
+   "frame": 2,
+   "rect": [
+    72,
+    13,
+    74,
+    25
+   ]
+  },
+  {
+   "frame": 3,
+   "rect": [
+    72,
+    7,
+    74,
+    30
+   ]
+  },
+  {
+   "frame": 4,
+   "rect": [
+    72,
+    3,
+    74,
+    33
+   ]
+  },
+  {
+   "frame": 5,
+   "rect": [
+    72,
+    7,
+    74,
+    30
+   ]
+  },
+  {
+   "frame": 6,
+   "rect": [
+    72,
+    13,
+    74,
+    25
+   ]
+  },
+  {
+   "frame": 7,
+   "rect": [
+    72,
+    7,
+    74,
+    30
+   ]
+  }
+ ],
+ "bob": [
+  {
+   "frame": 0,
+   "dy": 1
+  },
+  {
+   "frame": 4,
+   "dy": 1
+  }
+ ],
+ "hem": {
+  "rect": [
+   49,
+   0,
+   52,
+   33
+  ],
+  "seq": [
+   0,
+   -1,
+   -1,
+   0,
+   0,
+   1,
+   1,
+   0
+  ]
+ },
+ "note": "ひざ 53行・足の裏 72行・境 18列・帯 4"
 }

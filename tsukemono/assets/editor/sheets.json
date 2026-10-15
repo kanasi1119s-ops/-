@@ -1,318 +1,9 @@
 {
- "woman": {
-  "sheet": "woman.sheet.png",
-  "frameWidth": 35,
-  "frameHeight": 74,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 35,
-    "ms": 110
-   },
-   {
-    "x": 70,
-    "ms": 110
-   },
-   {
-    "x": 105,
-    "ms": 110
-   },
-   {
-    "x": 140,
-    "ms": 110
-   },
-   {
-    "x": 175,
-    "ms": 110
-   }
-  ]
- },
- "granny": {
-  "sheet": "granny.sheet.png",
-  "frameWidth": 32,
-  "frameHeight": 72,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 32,
-    "ms": 110
-   },
-   {
-    "x": 64,
-    "ms": 110
-   },
-   {
-    "x": 96,
-    "ms": 110
-   },
-   {
-    "x": 128,
-    "ms": 110
-   },
-   {
-    "x": 160,
-    "ms": 110
-   }
-  ]
- },
- "granny2": {
-  "sheet": "granny2.sheet.png",
-  "frameWidth": 32,
-  "frameHeight": 73,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 32,
-    "ms": 110
-   },
-   {
-    "x": 64,
-    "ms": 110
-   },
-   {
-    "x": 96,
-    "ms": 110
-   },
-   {
-    "x": 128,
-    "ms": 110
-   },
-   {
-    "x": 160,
-    "ms": 110
-   }
-  ]
- },
- "oldman": {
-  "sheet": "oldman.sheet.png",
-  "frameWidth": 34,
-  "frameHeight": 76,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 34,
-    "ms": 110
-   },
-   {
-    "x": 68,
-    "ms": 110
-   },
-   {
-    "x": 102,
-    "ms": 110
-   },
-   {
-    "x": 136,
-    "ms": 110
-   },
-   {
-    "x": 170,
-    "ms": 110
-   }
-  ]
- },
- "boy": {
-  "sheet": "boy.sheet.png",
-  "frameWidth": 27,
-  "frameHeight": 57,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 27,
-    "ms": 110
-   },
-   {
-    "x": 54,
-    "ms": 110
-   },
-   {
-    "x": 81,
-    "ms": 110
-   },
-   {
-    "x": 108,
-    "ms": 110
-   },
-   {
-    "x": 135,
-    "ms": 110
-   }
-  ]
- },
- "girl": {
-  "sheet": "girl.sheet.png",
-  "frameWidth": 27,
-  "frameHeight": 58,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 27,
-    "ms": 110
-   },
-   {
-    "x": 54,
-    "ms": 110
-   },
-   {
-    "x": 81,
-    "ms": 110
-   },
-   {
-    "x": 108,
-    "ms": 110
-   },
-   {
-    "x": 135,
-    "ms": 110
-   }
-  ]
- },
- "student": {
-  "sheet": "student.sheet.png",
-  "frameWidth": 30,
-  "frameHeight": 64,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 30,
-    "ms": 110
-   },
-   {
-    "x": 60,
-    "ms": 110
-   },
-   {
-    "x": 90,
-    "ms": 110
-   },
-   {
-    "x": 120,
-    "ms": 110
-   },
-   {
-    "x": 150,
-    "ms": 110
-   }
-  ]
- },
- "gakuran": {
-  "sheet": "gakuran.sheet.png",
-  "frameWidth": 32,
-  "frameHeight": 66,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 32,
-    "ms": 110
-   },
-   {
-    "x": 64,
-    "ms": 110
-   },
-   {
-    "x": 96,
-    "ms": 110
-   },
-   {
-    "x": 128,
-    "ms": 110
-   },
-   {
-    "x": 160,
-    "ms": 110
-   }
-  ]
- },
- "blazer": {
-  "sheet": "blazer.sheet.png",
-  "frameWidth": 30,
-  "frameHeight": 64,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 30,
-    "ms": 110
-   },
-   {
-    "x": 60,
-    "ms": 110
-   },
-   {
-    "x": 90,
-    "ms": 110
-   },
-   {
-    "x": 120,
-    "ms": 110
-   },
-   {
-    "x": 150,
-    "ms": 110
-   }
-  ]
- },
- "yankee": {
-  "sheet": "yankee.sheet.png",
-  "frameWidth": 32,
-  "frameHeight": 72,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 32,
-    "ms": 110
-   },
-   {
-    "x": 64,
-    "ms": 110
-   },
-   {
-    "x": 96,
-    "ms": 110
-   },
-   {
-    "x": 128,
-    "ms": 110
-   },
-   {
-    "x": 160,
-    "ms": 110
-   }
-  ]
- },
  "suit": {
   "sheet": "suit.sheet.png",
   "frameWidth": 33,
-  "frameHeight": 74,
+  "frameHeight": 76,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -337,13 +28,62 @@
    {
     "x": 165,
     "ms": 110
+   },
+   {
+    "x": 198,
+    "ms": 110
+   },
+   {
+    "x": 231,
+    "ms": 110
    }
   ]
  },
- "shades": {
-  "sheet": "shades.sheet.png",
+ "boy": {
+  "sheet": "boy.sheet.png",
+  "frameWidth": 27,
+  "frameHeight": 59,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 27,
+    "ms": 110
+   },
+   {
+    "x": 54,
+    "ms": 110
+   },
+   {
+    "x": 81,
+    "ms": 110
+   },
+   {
+    "x": 108,
+    "ms": 110
+   },
+   {
+    "x": 135,
+    "ms": 110
+   },
+   {
+    "x": 162,
+    "ms": 110
+   },
+   {
+    "x": 189,
+    "ms": 110
+   }
+  ]
+ },
+ "oldman": {
+  "sheet": "oldman.sheet.png",
   "frameWidth": 34,
-  "frameHeight": 71,
+  "frameHeight": 78,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -368,13 +108,222 @@
    {
     "x": 170,
     "ms": 110
+   },
+   {
+    "x": 204,
+    "ms": 110
+   },
+   {
+    "x": 238,
+    "ms": 110
    }
   ]
  },
- "volley": {
-  "sheet": "volley.sheet.png",
+ "gakuran": {
+  "sheet": "gakuran.sheet.png",
+  "frameWidth": 32,
+  "frameHeight": 68,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 32,
+    "ms": 110
+   },
+   {
+    "x": 64,
+    "ms": 110
+   },
+   {
+    "x": 96,
+    "ms": 110
+   },
+   {
+    "x": 128,
+    "ms": 110
+   },
+   {
+    "x": 160,
+    "ms": 110
+   },
+   {
+    "x": 192,
+    "ms": 110
+   },
+   {
+    "x": 224,
+    "ms": 110
+   }
+  ]
+ },
+ "woman": {
+  "sheet": "woman.sheet.png",
+  "frameWidth": 35,
+  "frameHeight": 76,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 35,
+    "ms": 110
+   },
+   {
+    "x": 70,
+    "ms": 110
+   },
+   {
+    "x": 105,
+    "ms": 110
+   },
+   {
+    "x": 140,
+    "ms": 110
+   },
+   {
+    "x": 175,
+    "ms": 110
+   },
+   {
+    "x": 210,
+    "ms": 110
+   },
+   {
+    "x": 245,
+    "ms": 110
+   }
+  ]
+ },
+ "granny": {
+  "sheet": "granny.sheet.png",
+  "frameWidth": 32,
+  "frameHeight": 74,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 32,
+    "ms": 110
+   },
+   {
+    "x": 64,
+    "ms": 110
+   },
+   {
+    "x": 96,
+    "ms": 110
+   },
+   {
+    "x": 128,
+    "ms": 110
+   },
+   {
+    "x": 160,
+    "ms": 110
+   },
+   {
+    "x": 192,
+    "ms": 110
+   },
+   {
+    "x": 224,
+    "ms": 110
+   }
+  ]
+ },
+ "granny2": {
+  "sheet": "granny2.sheet.png",
+  "frameWidth": 32,
+  "frameHeight": 75,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 32,
+    "ms": 110
+   },
+   {
+    "x": 64,
+    "ms": 110
+   },
+   {
+    "x": 96,
+    "ms": 110
+   },
+   {
+    "x": 128,
+    "ms": 110
+   },
+   {
+    "x": 160,
+    "ms": 110
+   },
+   {
+    "x": 192,
+    "ms": 110
+   },
+   {
+    "x": 224,
+    "ms": 110
+   }
+  ]
+ },
+ "girl": {
+  "sheet": "girl.sheet.png",
+  "frameWidth": 27,
+  "frameHeight": 60,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 27,
+    "ms": 110
+   },
+   {
+    "x": 54,
+    "ms": 110
+   },
+   {
+    "x": 81,
+    "ms": 110
+   },
+   {
+    "x": 108,
+    "ms": 110
+   },
+   {
+    "x": 135,
+    "ms": 110
+   },
+   {
+    "x": 162,
+    "ms": 110
+   },
+   {
+    "x": 189,
+    "ms": 110
+   }
+  ]
+ },
+ "student": {
+  "sheet": "student.sheet.png",
   "frameWidth": 30,
-  "frameHeight": 64,
+  "frameHeight": 66,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -399,13 +348,182 @@
    {
     "x": 150,
     "ms": 110
+   },
+   {
+    "x": 180,
+    "ms": 110
+   },
+   {
+    "x": 210,
+    "ms": 110
+   }
+  ]
+ },
+ "blazer": {
+  "sheet": "blazer.sheet.png",
+  "frameWidth": 30,
+  "frameHeight": 66,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 30,
+    "ms": 110
+   },
+   {
+    "x": 60,
+    "ms": 110
+   },
+   {
+    "x": 90,
+    "ms": 110
+   },
+   {
+    "x": 120,
+    "ms": 110
+   },
+   {
+    "x": 150,
+    "ms": 110
+   },
+   {
+    "x": 180,
+    "ms": 110
+   },
+   {
+    "x": 210,
+    "ms": 110
+   }
+  ]
+ },
+ "yankee": {
+  "sheet": "yankee.sheet.png",
+  "frameWidth": 32,
+  "frameHeight": 74,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 32,
+    "ms": 110
+   },
+   {
+    "x": 64,
+    "ms": 110
+   },
+   {
+    "x": 96,
+    "ms": 110
+   },
+   {
+    "x": 128,
+    "ms": 110
+   },
+   {
+    "x": 160,
+    "ms": 110
+   },
+   {
+    "x": 192,
+    "ms": 110
+   },
+   {
+    "x": 224,
+    "ms": 110
+   }
+  ]
+ },
+ "shades": {
+  "sheet": "shades.sheet.png",
+  "frameWidth": 34,
+  "frameHeight": 73,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 34,
+    "ms": 110
+   },
+   {
+    "x": 68,
+    "ms": 110
+   },
+   {
+    "x": 102,
+    "ms": 110
+   },
+   {
+    "x": 136,
+    "ms": 110
+   },
+   {
+    "x": 170,
+    "ms": 110
+   },
+   {
+    "x": 204,
+    "ms": 110
+   },
+   {
+    "x": 238,
+    "ms": 110
+   }
+  ]
+ },
+ "volley": {
+  "sheet": "volley.sheet.png",
+  "frameWidth": 30,
+  "frameHeight": 66,
+  "padBottom": 2,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 30,
+    "ms": 110
+   },
+   {
+    "x": 60,
+    "ms": 110
+   },
+   {
+    "x": 90,
+    "ms": 110
+   },
+   {
+    "x": 120,
+    "ms": 110
+   },
+   {
+    "x": 150,
+    "ms": 110
+   },
+   {
+    "x": 180,
+    "ms": 110
+   },
+   {
+    "x": 210,
+    "ms": 110
    }
   ]
  },
  "soccer": {
   "sheet": "soccer.sheet.png",
   "frameWidth": 28,
-  "frameHeight": 62,
+  "frameHeight": 64,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -430,13 +548,22 @@
    {
     "x": 140,
     "ms": 110
+   },
+   {
+    "x": 168,
+    "ms": 110
+   },
+   {
+    "x": 196,
+    "ms": 110
    }
   ]
  },
  "racer": {
   "sheet": "racer.sheet.png",
   "frameWidth": 36,
-  "frameHeight": 71,
+  "frameHeight": 73,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -461,13 +588,22 @@
    {
     "x": 180,
     "ms": 110
+   },
+   {
+    "x": 216,
+    "ms": 110
+   },
+   {
+    "x": 252,
+    "ms": 110
    }
   ]
  },
  "karate": {
   "sheet": "karate.sheet.png",
   "frameWidth": 32,
-  "frameHeight": 68,
+  "frameHeight": 70,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -492,13 +628,22 @@
    {
     "x": 160,
     "ms": 110
+   },
+   {
+    "x": 192,
+    "ms": 110
+   },
+   {
+    "x": 224,
+    "ms": 110
    }
   ]
  },
  "samurai": {
   "sheet": "samurai.sheet.png",
   "frameWidth": 40,
-  "frameHeight": 71,
+  "frameHeight": 73,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -523,13 +668,22 @@
    {
     "x": 200,
     "ms": 110
+   },
+   {
+    "x": 240,
+    "ms": 110
+   },
+   {
+    "x": 280,
+    "ms": 110
    }
   ]
  },
  "beach": {
   "sheet": "beach.sheet.png",
   "frameWidth": 30,
-  "frameHeight": 66,
+  "frameHeight": 68,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -554,13 +708,22 @@
    {
     "x": 150,
     "ms": 110
+   },
+   {
+    "x": 180,
+    "ms": 110
+   },
+   {
+    "x": 210,
+    "ms": 110
    }
   ]
  },
  "parasol": {
   "sheet": "parasol.sheet.png",
   "frameWidth": 42,
-  "frameHeight": 80,
+  "frameHeight": 82,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -585,13 +748,22 @@
    {
     "x": 210,
     "ms": 110
+   },
+   {
+    "x": 252,
+    "ms": 110
+   },
+   {
+    "x": 294,
+    "ms": 110
    }
   ]
  },
  "angler": {
   "sheet": "angler.sheet.png",
   "frameWidth": 56,
-  "frameHeight": 81,
+  "frameHeight": 83,
+  "padBottom": 2,
   "frames": [
    {
     "x": 0,
@@ -616,160 +788,13 @@
    {
     "x": 280,
     "ms": 110
-   }
-  ]
- },
- "hiker": {
-  "sheet": "hiker.sheet.png",
-  "frameWidth": 32,
-  "frameHeight": 72,
-  "frames": [
+   },
    {
-    "x": 0,
+    "x": 336,
     "ms": 110
    },
    {
-    "x": 32,
-    "ms": 110
-   },
-   {
-    "x": 64,
-    "ms": 110
-   },
-   {
-    "x": 96,
-    "ms": 110
-   },
-   {
-    "x": 128,
-    "ms": 110
-   },
-   {
-    "x": 160,
-    "ms": 110
-   }
-  ]
- },
- "knight": {
-  "sheet": "knight.sheet.png",
-  "frameWidth": 34,
-  "frameHeight": 73,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 34,
-    "ms": 110
-   },
-   {
-    "x": 68,
-    "ms": 110
-   },
-   {
-    "x": 102,
-    "ms": 110
-   },
-   {
-    "x": 136,
-    "ms": 110
-   },
-   {
-    "x": 170,
-    "ms": 110
-   }
-  ]
- },
- "alien": {
-  "sheet": "alien.sheet.png",
-  "frameWidth": 30,
-  "frameHeight": 67,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 30,
-    "ms": 110
-   },
-   {
-    "x": 60,
-    "ms": 110
-   },
-   {
-    "x": 90,
-    "ms": 110
-   },
-   {
-    "x": 120,
-    "ms": 110
-   },
-   {
-    "x": 150,
-    "ms": 110
-   }
-  ]
- },
- "witch": {
-  "sheet": "witch.sheet.png",
-  "frameWidth": 65,
-  "frameHeight": 74,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 65,
-    "ms": 110
-   },
-   {
-    "x": 130,
-    "ms": 110
-   },
-   {
-    "x": 195,
-    "ms": 110
-   },
-   {
-    "x": 260,
-    "ms": 110
-   },
-   {
-    "x": 325,
-    "ms": 110
-   }
-  ]
- },
- "demon": {
-  "sheet": "demon.sheet.png",
-  "frameWidth": 36,
-  "frameHeight": 73,
-  "frames": [
-   {
-    "x": 0,
-    "ms": 110
-   },
-   {
-    "x": 36,
-    "ms": 110
-   },
-   {
-    "x": 72,
-    "ms": 110
-   },
-   {
-    "x": 108,
-    "ms": 110
-   },
-   {
-    "x": 144,
-    "ms": 110
-   },
-   {
-    "x": 180,
+    "x": 392,
     "ms": 110
    }
   ]

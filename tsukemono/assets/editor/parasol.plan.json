@@ -1,257 +1,606 @@
 {
  "name": "parasol",
  "w": 42,
- "h": 80,
- "pad": 1,
+ "h": 82,
+ "padTop": 1,
+ "padBottom": 2,
  "frameMs": 110,
- "shoe": "U",
- "frames": [
+ "frames": 8,
+ "shadow": {
+  "sym": "d",
+  "opacity": 0.32
+ },
+ "keep": [
+  [
+   48,
+   4,
+   74,
+   18
+  ]
+ ],
+ "back": [
+  71,
+  0,
+  81,
+  24
+ ],
+ "front": [
+  71,
+  25,
+  81,
+  41
+ ],
+ "ops": [
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "c",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      26
-     ],
-     "ankle": [
-      78,
-      20
-     ],
-     "shoe": "toe"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "B",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      32
-     ],
-     "ankle": [
-      78,
-      31
-     ],
-     "shoe": "heel"
-    }
-   }
+   "frame": 1,
+   "layer": "back",
+   "rect": [
+    71,
+    19,
+    72,
+    24
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
   },
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "c",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      31
-     ],
-     "ankle": [
-      76,
-      22
-     ],
-     "shoe": "toe"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "B",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      31
-     ],
-     "ankle": [
-      78,
-      28
-     ],
-     "shoe": "flat"
-    }
-   }
+   "frame": 1,
+   "layer": "front",
+   "rect": [
+    71,
+    25,
+    73,
+    34
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
   },
   {
-   "dy": 0,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "c",
-     "width": 4,
-     "hip": [
-      43,
-      26
-     ],
-     "knee": [
-      59,
-      32
-     ],
-     "ankle": [
-      76,
-      26
-     ],
-     "shoe": "swing"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "B",
-     "width": 4,
-     "hip": [
-      43,
-      26
-     ],
-     "knee": [
-      60,
-      26
-     ],
-     "ankle": [
-      78,
-      24
-     ],
-     "shoe": "flat"
-    }
-   }
+   "frame": 1,
+   "layer": "back",
+   "rect": [
+    74,
+    14,
+    76,
+    24
+   ],
+   "flip": false,
+   "dx": 2,
+   "dy": 0
   },
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "c",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      32
-     ],
-     "ankle": [
-      78,
-      31
-     ],
-     "shoe": "heel"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "B",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      26
-     ],
-     "ankle": [
-      78,
-      20
-     ],
-     "shoe": "toe"
-    }
-   }
+   "frame": 1,
+   "layer": "front",
+   "rect": [
+    74,
+    25,
+    76,
+    38
+   ],
+   "flip": false,
+   "dx": -2,
+   "dy": 0
   },
   {
-   "dy": 1,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "c",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      31
-     ],
-     "ankle": [
-      78,
-      28
-     ],
-     "shoe": "flat"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "B",
-     "width": 4,
-     "hip": [
-      44,
-      26
-     ],
-     "knee": [
-      61,
-      31
-     ],
-     "ankle": [
-      76,
-      22
-     ],
-     "shoe": "toe"
-    }
-   }
+   "frame": 1,
+   "layer": "back",
+   "rect": [
+    77,
+    15,
+    79,
+    20
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": -1
   },
   {
-   "dy": 0,
-   "legs": {
-    "B": {
-     "layer": 0,
-     "sym": "c",
-     "width": 4,
-     "hip": [
-      43,
-      26
-     ],
-     "knee": [
-      60,
-      26
-     ],
-     "ankle": [
-      78,
-      24
-     ],
-     "shoe": "flat"
-    },
-    "A": {
-     "layer": 1,
-     "sym": "B",
-     "width": 4,
-     "hip": [
-      43,
-      26
-     ],
-     "knee": [
-      59,
-      32
-     ],
-     "ankle": [
-      76,
-      26
-     ],
-     "shoe": "swing"
-    }
-   }
+   "frame": 1,
+   "layer": "front",
+   "rect": [
+    77,
+    30,
+    79,
+    38
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    71,
+    19,
+    72,
+    24
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    71,
+    25,
+    73,
+    34
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    74,
+    14,
+    76,
+    24
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": -1
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    74,
+    25,
+    76,
+    38
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": 0
+  },
+  {
+   "frame": 2,
+   "layer": "back",
+   "rect": [
+    77,
+    15,
+    79,
+    20
+   ],
+   "flip": false,
+   "dx": 8,
+   "dy": -2
+  },
+  {
+   "frame": 2,
+   "layer": "front",
+   "rect": [
+    77,
+    30,
+    79,
+    38
+   ],
+   "flip": false,
+   "dx": -8,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "back",
+   "rect": [
+    71,
+    19,
+    72,
+    24
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    71,
+    25,
+    73,
+    34
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "back",
+   "rect": [
+    74,
+    14,
+    76,
+    24
+   ],
+   "flip": false,
+   "dx": 2,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    74,
+    25,
+    76,
+    38
+   ],
+   "flip": false,
+   "dx": -2,
+   "dy": 0
+  },
+  {
+   "frame": 3,
+   "layer": "back",
+   "rect": [
+    77,
+    15,
+    79,
+    20
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": -1
+  },
+  {
+   "frame": 3,
+   "layer": "front",
+   "rect": [
+    77,
+    30,
+    79,
+    38
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "back",
+   "rect": [
+    71,
+    19,
+    72,
+    24
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "front",
+   "rect": [
+    71,
+    25,
+    73,
+    34
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "back",
+   "rect": [
+    74,
+    14,
+    76,
+    24
+   ],
+   "flip": false,
+   "dx": 2,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "front",
+   "rect": [
+    74,
+    25,
+    76,
+    38
+   ],
+   "flip": false,
+   "dx": -2,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "back",
+   "rect": [
+    77,
+    15,
+    79,
+    20
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": 0
+  },
+  {
+   "frame": 5,
+   "layer": "front",
+   "rect": [
+    77,
+    30,
+    79,
+    38
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": -1
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    71,
+    19,
+    72,
+    24
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    71,
+    25,
+    73,
+    34
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    74,
+    14,
+    76,
+    24
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    74,
+    25,
+    76,
+    38
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": -1
+  },
+  {
+   "frame": 6,
+   "layer": "back",
+   "rect": [
+    77,
+    15,
+    79,
+    20
+   ],
+   "flip": false,
+   "dx": 8,
+   "dy": 0
+  },
+  {
+   "frame": 6,
+   "layer": "front",
+   "rect": [
+    77,
+    30,
+    79,
+    38
+   ],
+   "flip": false,
+   "dx": -8,
+   "dy": -2
+  },
+  {
+   "frame": 7,
+   "layer": "back",
+   "rect": [
+    71,
+    19,
+    72,
+    24
+   ],
+   "flip": false,
+   "dx": 1,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "front",
+   "rect": [
+    71,
+    25,
+    73,
+    34
+   ],
+   "flip": false,
+   "dx": -1,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "back",
+   "rect": [
+    74,
+    14,
+    76,
+    24
+   ],
+   "flip": false,
+   "dx": 2,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "front",
+   "rect": [
+    74,
+    25,
+    76,
+    38
+   ],
+   "flip": false,
+   "dx": -2,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "back",
+   "rect": [
+    77,
+    15,
+    79,
+    20
+   ],
+   "flip": false,
+   "dx": 4,
+   "dy": 0
+  },
+  {
+   "frame": 7,
+   "layer": "front",
+   "rect": [
+    77,
+    30,
+    79,
+    38
+   ],
+   "flip": false,
+   "dx": -4,
+   "dy": -1
   }
  ],
- "note": "腰 43行・脚の長さ 35・歩幅 5.2・脚の太さ 4"
+ "shadows": [
+  {
+   "frame": 0,
+   "rect": [
+    79,
+    14,
+    81,
+    39
+   ]
+  },
+  {
+   "frame": 1,
+   "rect": [
+    79,
+    18,
+    81,
+    35
+   ]
+  },
+  {
+   "frame": 2,
+   "rect": [
+    79,
+    22,
+    81,
+    30
+   ]
+  },
+  {
+   "frame": 3,
+   "rect": [
+    79,
+    18,
+    81,
+    35
+   ]
+  },
+  {
+   "frame": 4,
+   "rect": [
+    79,
+    14,
+    81,
+    39
+   ]
+  },
+  {
+   "frame": 5,
+   "rect": [
+    79,
+    18,
+    81,
+    35
+   ]
+  },
+  {
+   "frame": 6,
+   "rect": [
+    79,
+    22,
+    81,
+    30
+   ]
+  },
+  {
+   "frame": 7,
+   "rect": [
+    79,
+    18,
+    81,
+    35
+   ]
+  }
+ ],
+ "bob": [
+  {
+   "frame": 0,
+   "dy": 1
+  },
+  {
+   "frame": 4,
+   "dy": 1
+  }
+ ],
+ "hem": {
+  "rect": [
+   67,
+   0,
+   70,
+   41
+  ],
+  "seq": [
+   0,
+   -1,
+   -1,
+   0,
+   0,
+   1,
+   1,
+   0
+  ]
+ },
+ "note": "ひざ 71行・足の裏 79行・境 25列・帯 3"
 }
