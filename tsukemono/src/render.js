@@ -127,7 +127,7 @@ export class SceneRenderer {
     view.barrels.forEach((b, i) => {
       const s = SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
       if (!s) return;
-      const top = `slot${i}_${b.filled ? b.veg : 'empty'}`;
+      const top = `slot${i}_${b.filled ? (b.top ?? b.veg) : 'empty'}`;
       if (s.x != null) g.drawImage(getImage(top), s.x, s.y);
       if (s.x != null && b.film >= 0.15) { // 白い膜（濃さは膜の量）
         g.globalAlpha = Math.min(0.85, b.film);

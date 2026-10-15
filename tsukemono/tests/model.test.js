@@ -102,6 +102,6 @@ test('きゅうりは食感が高いが、早く柔らかくなる', () => {
 });
 
 test('未知の野菜・漬物は例外', () => {
-  assert.throws(() => simulate(H({ veg: 'nasu' })));
+  assert.throws(() => simulate(H({ veg: 'tomato' })));
   assert.throws(() => simulate(H({ pickle: 'x' })));
 });

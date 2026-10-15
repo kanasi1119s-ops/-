@@ -41,5 +41,5 @@ export const IMAGES = [
   'char_kid1', 'char_kid2', 'char_kid3',
   ...Object.entries(TRACE.poses).flatMap(([n, ps]) => ps.map((_, i) => `pose_${n}_${i}`)),
   'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
-  ...[0, 1, 2].flatMap((i) => ['empty', 'hakusai', 'kyuri'].map((v) => `slot${i}_${v}`)),
+  ...[0, 1, 2].flatMap((i) => ['empty', 'hakusai', 'kyuri', 'daikon', 'nozawana', 'nasu', 'takuan'].map((v) => `slot${i}_${v}`)),
 ];

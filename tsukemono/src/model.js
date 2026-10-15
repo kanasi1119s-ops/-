@@ -40,10 +40,11 @@ export function complexityTempFactor(tempC, cfg = CONFIG) {
 }
 
 /** 1日あたりの傷みの危険度。 */
-export function spoilHazard({ veg, saltPct, tempC }, cfg = CONFIG) {
+export function spoilHazard({ veg, saltPct, tempC, additives }, cfg = CONFIG) {
   const s = cfg.spoil;
+  const add = (additives ?? []).reduce((m, a) => m * (cfg.additives[a]?.spoil ?? 1), 1); // 唐辛子は傷みにくくする
   return (
-    s.basePerDay *
+    add * s.basePerDay *
     cfg.vegetables[veg].spoilMult *
     interpolate(s.saltTable, saltPct) *
     interpolate(s.tempTable, tempC)
@@ -82,7 +83,8 @@ export function simulate(p, cfg = CONFIG) {
   const ratio = progress / pickle.ripeAt;
   const stage = stageOf(ratio, pickle.window);
 
-  const acid = (100 * progress) / (progress + t.acidHalfProgress);
+  const half = pickle.acidHalfProgress ?? t.acidHalfProgress;
+  const acid = (100 * progress) / (progress + half);
 
   const absorbed = 1 - Math.exp(-days / t.saltAbsorbTauDays);
   const saltiness = (100 * p.saltPct * (pickle.saltUptake ?? 1) * absorbed) / t.saltFullPct;
@@ -95,7 +97,31 @@ export function simulate(p, cfg = CONFIG) {
   const maturity = Math.sqrt(Math.min(1, ratio));
   const complexity = pickle.complexityMax * maturity * complexityTempFactor(p.tempC, cfg);
 
-  return { progress, ratio, stage, stageLabel: STAGE_LABEL[stage], acid, saltiness, texture, complexity, spoilRisk, rate };
+  const base = { progress, ratio, stage, stageLabel: STAGE_LABEL[stage], acid, saltiness, texture, complexity, spoilRisk, rate };
+  return p.additives?.length ? withAdditives(base, p, maturity, absorbed, cfg) : base;
+}
+
+/** 漬物と調味の相性。'good' / 'bad' / 'neutral' */
+export function affinityOf(pickle, additive, cfg = CONFIG) {
+  return cfg.affinity[pickle]?.[additive] ?? 'neutral';
+}
+
+// 調味の効き目（漬かるほど効く）。相性が良ければそのまま、ふつうは半分、悪いと風味が濁る
+function withAdditives(t, p, maturity, absorbed, cfg) {
+  const c = (v) => Math.min(100, Math.max(0, v));
+  let { complexity, saltiness, acid } = t, harmony = 0;
+  for (const id of p.additives) {
+    const a = cfg.additives[id];
+    if (!a) continue;
+    const aff = affinityOf(p.pickle, id, cfg);
+    const f = aff === 'good' ? 1 : aff === 'bad' ? 0 : cfg.affinityNeutralFactor;
+    complexity += a.complexity * f * maturity;
+    if (aff === 'bad') complexity -= cfg.affinityBadPenalty * maturity;
+    harmony += aff === 'good' ? maturity : aff === 'bad' ? -maturity : 0; // 漬かるほど効く
+    saltiness += a.salt * absorbed;
+    acid += a.acid * maturity;
+  }
+  return { ...t, complexity: c(complexity), saltiness: c(saltiness), acid: c(acid), harmony };
 }
 
 /** 食べ頃（比=1）になるまでの日数。 */

@@ -8,6 +8,7 @@ const SEEDS = 30;
 
 // 作戦: 空いた樽に recipe(季節) を仕込み、食べ頃（stage が ripe）になった樽から売る
 const NUKA = { veg: 'kyuri', pickle: 'nukazuke', tempC: 20 };
+const TAKUAN = { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 20, additives: ['zarame', 'kombu'] };
 const STRATEGIES = {
   '浅漬け（きゅうり）を回す': () => ({ veg: 'kyuri', pickle: 'asazuke', saltPct: 3.5, tempC: 28 }),
   '浅漬け（白菜）を回す': () => ({ veg: 'hakusai', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }),
@@ -16,6 +17,14 @@ const STRATEGIES = {
   '白菜漬け2樽＋浅漬け1樽': (g, slot) => (slot === 2 ? { veg: 'kyuri', pickle: 'asazuke', saltPct: 3.5, tempC: 28 } : { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 }),
   'ぬか漬け（きゅうり）を回す': () => NUKA,
   '白菜漬け＋浅漬け＋ぬか漬け': (g, slot) => [{ veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 }, { veg: 'kyuri', pickle: 'asazuke', saltPct: 3.5, tempC: 28 }, NUKA][slot],
+  // 段階5: 種類と調味
+  '白菜漬け＋昆布・唐辛子（20℃）': () => ({ veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, additives: ['kombu', 'togarashi'] }),
+  '白菜漬け＋ざらめ・ゆず（相性△）': () => ({ veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, additives: ['zarame', 'yuzu'] }),
+  'たくあん3樽（5%・20℃、ざらめ・昆布）': () => TAKUAN,
+  'たくあん1＋白菜漬け1＋ぬか漬け1': (g, slot) => [TAKUAN, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, additives: ['kombu', 'togarashi'] }, { ...NUKA, additives: ['kombu', 'togarashi'] }][slot],
+  '旬で回す（夏なす浅漬け／冬野沢菜）': (g) => (g.season() === 'summer' ? { veg: 'nasu', pickle: 'asazuke', saltPct: 2.5, tempC: 20, additives: ['kombu'] }
+    : g.season() === 'winter' ? { veg: 'nozawana', pickle: 'nozawanazuke', saltPct: 3, tempC: 20, additives: ['togarashi'] }
+      : { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, additives: ['kombu', 'togarashi'] }),
 };
 
 function play(strategy, seed, careful) {

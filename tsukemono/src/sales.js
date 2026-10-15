@@ -27,7 +27,8 @@ export function satisfaction(taste, pickle, customer, season = 'spring', cfg = C
     wsum += w;
   }
   let sat = 100 - (sum / wsum) * s.satScale;
-  if (customer.likes === pickle) sat += s.likeBonus;
+  if ([].concat(customer.likes).includes(pickle)) sat += s.likeBonus;
+  sat += (taste.harmony ?? 0) * (cfg.affinitySatBonus ?? 0); // 調味の相性
   // 未熟は 0.5〜1.0 倍（過熟・酸っぱすぎは酸味のズレで下がる）
   const win = cfg.pickles[pickle].window;
   if (taste.ratio < win.lo) sat *= s.unripeMinFactor + (1 - s.unripeMinFactor) * (taste.ratio / win.lo);

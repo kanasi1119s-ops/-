@@ -1,7 +1,7 @@
 // 画面（DOM）とゲームをつなぐ。計算は model.js / sales.js / game.js、見た目は render.js / world.js。
 import { CONFIG } from './config.js';
-import { createGame } from './game.js';
-import { simulate, daysToRipe, ripeRangeDays, applyCare } from './model.js';
+import { createGame, bookTotal } from './game.js';
+import { simulate, daysToRipe, ripeRangeDays, applyCare, affinityOf } from './model.js';
 import { SceneRenderer } from './render.js';
 import { World } from './world.js';
 import { integerScale, loadImages } from './pixel.js';
@@ -36,7 +36,7 @@ const world = new World();
 
 const ui = {
   slot: 0,
-  recipe: { pickle: 'hakusaizuke', veg: 'hakusai', saltPct: 3, place: 'doma' },
+  recipe: { pickle: 'hakusaizuke', veg: 'hakusai', saltPct: 3, place: 'doma', additives: [] },
   practice: true, // 練習モードは既定でON（切ると自分で探る遊びになる）
   override: { manual: false, season: 'spring', time: 'morning', weather: 'sunny' },
   frozen: false,
@@ -56,7 +56,7 @@ function view() {
   return {
     ...v,
     barrels: game.barrels.map((b, i) => ({
-      filled: !!b, veg: b?.veg, film: b ? (C.pickles[b.pickle].usesNukaBed ? Math.max(b.film ?? 0, game.nuka.film) : (b.film ?? 0)) : 0, selected: i === ui.slot,
+      filled: !!b, veg: b?.veg, top: b ? C.pickles[b.pickle].top : undefined, film: b ? (C.pickles[b.pickle].usesNukaBed ? Math.max(b.film ?? 0, game.nuka.film) : (b.film ?? 0)) : 0, selected: i === ui.slot,
       label: b ? `${trim(game.barrelAge(b), 1)}日` : null,
     })),
     actors: world.actors,
@@ -149,6 +149,14 @@ const effRecipe = () => {
   return C.pickles[r.pickle].usesNukaBed ? { ...r, saltPct: game.nuka.salt } : r;
 };
 const brewCostOf = (r) => game.brewCost({ ...r, saltPct: C.pickles[r.pickle].usesNukaBed ? 0 : r.saltPct });
+/** 調味の相性は、その漬物にその調味を入れて売ったことがあるときだけ見せる。 */
+const affKnown = (pickle, id) => Object.keys(game.book).some((k) => { const [pk, , ...ad] = k.split(':'); return pk === pickle && ad.includes(id); });
+const affMark = (pickle, id) => {
+  if (!affKnown(pickle, id)) return '<em class="aff">?</em>';
+  const a = affinityOf(pickle, id, C);
+  return `<em class="aff ${a}">${a === 'good' ? '◎' : a === 'bad' ? '✕' : '△'}</em>`;
+};
+const affHint = (pickle, id) => (affKnown(pickle, id) ? '' : 'まだ相性がわからない');
 function renderBrew() {
   const r = effRecipe(), p = C.pickles[r.pickle];
   const vegs = Object.entries(C.vegetables);
@@ -165,8 +173,10 @@ function renderBrew() {
   }
   $('brew').innerHTML = `
     <div class="row"><label class="n">漬物</label><div class="seg">${Object.entries(C.pickles).map(([id, x]) => `<label><input type="radio" name="pickle" value="${id}" ${r.pickle === id ? 'checked' : ''}><span>${x.name}</span></label>`).join('')}</div></div>
-    <div class="row"><label class="n">野菜</label><div class="seg">${vegs.map(([id, x]) => `<label><input type="radio" name="veg" value="${id}" ${r.veg === id ? 'checked' : ''} ${p.vegetables.includes(id) ? '' : 'disabled'}><span>${x.name}${game.inSeason(id) ? '<em class="shun">旬</em>' : ''} ${yen(game.vegCost(id))}</span></label>`).join('')}</div></div>
+    <div class="row"><label class="n">野菜</label><div class="seg">${vegs.filter(([id]) => p.vegetables.includes(id)).map(([id, x]) => `<label><input type="radio" name="veg" value="${id}" ${r.veg === id ? 'checked' : ''}><span>${x.name}${game.inSeason(id) ? '<em class="shun">旬</em>' : ''} ${yen(game.vegCost(id))}</span></label>`).join('')}</div></div>
     <div class="row"><label class="n">塩分</label><input id="salt" type="range" min="1" max="15" step="0.5" value="${r.saltPct}" ${p.usesNukaBed ? 'disabled' : ''}><output id="saltV">${trim(r.saltPct, 1)}%</output></div>${p.usesNukaBed ? '<div class="hint">ぬか漬けの塩分はぬか床の塩分で決まる（下の「ぬか床」で塩を足せる）。</div>' : ''}
+    <div class="row"><label class="n">調味</label><div class="seg">${Object.entries(C.additives).map(([id, x]) => `<label title="${affHint(r.pickle, id)}"><input type="checkbox" name="additive" value="${id}" ${r.additives.includes(id) ? 'checked' : ''} ${!r.additives.includes(id) && r.additives.length >= C.additiveMax ? 'disabled' : ''}><span>${x.name}${affMark(r.pickle, id)} ${yen(x.cost)}</span></label>`).join('')}</div></div>
+    <div class="hint">調味は${C.additiveMax}つまで。漬物との相性は、売ってみるとわかる（◎合う・△ふつう・✕合わない）。</div>
     <div class="row"><label class="n">置き場所</label><div class="seg">${Object.entries(C.places).map(([id, x]) => { const own = game.places.includes(id); return `<label title="${own ? '' : '「店」の欄で買うと使える'}"><input type="radio" name="place" value="${id}" ${ui.recipe.place === id ? 'checked' : ''} ${own ? '' : 'disabled'}><span>${x.name} ${own ? `${game.placeTemp(id)}℃` : '未購入'}</span></label>`; }).join('')}</div></div>
     <div class="hint">${p.name}の目安：塩${p.saltHint}。外気温は今 ${game.ambientTemp()}℃（屋外は外気温+${C.places.outdoor.offset}℃、土間は${C.places.doma.offset}℃）。旬の野菜は安くて質が良い。</div>
     <div class="row" style="margin-top:10px"><button class="big" id="brewBtn" ${ui.busy || !free ? 'disabled' : ''}>樽${ui.slot + 1}に仕込む（${yen(cost)}）</button>
@@ -187,6 +197,14 @@ function renderShop() {
     <div class="row" style="margin-top:6px"><label class="n">常連</label><span>${game.regulars.length ? game.regulars.map((r) => `${C.customers.find((c) => c.id === r.type).name}（${r.visits}回）`).join('・') : '<span class="hint">まだいない</span>'}</span></div>
     <div class="hint">とても満足したお客はときどき常連になり、評判に関係なくまた来て少し多く払う。がっかりさせ続けると離れる。</div>
     <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">${buys.join('')}</div>`;
+}
+
+function renderBook() {
+  const entries = Object.entries(game.book).sort((a, b) => b[1].best - a[1].best);
+  const nameOf = (k) => { const [pk, veg, ...ad] = k.split(':'); return `${C.vegetables[veg].name}の${C.pickles[pk].name}${ad.length ? `＋${ad.map((a) => C.additives[a].name).join('・')}` : ''}`; };
+  $('book').innerHTML = `<div>見つけた組み合わせ <b>${entries.length}</b> / ${bookTotal(C)}</div>
+    <div class="hint">漬物・野菜・調味の組み合わせを売ると載る。数字はその組み合わせのお客の満足度（いちばん良かった回）。</div>
+    ${entries.length ? `<table>${entries.slice(0, 12).map(([k, e]) => `<tr><td>${nameOf(k)}</td><td class="r">${Math.round(e.best)}</td></tr>`).join('')}</table>${entries.length > 12 ? `<div class="hint">ほか${entries.length - 12}件</div>` : ''}` : ''}`;
 }
 
 function renderCustomers() {
@@ -221,7 +239,7 @@ function renderDebug() {
     <div class="hint">見た目の固定は遊びに影響しません（天気・季節の数値は実際の進行どおり）。</div>`;
 }
 
-function renderAll() { renderGuide(); renderHud(); renderBarrels(); renderNuka(); renderTaste(); renderBrew(); renderShop(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
+function renderAll() { renderGuide(); renderHud(); renderBarrels(); renderNuka(); renderTaste(); renderBrew(); renderShop(); renderBook(); renderCustomers(); renderLog(); setMessage(ui.message); save(); }
 
 // ------------------------------------------------------------ 操作
 const clampSlotRecipe = () => { // 漬物に合わない野菜なら入れ替える
@@ -288,9 +306,10 @@ async function sell(slot) {
   });
   ui.log.length = Math.min(ui.log.length, 8);
   ui.busy = false;
-  setMessage(res.spoiled ? '傷んだ樽を出してしまった…樽は空になった。'
+  const found = res.discovery?.isNew ? `図鑑に「${C.pickles[res.batch.pickle].name}」の新しい組み合わせが載った！ ` : '';
+  setMessage(found + (res.spoiled ? '傷んだ樽を出してしまった…樽は空になった。'
     : res.batch.closed ? `樽が空になった。この樽の収支：${res.batch.profit >= 0 ? '+' : ''}${yen(res.batch.profit)}`
-      : `売上 ${yen(res.revenue)}。`);
+      : `売上 ${yen(res.revenue)}。`));
   renderAll();
 }
 
@@ -331,11 +350,12 @@ document.addEventListener('input', (e) => {
   const t = e.target, r = ui.recipe;
   if (t.name === 'pickle') {
     r.pickle = t.value; clampSlotRecipe();
-    r.saltPct = r.pickle === 'asazuke' ? 2.5 : 3;
+    r.saltPct = { asazuke: 2.5, takuan: 5 }[r.pickle] ?? 3;
     renderBrew();
   } else if (t.name === 'veg') { r.veg = t.value; renderBrew(); }
   else if (t.id === 'salt') { r.saltPct = +t.value; $('saltV').textContent = `${trim(r.saltPct, 1)}%`; if (ui.practice) renderBrewKeepFocus('salt'); else $('brewBtn').textContent = `樽${ui.slot + 1}に仕込む（${yen(brewCostOf(effRecipe()))}）`; }
   else if (t.name === 'place') { r.place = t.value; renderBrew(); }
+  else if (t.name === 'additive') { r.additives = t.checked ? [...new Set([...r.additives, t.value])].slice(0, C.additiveMax) : r.additives.filter((a) => a !== t.value); renderBrew(); }
   else if (t.id === 'practice') { ui.practice = t.checked; renderBrew(); }
   else if (t.id === 'manual') { ui.override.manual = t.checked; }
   else if (t.id === 'dSeason') ui.override.season = t.value;

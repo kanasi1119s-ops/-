@@ -25,7 +25,7 @@ button.big{padding:8px 16px;font-size:15px}
 .barrel .btns{display:flex;gap:6px;margin-top:6px}
 .row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
 .row label.n{width:52px;color:var(--sub);font-size:12px}.row input[type=range]{flex:1;min-width:120px}.row output{width:56px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
-.seg{display:flex;gap:6px}.seg label{border:1px solid var(--line);border-radius:4px;padding:3px 10px;cursor:pointer;background:#fff}
+.seg{display:flex;flex-wrap:wrap;gap:6px}.seg label{white-space:nowrap}.seg label{border:1px solid var(--line);border-radius:4px;padding:3px 10px;cursor:pointer;background:#fff}
 .seg input{display:none}.seg input:checked+span{font-weight:700;color:var(--indigo2)}.seg label:has(input:checked){border-color:var(--indigo);background:#e8eef9}.seg label:has(input:disabled){opacity:.35;cursor:not-allowed}
 .hint{color:var(--sub);font-size:12px}
 .bar{display:grid;grid-template-columns:70px 1fr 78px;gap:6px;align-items:center;margin:3px 0;font-size:12px}
@@ -42,3 +42,4 @@ select{font:inherit;padding:2px 4px}
 .warn{color:var(--red);font-weight:600}
 .repbar{flex:1;height:10px;background:#eadfc6;border-radius:2px;overflow:hidden}.repbar i{display:block;height:100%;background:#c18c52}
 em.shun{font-style:normal;font-size:11px;color:#fff;background:#3f8a4a;border-radius:3px;padding:0 3px;margin-left:3px}
+em.aff{font-style:normal;margin-left:2px;color:#8a7a5a}em.aff.good{color:#3f8a4a}em.aff.bad{color:#c63d2f}

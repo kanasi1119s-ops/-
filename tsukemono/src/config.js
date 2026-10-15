@@ -65,6 +65,28 @@ export const CONFIG = {
       spoilMult: 1.3, // 【仮置き】
       cost: 300, // 【仮置き】
     },
+    // 段階5で追加
+    daikon: {
+      name: '大根',
+      fermentRate: 0.8, // 【仮置き】かたく、ゆっくり漬かる
+      crisp0: 90, crispTau: 80, // 【仮置き】長く漬けてもポリポリ（たくあん）
+      spoilMult: 0.8, // 【仮置き】
+      cost: 400, // 【仮置き】
+    },
+    nozawana: {
+      name: '野沢菜',
+      fermentRate: 1.0, // 【仮置き】
+      crisp0: 85, crispTau: 15, // 【仮置き】
+      spoilMult: 1.0, // 【仮置き】
+      cost: 450, // 【仮置き】
+    },
+    nasu: {
+      name: 'なす',
+      fermentRate: 1.1, // 【仮置き】
+      crisp0: 70, crispTau: 10, // 【仮置き】やわらかめ
+      spoilMult: 1.2, // 【仮置き】
+      cost: 350, // 【仮置き】
+    },
   },
 
   // ---------------------------------------------------------------
@@ -76,7 +98,7 @@ export const CONFIG = {
   pickles: {
     asazuke: {
       name: '浅漬け',
-      vegetables: ['hakusai', 'kyuri'],
+      vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon'],
       ripeAt: 1, // 【出典】半日でしんなり、数時間〜数日で完成（3%・20℃で1日を食べ頃の中心に）
       window: { lo: 0.5, hi: 3, sour: 5 }, // 【仮置き】日持ちは数日
       complexityMax: 35, // 【仮置き】浅漬けは風味が単純
@@ -88,14 +110,14 @@ export const CONFIG = {
       vegetables: ['hakusai'],
       ripeAt: 7, // 【出典】約1週間
       window: { lo: 0.85, hi: 1.3, sour: 1.8 }, // 【仮置き】6〜9日が食べ頃、約12.6日で酸っぱすぎ
-      complexityMax: 100, // 【仮置き】
+      complexityMax: 85, // 【仮置き】調味（昆布など）でさらに深くなる余地を残す
       price: 500, // 【仮置き】
       saltHint: '3%', // 【出典】
       film: true, // 白い膜が出る（浅漬けは冷蔵で短期なので対象外）
     },
     nukazuke: {
       name: 'ぬか漬け',
-      vegetables: ['kyuri', 'hakusai'],
+      vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon'],
       usesNukaBed: true, // 塩分はぬか床の塩分を使う（仕込みで塩分は選ばない）
       ripeAt: 0.8, // 【仮置き】きゅうりを20〜25℃の床で一晩〜1日
       window: { lo: 0.5, hi: 2, sour: 3.5 }, // 【仮置き】
@@ -105,7 +127,55 @@ export const CONFIG = {
       saltHint: 'ぬか床の塩分',
       film: true,
     },
+    // 段階5で追加
+    takuan: {
+      name: 'たくあん',
+      vegetables: ['daikon'],
+      ripeAt: 20, // 【仮置き】出典は「約1か月以上」。大根は漬かりが遅い（×0.8）ので、塩5%・室22℃で約36日
+      window: { lo: 0.9, hi: 4, sour: 6 }, // 【仮置き】長く置ける
+      acidHalfProgress: 20, // 【仮置き】長く漬けても酸っぱくなりにくい（食べ頃で酸味50）
+      complexityMax: 80, // 【仮置き】ざらめ・唐辛子・昆布で深まる
+      price: 900, // 【仮置き】長く寝かせるぶん高い
+      portions: 18, // 【仮置き】大きな樽で一度にたくさん漬ける（ふつうは6個）
+      saltHint: '4〜8%（長く置くなら多め）', // 【仮置き】出典は「干し日数と出荷時期で塩を変える」のみ
+      film: true,
+      top: 'takuan', // 樽の中身の絵（黄色）
+    },
+    nozawanazuke: {
+      name: '野沢菜漬',
+      vegetables: ['nozawana'],
+      ripeAt: 3, // 【仮置き】出典は「2〜3週間で食べられる」（寒い時期）。冬の屋外（8℃）で約10日、土間（3℃）で約1か月
+      window: { lo: 0.8, hi: 2, sour: 3 }, // 【仮置き】
+      complexityMax: 70, // 【仮置き】
+      price: 450, // 【仮置き】
+      saltHint: '2.5〜3%', // 【出典】野菜40kgに塩1〜1.3kg
+      film: true,
+    },
   },
+
+  // ---------------------------------------------------------------
+  // 調味（段階5）。仕込みで2つまで足せる。漬物との相性（good/bad、書いてなければふつう）で効き方が変わる。
+  //  complexity: 相性が良いとき足す風味の深さ / salt: 塩味の増減 / acid: 酸味の増減 / spoil: 傷みやすさの倍率
+  //  出典: たくあん＝塩・ぬか・ざらめ・唐辛子・昆布、ぬか床の旨味＝昆布・赤唐辛子・ゆず など。効き目の数値は【仮置き】
+  // ---------------------------------------------------------------
+  additives: {
+    kombu: { name: '昆布', cost: 60, complexity: 14, salt: 0, acid: 0, spoil: 1 },
+    togarashi: { name: '唐辛子', cost: 30, complexity: 8, salt: 0, acid: 0, spoil: 0.85 },
+    zarame: { name: 'ざらめ', cost: 40, complexity: 10, salt: -10, acid: -5, spoil: 1 },
+    yuzu: { name: 'ゆず', cost: 80, complexity: 10, salt: 0, acid: 6, spoil: 1 },
+  },
+  additiveMax: 2,
+  // 相性。good=効き目そのまま＋ほめられる、bad=風味が濁る（風味の深さ−badPenalty）、ふつう=効き目の半分
+  affinity: {
+    asazuke: { kombu: 'good', yuzu: 'good', zarame: 'bad' },
+    hakusaizuke: { kombu: 'good', togarashi: 'good', yuzu: 'good' },
+    nukazuke: { kombu: 'good', togarashi: 'good', zarame: 'bad', yuzu: 'bad' },
+    takuan: { zarame: 'good', togarashi: 'good', kombu: 'good', yuzu: 'bad' },
+    nozawanazuke: { togarashi: 'good', kombu: 'good', zarame: 'bad' },
+  },
+  affinityBadPenalty: 15, // 【仮置き】
+  affinitySatBonus: 6, // 【仮置き】相性の良い調味1つにつき、どのお客の満足度も+6（悪いと−6）
+  affinityNeutralFactor: 0.5, // 【仮置き】
 
   // ---------------------------------------------------------------
   // 経営（段階4）
@@ -115,6 +185,9 @@ export const CONFIG = {
     priceBySeason: {
       hakusai: { spring: 1.1, summer: 1.3, autumn: 0.9, winter: 0.7 },
       kyuri: { spring: 1.0, summer: 0.7, autumn: 1.1, winter: 1.4 },
+      daikon: { spring: 1.1, summer: 1.4, autumn: 0.9, winter: 0.7 }, // 冬が旬（たくあんの仕込み時期）
+      nozawana: { spring: 1.2, summer: 1.5, autumn: 0.9, winter: 0.7 }, // 晩秋〜冬
+      nasu: { spring: 1.2, summer: 0.7, autumn: 0.9, winter: 1.5 }, // 夏〜秋
     },
     // 品質（食感の初期値に掛ける）＝ 2 − 価格の倍率 を、この範囲に収める 【仮置き】
     qualityRange: [0.85, 1.15],
@@ -233,31 +306,31 @@ export const CONFIG = {
   customers: [
     {
       id: 'light', name: 'あっさり好き', hint: '浅漬けが好き',
-      likes: 'asazuke',
+      likes: ['asazuke'],
       target: { acid: 15, salt: 30, texture: 80, complexity: 30 },
       weights: { acid: 1, salt: 1.5, texture: 1, complexity: 0.3 },
     },
     {
-      id: 'salty', name: 'しょっぱめ好き', hint: '酒の肴に。よく漬かった白菜漬け',
-      likes: 'hakusaizuke',
+      id: 'salty', name: 'しょっぱめ好き', hint: '酒の肴に。よく漬かった白菜漬けやたくあん',
+      likes: ['hakusaizuke', 'takuan'],
       target: { acid: 40, salt: 75, texture: 55, complexity: 50 },
       weights: { acid: 0.8, salt: 1.6, texture: 0.6, complexity: 0.6 },
     },
     {
-      id: 'sour', name: '酸っぱい好き', hint: 'よく漬かって酸味の出たもの',
-      likes: 'hakusaizuke',
+      id: 'sour', name: '酸っぱい好き', hint: 'よく漬かって酸味の出たもの（ぬか漬けも）',
+      likes: ['hakusaizuke', 'nukazuke'],
       target: { acid: 70, salt: 45, texture: 45, complexity: 60 },
       weights: { acid: 1.8, salt: 0.8, texture: 0.5, complexity: 0.6 },
     },
     {
-      id: 'crunchy', name: '食感重視', hint: 'シャキシャキが命',
-      likes: 'asazuke',
+      id: 'crunchy', name: '食感重視', hint: 'シャキシャキ・ポリポリが命',
+      likes: ['asazuke', 'takuan', 'nozawanazuke'],
       target: { acid: 12, salt: 40, texture: 95, complexity: 20 },
       weights: { acid: 0.7, salt: 0.8, texture: 2.0, complexity: 0.2 },
     },
     {
-      id: 'gourmet', name: '通', hint: '風味の深さにうるさい',
-      likes: 'hakusaizuke',
+      id: 'gourmet', name: '通', hint: '風味の深さにうるさい。調味の相性も見抜く',
+      likes: ['hakusaizuke', 'takuan'],
       target: { acid: 50, salt: 50, texture: 55, complexity: 90 },
       weights: { acid: 0.8, salt: 0.8, texture: 0.5, complexity: 2.0 },
     },
