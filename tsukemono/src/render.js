@@ -182,7 +182,7 @@ export class SceneRenderer {
     const top = body.kind === 'poses' ? this.drawPose(a, body, f, flip, outfit) : this.drawShift(a, body, f, flip, outfit);
     // 雨・雪の日の傘
     let headTop = top.y;
-    if (a.kind === 'customer' && theme.weather !== 'sunny') {
+    if (a.kind === 'customer' && theme.weather !== 'sunny' && !a.look.ownUmbrella) {
       const u = getSprite('umbrella', { pal: { u: a.look.umbrella, U: mix(a.look.umbrella, '#000000', 0.3) } });
       const ux = Math.round(top.cx - u.width / 2), uy = top.y - 6;
       this.ctx.drawImage(u, ux, uy);

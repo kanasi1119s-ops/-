@@ -1,7 +1,7 @@
 // 登場人物（参考画像からトレースした絵）と、動かすための目印。
 //
 // 種類は2つ:
-//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子・麦わら帽子の女の子・セーラー服の女の子・学生服の男の子・ブレザーの女の子・紫の服のお兄さん・スーツのおじいさん・サングラスのおじさん・バレー部の女の子・サッカー部の男の子・レースクイーン風のお姉さん・空手着の男の子・お侍さん・水着の女の子）
+//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子・麦わら帽子の女の子・セーラー服の女の子・学生服の男の子・ブレザーの女の子・紫の服のお兄さん・スーツのおじいさん・サングラスのおじさん・バレー部の女の子・サッカー部の男の子・レースクイーン風のお姉さん・空手着の男の子・お侍さん・水着の女の子・日傘の女の子）
 //   shift … 1枚の絵を頭・胴・左右の脚に分けて、1〜2ドットずらしてコマを作る（通りがかりの子ども）
 //     hipY: ここから下が脚 / legX: 左脚と右脚の境目 / headY: ここから上が頭 / hand: かごを持つ位置
 // faces: 絵の向き。'right' / 'left' / 'front'。進む向きに合わせて左右反転する。
@@ -29,6 +29,7 @@ export const BODIES = {
   karate: { kind: 'poses', faces: 'right', poses: posesOf('karate') },
   samurai: { kind: 'poses', faces: 'right', poses: posesOf('samurai') },
   beach: { kind: 'poses', faces: 'right', poses: posesOf('beach') },
+  parasol: { kind: 'poses', faces: 'right', poses: posesOf('parasol') },
   kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 38, legX: 9, headY: 16, hand: [-4, 22] },
   kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 38, legX: 10, headY: 15, hand: [-4, 22] },
   kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 38, legX: 11, headY: 15, hand: [-4, 22] },
@@ -55,7 +56,8 @@ export const CUSTOMER_LOOKS = {
 };
 export const KEEPER_LOOK = { body: 'keeper' };
 
-// 通りがかりの人（デモ用・遊びには影響しない）。seasons があれば、その季節にだけ来る
+// 通りがかりの人（デモ用・遊びには影響しない）。seasons があれば、その季節にだけ来る。
+// ownUmbrella: 自分の傘を持っている絵なので、雨・雪の日に傘を重ねない
 export const PASSERS = [
   { body: 'woman', umbrella: '#c63d2f' }, { body: 'granny', umbrella: '#2d4b7c' }, { body: 'oldman', umbrella: '#5a5a66' },
   { body: 'girl', umbrella: '#e0b43c' }, { body: 'student', umbrella: '#2d4b7c' }, { body: 'gakuran', umbrella: '#5a5a66' }, { body: 'blazer', umbrella: '#c63d2f' }, { body: 'yankee', umbrella: '#8a4b9a' },
@@ -63,6 +65,7 @@ export const PASSERS = [
   { body: 'racer', umbrella: '#c63d2f' }, { body: 'karate', umbrella: '#2d4b7c' },
   { body: 'samurai', umbrella: '#c18c52' },
   { body: 'beach', umbrella: '#46689f', seasons: ['summer'] }, // 水着なので夏だけ
+  { body: 'parasol', ownUmbrella: true, seasons: ['spring', 'summer'] }, // 日傘を持っているので傘は重ねない
   { body: 'kid1', umbrella: '#e0b43c' }, { body: 'kid2', umbrella: '#c63d2f' }, { body: 'kid3', umbrella: '#3f8a4a' },
 ];
 export function randomLook(rand = Math.random, season = null) {
