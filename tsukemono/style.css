@@ -8,7 +8,7 @@
   --washi-2: #e3d5b2;    /* 和紙の陰 */
   --washi-3: #d6c49a;    /* 和紙の罫・枠の内側 */
   --sumi: #2b2420;       /* 墨 */
-  --sumi-dim: #6e5f4f;   /* 薄墨 */
+  --sumi-dim: #54473a;   /* 薄墨 */
   --shu: #b5381f;        /* 朱 */
   --shu-hi: #cc4a2e;
   --yamabuki: #d29a2c;   /* 山吹（お金・選択中） */
@@ -26,7 +26,7 @@
 [hidden] { display: none !important }
 html, body { height: 100% }
 body {
-  margin: 0; color: var(--sumi); font: 15px/1.6 var(--mincho);
+  margin: 0; color: var(--sumi); font: 600 15px/1.6 var(--mincho);
   background-color: var(--kon);
   /* 青海波 */
   background-image:
@@ -71,7 +71,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 #screen { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer }
 .chips, .floats { position: absolute; inset: 0; pointer-events: none; line-height: 1.2 }
 /* 樽の札（木札） */
-.chip { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; font: 700 clamp(10px, 2.5cqw, 16px)/1.2 var(--mincho);
+.chip { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; font: 900 clamp(12px, 2.8cqw, 18px)/1.2 var(--mincho);
   background: var(--ki); color: var(--sumi); border: 2px solid var(--kogecha); padding: 1px 5px; white-space: nowrap; box-shadow: 2px 2px 0 #0008 }
 .chip.sel { background: var(--ki-hi); outline: 2px solid var(--yamabuki); transform: translate(-50%, -62%); z-index: 1 }
 .chip.ripe { background: var(--wakatake); color: var(--washi) }
@@ -107,7 +107,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 /* 木札 */
 .cmd { position: relative; background: linear-gradient(var(--ki-hi), var(--ki) 30%, var(--ki) 80%, var(--ki-lo)); color: var(--sumi);
   border: 2px solid var(--kogecha); box-shadow: 3px 3px 0 var(--shadow); padding: 8px 4px 7px; font: 400 19px/1.1 var(--brush) }
-.cmd small { display: block; font: 400 11px/1.3 var(--mincho); color: #4a3424; margin-top: 3px }
+.cmd small { display: block; font: 700 12px/1.3 var(--mincho); color: #2e1e12; margin-top: 3px }
 .cmd:hover:not(:disabled) { filter: brightness(1.08) }
 .cmd:active:not(:disabled) { translate: 2px 2px; box-shadow: 1px 1px 0 var(--shadow) }
 .cmd:disabled { filter: grayscale(.6) brightness(.75); cursor: default }
@@ -118,7 +118,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 /* ---- 窓 ---- */
 .modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #0b1222b8;
   padding: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)) }
-.win { width: min(720px, 100%); max-height: 100%; display: grid; grid-template-rows: auto 1fr; animation: pop .12s steps(3);
+.win { width: min(720px, 100%); max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); display: grid; grid-template-rows: auto 1fr; animation: pop .12s steps(3);
   border-width: 4px; box-shadow: inset 0 0 0 2px var(--washi), inset 0 0 0 3px var(--ki-lo), 6px 6px 0 var(--shadow) }
 @keyframes pop { from { scale: .95 } }
 .win-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 2px solid var(--washi-3) }
@@ -129,7 +129,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 .sec { display: grid; gap: 6px; min-width: 0 }
 .sec > h3 { margin: 0; font: 400 16px/1.3 var(--brush); color: var(--sumi); letter-spacing: .12em; border-bottom: 1px solid var(--washi-3); padding-bottom: 2px }
 .sec > h3 .hint { font: 400 12px var(--mincho); letter-spacing: 0 }
-.hint { color: var(--sumi-dim); font-size: 13px }
+.hint { color: var(--sumi-dim); font-size: 14px }
 .warn { color: var(--shu); font-weight: 700 }
 .pos { color: var(--wakatake); font-weight: 700 } .neg { color: var(--shu); font-weight: 700 }
 .ukon { color: var(--shu); font-weight: 700 }
@@ -138,7 +138,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px }
 .tile { position: relative; text-align: left; background: #fbf5e4; border: 2px solid var(--washi-3); padding: 6px 8px; line-height: 1.3; min-width: 0; color: var(--sumi) }
 .tile b { display: block; font: 400 17px/1.3 var(--brush) }
-.tile span { display: block; font-size: 12px; color: var(--sumi-dim) }
+.tile span { display: block; font-size: 13px; color: var(--sumi-dim) }
 .tile.on { border-color: var(--shu); background: #fff; box-shadow: inset 0 0 0 1px var(--shu), 2px 2px 0 var(--washi-3) }
 .tile.on b { color: var(--shu) }
 .tile:disabled { opacity: .45; cursor: default }
@@ -163,7 +163,7 @@ select { font: inherit; background: #fbf5e4; color: var(--sumi); border: 1px sol
 
 /* 味の棒 */
 .bars { display: grid; gap: 4px }
-.bar { display: grid; grid-template-columns: 6.5em 1fr 6.5em; gap: 8px; align-items: center; font-size: 13px }
+.bar { display: grid; grid-template-columns: 6.5em 1fr 6.5em; gap: 8px; align-items: center; font-size: 14px }
 .bar i { height: 10px; background: #fbf5e4; border: 1px solid var(--sumi-dim); position: relative }
 .bar i s { position: absolute; inset: 0 auto 0 0; text-decoration: none }
 .bar span:last-child { color: var(--sumi-dim) }
@@ -177,7 +177,7 @@ select { font: inherit; background: #fbf5e4; color: var(--sumi); border: 1px sol
 .tabs button { background: #fbf5e4; border: 2px solid var(--washi-3); padding: 4px 12px; font: 400 16px/1.2 var(--brush) }
 .tabs button.on { border-color: var(--shu); color: var(--shu) }
 .tbl { overflow-x: auto }
-table { border-collapse: collapse; width: 100%; font-size: 13px }
+table { border-collapse: collapse; width: 100%; font-size: 14px }
 th, td { text-align: left; padding: 4px 6px; border-bottom: 1px dotted var(--sumi-dim); vertical-align: top }
 th { color: var(--sumi-dim); font-weight: 400 }
 td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
@@ -201,3 +201,7 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
 }
 @media (prefers-reduced-motion: reduce) { .float, .win, .msgbox .caret { animation: none } }
 .title-screen .btn.ghost { color: var(--washi); border-color: var(--washi); background: #1a274099 }
+.say { position: absolute; transform: translate(-50%, -100%); pointer-events: none; max-width: 48cqw; width: max-content;
+  font: 700 clamp(13px, 3.1cqw, 22px)/1.35 var(--mincho); color: var(--sumi); background: #fffaf0; border: 2px solid var(--sumi);
+  padding: .25em .55em; box-shadow: 3px 3px 0 #0007; text-align: center; z-index: 1 }
+.say::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -8px; translate: -50% 0; border: 7px solid transparent; border-top-color: var(--sumi); border-bottom: 0 }

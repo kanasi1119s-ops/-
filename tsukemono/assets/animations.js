@@ -34,6 +34,8 @@
 // 魔女:       0歩く(ほうき) 1歩く(ほうき) 2話す 3笑う 4歩く 5ほうきで指す 6財布を出す(ほうき) 7受け取る
 //            ほうきは 歩く・見る・財布 で持ち、受け取る・話す では置いている
 // 悪魔:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
+import { WALK as WALK_FRAMES } from './walk.js';
+
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
@@ -297,6 +299,14 @@ export const PERSON_ANIMS = {
   talk: { loop: true, frames: [fr(240, { head: [0, -1] }), fr(240)] },
   talk_basket: { loop: true, frames: [fr(240, { head: [0, -1], props: BASKET }), fr(240, { props: BASKET })] },
 };
+
+// 歩き: 脚を描き直した4コマ（tools/walk_frames.py）。0 右足が前 → 1 そろう → 2 左足が前 → 3 そろう。そろうコマで1ドット浮く
+const walkCycle = (ms) => ({ loop: true, frames: [0, 1, 2, 3].map((k) => ({ ms, walk: k, dy: k % 2 ? -1 : 0, props: [] })) });
+for (const name of Object.keys(WALK_FRAMES)) {
+  if (!POSE_ANIMS[name]) continue;
+  POSE_ANIMS[name].walk = walkCycle(name.startsWith("granny") ? 160 : 130);
+  POSE_ANIMS[name].walk_basket = walkCycle(name.startsWith("granny") ? 160 : 130);
+}
 
 // 吊るし物の揺れ（下ほど大きく、左右に1ドット）。各区切りは SCENE.hanging の ms で別々の周期になる
 export const SWAY_SEQ = [0, 1, 0, -1];

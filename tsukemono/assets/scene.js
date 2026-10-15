@@ -1,6 +1,7 @@
 // 店先の配置（384×216 のドット座標）。絵は参考画像をトレースしたもの（assets/img/、tools/trace.py）。
 // 背景は人のいない絵、人物は人のいる絵から切り抜いたもの。
 import { TRACE } from './trace.js';
+import { WALK } from './walk.js';
 
 const [W, H] = TRACE.size;
 
@@ -40,6 +41,7 @@ export const IMAGES = [
   'bg', 'basket', 'cloud_0', 'cloud_1',
   'char_kid1', 'char_kid2', 'char_kid3',
   ...Object.entries(TRACE.poses).flatMap(([n, ps]) => ps.map((_, i) => `pose_${n}_${i}`)),
+  ...Object.values(WALK).flatMap((fs) => fs.map((f) => f.img)), // 描き直した歩くコマ（tools/walk_frames.py）
   'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
   ...[0, 1, 2].flatMap((i) => ['empty', 'hakusai', 'kyuri', 'daikon', 'nozawana', 'nasu', 'takuan'].map((v) => `slot${i}_${v}`)),
 ];

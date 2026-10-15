@@ -3,6 +3,7 @@
 import { SCENE } from '../assets/scene.js';
 import { PERSON_ANIMS, POSE_ANIMS, SWAY_SEQ } from '../assets/animations.js';
 import { BODIES, RECOLORS } from '../assets/characters.js';
+import { WALK } from '../assets/walk.js';
 import { resolveTheme, mix, hex } from '../assets/themes.js';
 import { makeCanvas, getSprite, getText, getImage, recolor, rgbToHsl, hslToRgb } from './pixel.js';
 
@@ -159,7 +160,7 @@ export class SceneRenderer {
     g.fillRect(0, 0, SCENE.w, SCENE.h);
     g.restore();
     if (theme.lampOn) this.glow(SCENE.doorLight.x, SCENE.doorLight.y, theme.time === 'night' ? 1 : 0.6);
-    for (const a of actors) if (a.bubble) this.bubble(a);
+    if (this.drawBubbles !== false) for (const a of actors) if (a.bubble) this.bubble(a); // ゲーム画面では吹き出しを文字の読みやすいDOMで重ねる（main.js）
   }
 
   label(text, cx, y, selected) {
@@ -217,7 +218,7 @@ export class SceneRenderer {
   }
 
   drawPose(a, body, f, flip, outfit) {
-    const pose = body.poses[f.pose];
+    const pose = f.walk != null ? WALK[a.look.body][f.walk] : body.poses[f.pose]; // 歩くコマは描き直した絵
     const img = this.personImage(pose.img, a.look, outfit, flip);
     const ax = flip ? pose.w - 1 - pose.ax : pose.ax;
     const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + f.dy);

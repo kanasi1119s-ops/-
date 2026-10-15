@@ -1,3 +1,4 @@
+import { WALK } from '../assets/walk.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -18,7 +19,12 @@ test('人物の目印が絵の中に収まり、来る人全員に絵がある',
   for (const [k, b] of Object.entries(BODIES)) {
     if (b.kind === 'poses') {
       for (const p of b.poses) assert.deepEqual(pngSize(p.img), [p.w, p.h], p.img);
-      for (const a of Object.values(POSE_ANIMS[k])) for (const f of a.frames) assert.ok(b.poses[f.pose], `${k} pose ${f.pose}`);
+      for (const a of Object.values(POSE_ANIMS[k])) {
+        for (const f of a.frames) {
+          if (f.walk != null) { const w = WALK[k][f.walk]; assert.deepEqual(pngSize(w.img), [w.w, w.h], w.img); } // 描き直した歩くコマ
+          else assert.ok(b.poses[f.pose], `${k} pose ${f.pose}`);
+        }
+      }
       continue;
     }
     const [w, h] = pngSize(b.img);

@@ -54,6 +54,7 @@ function saveSettings() { store.set(SET_KEY, settings); }
 const canvas = $('screen');
 await loadImages(IMAGES);
 const renderer = new SceneRenderer(canvas);
+renderer.drawBubbles = false; // 吹き出しは下の renderBubbles で、読みやすい文字で重ねる
 const world = new World();
 world.speed = settings.speed;
 
@@ -681,11 +682,31 @@ function fit() {
 window.addEventListener('resize', fit);
 void integerScale;
 
+// 吹き出し（お客のひとこと）。店先の画面の上に、大きな文字で重ねる
+const bubbleEls = new Map();
+function renderBubbles() {
+  const layer = $('bubbles');
+  const live = new Set();
+  for (const a of world.actors) {
+    if (!a.bubble) continue;
+    live.add(a);
+    let el = bubbleEls.get(a);
+    if (!el) { el = document.createElement('div'); el.className = 'say'; layer.appendChild(el); bubbleEls.set(a, el); }
+    if (el.textContent !== a.bubble) el.textContent = a.bubble;
+    const x = Math.min(SCENE.w - 50, Math.max(50, a.x));
+    el.style.left = `${(x / SCENE.w) * 100}%`;
+    el.style.top = `${(((a.headTop ?? a.y - 60) - 3) / SCENE.h) * 100}%`;
+    el.style.setProperty('--tail', `${50 + ((a.x - x) / 2)}%`);
+  }
+  for (const [a, el] of bubbleEls) if (!live.has(a)) { el.remove(); bubbleEls.delete(a); }
+}
+
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - last); last = now;
   world.update(dt);
   renderer.draw(view(), now);
+  renderBubbles();
   requestAnimationFrame(frame);
 }
 // 店を開いていると、ときどき通りがかりの人が買っていく（見た目だけ。ゲームの状態は変えない）
