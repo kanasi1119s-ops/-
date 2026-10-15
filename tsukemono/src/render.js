@@ -195,6 +195,11 @@ export class SceneRenderer {
     // 絵の向きと進む向きが逆なら左右反転
     const flip = body.faces === 'right' ? (a.dir ?? -1) < 0 : body.faces === 'left' ? (a.dir ?? -1) > 0 : false;
     const outfit = a.kind === 'customer' ? theme.outfit : null;
+    // 足もとの影（歩くコマは絵の中に影がある）
+    if (f.walk == null) {
+      const pw = body.kind === 'poses' ? body.poses[f.pose].w : getImage(body.img).width;
+      this.groundShadow(a.x, a.y, Math.max(8, Math.round(pw * 0.62)));
+    }
     const top = body.kind === 'poses' ? this.drawPose(a, body, f, flip, outfit) : this.drawShift(a, body, f, flip, outfit);
     // 雨・雪の日の傘
     let headTop = top.y;
@@ -217,11 +222,21 @@ export class SceneRenderer {
     }
   }
 
+  /** 足もとの影（半透明のだ円。エディタで描いた歩きの影と同じ色・濃さ）。 */
+  groundShadow(cx, footY, w) {
+    const g = this.ctx;
+    g.fillStyle = 'rgba(30,22,16,0.32)';
+    const x0 = Math.round(cx - w / 2);
+    g.fillRect(x0 + 1, footY - 1, w - 2, 1);
+    g.fillRect(x0, footY, w, 1);
+    g.fillRect(x0 + 2, footY + 1, w - 4, 1);
+  }
+
   drawPose(a, body, f, flip, outfit) {
     const pose = f.walk != null ? WALK[a.look.body][f.walk] : body.poses[f.pose]; // 歩くコマは描き直した絵
     const img = this.personImage(pose.img, a.look, outfit, flip);
     const ax = flip ? pose.w - 1 - pose.ax : pose.ax;
-    const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + f.dy);
+    const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + (pose.below ?? 0) + f.dy); // below: 足の裏より下にある影の行
     this.ctx.drawImage(img, X, Y);
     this.drawProps(f.props, body, X, Y, pose.w, flip);
     return { y: Y, cx: X + pose.w / 2 };
