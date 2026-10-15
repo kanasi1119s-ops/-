@@ -221,9 +221,9 @@ Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
 # ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
-POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)]}
-WARM_SHADOW = {'boy'}
-POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56}
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)]}
+WARM_SHADOW = {'boy', 'girl'}
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58}
 
 
 def extract_poses(name):
@@ -278,7 +278,7 @@ def extract_poses(name):
         ys, xs = np.nonzero(alpha)
         cs, alpha = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1], alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         img = Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8))
-        q = np.asarray(img.quantize(colors=24, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+        q = np.asarray(img.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
         rgba = np.dstack([q, alpha * 255]).astype(np.uint8)
         Image.fromarray(rgba).save(os.path.join(OUT, f'pose_{name}_{i}.png'))
         feet = np.nonzero(alpha[-4:].any(0))[0]  # 足元の中心
