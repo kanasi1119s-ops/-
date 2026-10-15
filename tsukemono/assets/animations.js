@@ -12,6 +12,7 @@
 // おじいさん:   0歩く 1歩く 2話す 3話す(袋) 4歩く 5指さす 6財布を出す 7受け取る
 // 男の子:     0歩く 1歩く 2手を挙げる 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 // 女の子:     0歩く 1歩く 2話す 3笑う(かご) 4歩く 5指さす 6財布を出す 7受け取る
+// セーラー服:  0歩く 1歩く 2話す 3笑う(かご) 4歩く 5指さす 6財布を出す 7受け取る
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
@@ -74,6 +75,15 @@ export const POSE_ANIMS = {
   girl: {
     walk: { loop: true, frames: [p(160, 0), p(160, 1)] },
     walk_basket: { loop: true, frames: [p(160, 0), p(160, 1)] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 3)] },
+    buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
+    talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
+    talk_basket: { loop: true, frames: [p(300, 2), p(300, 3)] },
+  },
+  student: {
+    walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
+    walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
     idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },

@@ -221,9 +221,9 @@ Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
 # ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
-POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)]}
-WARM_SHADOW = {'boy', 'girl'}
-POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58}
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)]}
+WARM_SHADOW = {'boy', 'girl', 'student'}
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64}
 
 
 def extract_poses(name):
@@ -236,7 +236,7 @@ def extract_poses(name):
     fg = ((np.abs(a - bgc).sum(-1) > 40) & ~grid).astype(np.uint8)
     shadow = (b >= r - 10) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 70) & (mx < 205)
     if name in WARM_SHADOW:  # 影が茶色がかった灰色の絵
-        shadow |= ((mx - mn) < 20) & (mx > 55) & (mx < 205)
+        shadow |= ((mx - mn) < 20) & (mx > 55) & (mx < 172)
     for x0e, y0e, x1e, y1e in POSE_ERASE.get(name, []):
         fg[y0e:y1e, x0e:x1e] = 0
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
