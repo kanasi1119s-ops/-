@@ -92,7 +92,7 @@ function renderBarrels() {
       <div class="m">塩${trim(b.saltPct, 1)}% ・ ${b.tempC}℃ ・ ${trim(game.barrelAge(b))}日経過 ・ 残り${b.portions}個</div>
       <div class="btns">
         <button class="sub" data-act="taste" data-slot="${i}" ${b.tastedTick === game.tick ? 'disabled' : ''}>${b.tastedTick === game.tick ? '味見済み' : '味見'}</button>
-        <button data-act="sell" data-slot="${i}" ${ui.busy || !game.isOpen() ? 'disabled' : ''} title="${game.isOpen() ? '' : '夜は閉店'}">販売する</button>
+        <button data-act="sell" data-slot="${i}" ${ui.busy || !game.isOpen() || game.lastSaleTick === game.tick ? 'disabled' : ''} title="${!game.isOpen() ? '夜は閉店' : game.lastSaleTick === game.tick ? 'この時間帯はもう売りました' : ''}">販売する</button>
         <button class="danger" data-act="discard" data-slot="${i}" ${ui.busy ? 'disabled' : ''}>捨てる</button>
       </div></div>`;
   }).join('');

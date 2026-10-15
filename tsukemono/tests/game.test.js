@@ -100,7 +100,11 @@ test('樽の収支: 空になったとき利益(売上-仕入れ)が確定する
   g.brew(0, recipe);
   g.advance(28);
   let last;
-  for (let i = 0; i < 8 && g.barrels[0]; i++) { g.weather = 'sunny'; last = g.sell(0); }
+  for (let i = 0; i < 40 && g.barrels[0]; i++) {
+    do g.advance(1); while (!g.isOpen());
+    g.weather = 'sunny';
+    last = g.sell(0);
+  }
   assert.ok(last.batch.closed);
   assert.equal(last.batch.profit, last.batch.earned - last.batch.cost);
 });
@@ -163,4 +167,15 @@ test('壊れたセーブは読まない', () => {
     assert.equal(g.restore(bad), false);
   }
   assert.deepEqual(g.snapshot(), before);
+});
+
+test('販売は1つの時間帯に1回まで（同じ時間に何度も客は来ない）', () => {
+  const g = createGame({ seed: 4 });
+  g.brew(0, recipe);
+  g.advance(29); // 昼
+  assert.equal(g.sell(0).ok, true);
+  const again = g.sell(0);
+  assert.equal(again.ok, false);
+  g.advance(1); // 夕
+  if (g.barrels[0]) assert.equal(g.sell(0).ok, true);
 });

@@ -32,6 +32,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     barrels: Array.from({ length: BARREL_COUNT }, () => null),
     weather: 'sunny',
     stats: { revenue: 0, cost: 0, sold: 0, visits: 0, spoiled: 0 },
+    lastSaleTick: -1, // 販売は1つの時間帯（区切り）に1回まで
   };
 
   const pickWeather = () => {
@@ -104,6 +105,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const b = g.barrels[slot];
     if (!b) return { ok: false, error: '樽が空です' };
     if (!g.isOpen()) return { ok: false, error: '夜は閉店です' };
+    if (g.lastSaleTick === g.tick) return { ok: false, error: 'この時間帯はもう店を開けました。時間を進めてください' };
+    g.lastSaleTick = g.tick;
     const taste = g.tasteOf(slot);
     const season = g.season();
     const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()];
@@ -145,7 +148,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -160,6 +163,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.barrels = s.barrels.map((b) => (b ? { ...b } : null));
     g.weather = s.weather;
     g.stats = { ...g.stats, ...s.stats };
+    g.lastSaleTick = Number.isInteger(s.lastSaleTick) ? s.lastSaleTick : -1;
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };
