@@ -221,7 +221,7 @@ Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
 # ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
-POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)], 'blazer': [(1290, 552, 1376, 594)], 'yankee': [(960, 412, 1024, 441)], 'suit': [(1290, 552, 1376, 594)], 'shades': [(960, 412, 1024, 441)], 'volley': [(960, 412, 1024, 441)], 'soccer': [(960, 412, 1024, 441)], 'racer': [(1290, 552, 1376, 594)], 'karate': [(1290, 552, 1376, 594)], 'samurai': [(1290, 552, 1376, 594)], 'beach': [(1290, 552, 1376, 594)], 'parasol': [(1290, 552, 1376, 594)]}
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)], 'blazer': [(1290, 552, 1376, 594)], 'yankee': [(960, 412, 1024, 441)], 'suit': [(1290, 552, 1376, 594)], 'shades': [(960, 412, 1024, 441)], 'volley': [(960, 412, 1024, 441)], 'soccer': [(960, 412, 1024, 441)], 'racer': [(1290, 552, 1376, 594)], 'karate': [(1290, 552, 1376, 594)], 'samurai': [(1290, 552, 1376, 594)], 'beach': [(1290, 552, 1376, 594)], 'parasol': [(1290, 552, 1376, 594)], 'angler': [(960, 412, 1024, 441)]}
 # 影が茶色がかった灰色の絵: 影とみなす明るさの範囲（黒い靴・白いソックスの陰を消さないように）
 WARM_SHADOW = {'boy': (55, 172), 'girl': (55, 172), 'student': (55, 172), 'gakuran': (55, 172), 'blazer': (95, 150),
                'yankee': (95, 178, 12), 'suit': (70, 172), 'shades': (95, 178, 12), 'volley': (95, 178, 12), 'soccer': (95, 178, 12), 'racer': (95, 178, 12), 'karate': (95, 178, 12), 'samurai': (95, 178, 12), 'beach': (95, 178, 12), 'parasol': (95, 178, 12)}  # 3つめ: 色味の幅の上限（既定20）
@@ -233,7 +233,7 @@ SHADOW_BLUE = {'yankee': 12, 'shades': 12, 'volley': 12, 'soccer': 12, 'racer': 
 # 内側の穴でも、背景との色の差がこれ以下なら埋めない（脚のあいだのすき間など）
 HOLE_NOT_BG = {'beach': 18}
 CLOSE_HOLES = {'blazer': 9, 'yankee': 9, 'shades': 9, 'volley': 9, 'soccer': 9, 'racer': 9, 'karate': 9, 'samurai': 9, 'beach': 5, 'parasol': 9}
-POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66, 'blazer': 65, 'yankee': 70, 'suit': 74, 'shades': 72, 'volley': 64, 'soccer': 62, 'racer': 70, 'karate': 68, 'samurai': 70, 'beach': 66, 'parasol': 80}
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66, 'blazer': 65, 'yankee': 70, 'suit': 74, 'shades': 72, 'volley': 64, 'soccer': 62, 'racer': 70, 'karate': 68, 'samurai': 70, 'beach': 66, 'parasol': 80, 'angler': 78}
 
 
 def extract_poses(name):

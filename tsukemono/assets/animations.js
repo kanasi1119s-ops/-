@@ -25,6 +25,8 @@
 // お侍さん:    0歩く 1歩く 2話す 3話す 4歩く 5指さす 6財布を出す 7受け取る
 // 水着:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 // 日傘:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す(傘をたたむ) 7受け取る
+// 釣り人:     0歩く(竿) 1歩く 2話す(竿) 3笑う 4歩く 5竿で指す 6財布を出す(竿) 7受け取る(竿)
+//            竿のあり・なしが交互にならないよう、そろう組み合わせでコマを組む
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
@@ -209,6 +211,15 @@ export const POSE_ANIMS = {
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
     talk_basket: { loop: true, frames: [p(300, 2), p(300, 3)] },
+  },
+  angler: {
+    walk: { loop: true, frames: [p(190, 1), p(190, 4)] },
+    walk_basket: { loop: true, frames: [p(190, 1), p(190, 4)] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 5, { dy: -1 })] },
+    buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
+    talk: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -1 })] },
+    talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -1 })] },
   },
 };
 
