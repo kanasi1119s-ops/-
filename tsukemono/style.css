@@ -1,170 +1,203 @@
-/* 漬物！ 画面の見た目
-   考え方: 夜の藍（あい）を地に、店先の画面を木の枠で囲み、下に会話窓とコマンドを置く。
-   窓はドット絵のRPGのように、藍の地に生成り（きなり）の二重線。色は下のトークンだけを使う。 */
+/* 漬物！ 画面の見た目（和）
+   考え方: 地は紺の青海波。店先の画面を焦げ茶の木枠で囲み、窓は和紙に墨の文字、見出しは筆。
+   ボタンは木札、大事なところ（次へ・仕込む・売る）は朱の判子のような色。色は下のトークンだけを使う。 */
 :root {
-  --night: #0f1729;      /* 地（夜の藍） */
-  --ai: #1c2c4c;         /* 窓の地（藍） */
-  --ai-hi: #2a3f68;      /* 窓の中の明るい面 */
-  --kinari: #f1e6c8;     /* 文字・枠（生成り） */
-  --kinari-dim: #b9ad90; /* 控えめな文字 */
-  --shu: #c8452e;        /* 朱（警告・大事なボタン） */
-  --ukon: #e7b53c;       /* 鬱金（お金・選択中） */
-  --matcha: #7fa857;     /* 良い */
-  --wood: #4a2f1d;       /* 木の枠 */
-  --wood-hi: #7a5233;
-  --shadow: #05080f;
-  --pixel: "DotGothic16", "MS Gothic", "Osaka-Mono", monospace;
-  --brush: "Yuji Syuku", "DotGothic16", serif;
-  color-scheme: dark;
+  --kon: #1a2740;        /* 紺（地） */
+  --kon-line: #26375a;   /* 青海波の線 */
+  --washi: #efe5cc;      /* 和紙 */
+  --washi-2: #e3d5b2;    /* 和紙の陰 */
+  --washi-3: #d6c49a;    /* 和紙の罫・枠の内側 */
+  --sumi: #2b2420;       /* 墨 */
+  --sumi-dim: #6e5f4f;   /* 薄墨 */
+  --shu: #b5381f;        /* 朱 */
+  --shu-hi: #cc4a2e;
+  --yamabuki: #d29a2c;   /* 山吹（お金・選択中） */
+  --wakatake: #4f7f3c;   /* 若竹（良い） */
+  --kogecha: #3f2717;    /* 焦げ茶（木枠） */
+  --ki: #b58650;         /* 木札 */
+  --ki-hi: #cfa269;
+  --ki-lo: #8a6236;
+  --shadow: #0b1222;
+  --brush: "Yuji Syuku", "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --mincho: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  color-scheme: light;
 }
 * { box-sizing: border-box }
 [hidden] { display: none !important }
 html, body { height: 100% }
 body {
-  margin: 0; background: var(--night); color: var(--kinari); font: 15px/1.5 var(--pixel);
-  background-image: radial-gradient(circle at 50% 0, #1b2a4a 0, transparent 60%);
+  margin: 0; color: var(--sumi); font: 15px/1.6 var(--mincho);
+  background-color: var(--kon);
+  /* 青海波 */
+  background-image:
+    radial-gradient(circle at 100% 150%, var(--kon) 24%, var(--kon-line) 24.5%, var(--kon-line) 28%, var(--kon) 28.5%, var(--kon) 36%, var(--kon-line) 36.5%, var(--kon-line) 40%, transparent 40.5%),
+    radial-gradient(circle at 0 150%, var(--kon) 24%, var(--kon-line) 24.5%, var(--kon-line) 28%, var(--kon) 28.5%, var(--kon) 36%, var(--kon-line) 36.5%, var(--kon-line) 40%, transparent 40.5%),
+    radial-gradient(circle at 50% 100%, var(--kon-line) 10%, var(--kon) 10.5%, var(--kon) 23%, var(--kon-line) 23.5%, var(--kon-line) 30%, var(--kon) 30.5%, var(--kon) 43%, var(--kon-line) 43.5%, var(--kon-line) 50%, var(--kon) 50.5%, var(--kon) 63%, var(--kon-line) 63.5%, var(--kon-line) 71%, transparent 71.5%),
+    radial-gradient(circle at 100% 50%, var(--kon-line) 5%, var(--kon) 5.5%, var(--kon) 15%, var(--kon-line) 15.5%, var(--kon-line) 20%, var(--kon) 20.5%, var(--kon) 29%, var(--kon-line) 29.5%, var(--kon-line) 34%, var(--kon) 34.5%, var(--kon) 44%, var(--kon-line) 44.5%, var(--kon-line) 49%, transparent 49.5%),
+    radial-gradient(circle at 0 50%, var(--kon-line) 5%, var(--kon) 5.5%, var(--kon) 15%, var(--kon-line) 15.5%, var(--kon-line) 20%, var(--kon) 20.5%, var(--kon) 29%, var(--kon-line) 29.5%, var(--kon-line) 34%, var(--kon) 34.5%, var(--kon) 44%, var(--kon-line) 44.5%, var(--kon-line) 49%, transparent 49.5%);
+  background-size: 80px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 12px 16px;
   -webkit-tap-highlight-color: transparent;
 }
 button { font: inherit; color: inherit; cursor: pointer }
-button:focus-visible, input:focus-visible, select:focus-visible, label:focus-within { outline: 2px solid var(--ukon); outline-offset: 2px }
+button:focus-visible, input:focus-visible, select:focus-visible, label:focus-within { outline: 2px solid var(--yamabuki); outline-offset: 2px }
 .app { margin: 0 auto; display: grid; gap: 8px; max-width: 100% }
 
-/* ---- 上の帳場 ---- */
-.hud { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; background: var(--ai); border: 2px solid var(--kinari);
-  box-shadow: inset 0 0 0 2px var(--ai), inset 0 0 0 3px var(--kinari-dim), 4px 4px 0 var(--shadow); padding: 6px 12px; font-size: 15px }
-.hud .day { font-size: 19px; color: var(--ukon); letter-spacing: .05em }
-.hud .sep { color: var(--kinari-dim) }
-.hud .grow { flex: 1 }
-.hud .money { font-size: 19px; color: var(--ukon); font-variant-numeric: tabular-nums }
-.hud .stars { color: var(--ukon); letter-spacing: 1px }
-.hud .stars s { color: #43507a; text-decoration: none }
-.hud .k { color: var(--kinari-dim); font-size: 12px; margin-right: 4px }
+/* 和紙の面（窓・帳場・会話窓に共通） */
+.hud, .msgbox, .win {
+  background: var(--washi);
+  background-image: radial-gradient(var(--washi-2) 0.8px, transparent 1px), radial-gradient(var(--washi-2) 0.6px, transparent 1px);
+  background-size: 7px 9px, 11px 13px; background-position: 0 0, 3px 5px;
+  border: 3px solid var(--kogecha); box-shadow: inset 0 0 0 1px var(--washi-3), 4px 4px 0 var(--shadow);
+}
 
-/* ---- 店先の画面 ---- */
-.stage { position: relative; justify-self: start; border: 6px solid var(--wood); outline: 2px solid var(--wood-hi);
+/* ---- 上の帳場（看板） ---- */
+.hud { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; padding: 6px 14px; font-size: 15px }
+.hud .day { font: 22px/1.2 var(--brush); letter-spacing: .06em }
+.hud .day .season { color: var(--shu) }
+.hud .tw { display: inline-flex; gap: 6px; align-items: center }
+.hud .tw b { font: 400 13px/1 var(--mincho); background: var(--sumi); color: var(--washi); padding: 3px 5px }
+.hud .grow { flex: 1 }
+.hud .money { font: 700 20px/1.2 var(--mincho); font-variant-numeric: tabular-nums }
+.hud .money small { font-size: 13px; margin-left: 2px }
+.stars { color: var(--shu); letter-spacing: 2px; font-size: 13px }
+.stars s { color: var(--washi-3); text-decoration: none }
+.hud .k { color: var(--sumi-dim); font-size: 12px; margin-right: 4px }
+
+/* ---- 店先の画面（木枠） ---- */
+.stage { position: relative; justify-self: start; border: 6px solid var(--kogecha); outline: 2px solid var(--ki-lo);
   box-shadow: 6px 6px 0 var(--shadow); background: #000; line-height: 0; container-type: inline-size; max-width: 100% }
 #screen { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer }
 .chips, .floats { position: absolute; inset: 0; pointer-events: none; line-height: 1.2 }
-.chip { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; font-size: clamp(10px, 2.6cqw, 17px);
-  background: var(--ai); color: var(--kinari); border: 2px solid var(--kinari); padding: 1px 5px; white-space: nowrap; box-shadow: 2px 2px 0 var(--shadow) }
-.chip.sel { border-color: var(--ukon); color: var(--ukon); transform: translate(-50%, -60%) }
-.chip.ripe { background: var(--matcha); color: var(--night); border-color: var(--kinari) }
-.chip.ripe.sel { border-color: var(--ukon) }
-.chip.warn { background: var(--shu) }
-.chip.empty { background: transparent; border-style: dashed; color: var(--kinari) }
-.chip .ic { margin-right: 2px }
-.float { position: absolute; transform: translate(-50%, 0); font-size: clamp(12px, 3.4cqw, 24px); color: var(--ukon); text-shadow: 2px 2px 0 var(--shadow);
+/* 樽の札（木札） */
+.chip { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; font: 700 clamp(10px, 2.5cqw, 16px)/1.2 var(--mincho);
+  background: var(--ki); color: var(--sumi); border: 2px solid var(--kogecha); padding: 1px 5px; white-space: nowrap; box-shadow: 2px 2px 0 #0008 }
+.chip.sel { background: var(--ki-hi); outline: 2px solid var(--yamabuki); transform: translate(-50%, -62%); z-index: 1 }
+.chip.ripe { background: var(--wakatake); color: var(--washi) }
+.chip.warn { background: var(--shu); color: var(--washi) }
+.chip.empty { background: #efe5ccaa; border-style: dashed }
+.chip .long { display: none }
+@container (min-width: 700px) { .chip.sel .long { display: inline } }
+.float { position: absolute; transform: translate(-50%, 0); font: 700 clamp(12px, 3.4cqw, 24px)/1 var(--mincho); color: #ffd36b; text-shadow: 2px 2px 0 var(--sumi), -1px -1px 0 var(--sumi);
   animation: rise 1.4s steps(14) forwards; white-space: nowrap }
-.float.good { color: #b9e08a }
-.float.bad { color: #ff8f7a }
+.float.good { color: #c9ec9a }
+.float.bad { color: #ff9a85 }
 @keyframes rise { from { opacity: 1; translate: 0 0 } 70% { opacity: 1 } to { opacity: 0; translate: 0 -2.4em } }
 
 /* タイトル */
-.title-screen { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 2.2cqw; line-height: 1.2;
-  background: linear-gradient(#0f172999, #0f1729dd); text-align: center; padding: 4cqw }
-.title-screen h1 { margin: 0; font: 400 clamp(36px, 13cqw, 120px)/1 var(--brush); color: var(--kinari); text-shadow: 4px 4px 0 var(--shu), 7px 7px 0 var(--shadow); letter-spacing: .04em }
-.title-screen .sub { font-size: clamp(13px, 3.4cqw, 28px); color: var(--ukon); letter-spacing: .3em }
+.title-screen { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 2cqw; line-height: 1.2;
+  background: linear-gradient(#1a274066, #1a2740cc); text-align: center; padding: 4cqw }
+.title-screen .logo { position: relative; display: inline-block }
+.title-screen h1 { margin: 0; font: 400 clamp(40px, 14cqw, 128px)/1 var(--brush); color: var(--washi); text-shadow: 3px 3px 0 var(--sumi), 6px 6px 0 #0007; letter-spacing: .04em }
+.title-screen .hanko { position: absolute; right: -0.9em; top: -0.2em; font: 400 clamp(14px, 4.4cqw, 40px)/1 var(--brush); color: var(--washi); background: var(--shu);
+  width: 1.6em; height: 1.6em; display: grid; place-items: center; border-radius: 6px; rotate: 8deg; box-shadow: inset 0 0 0 3px var(--shu), inset 0 0 0 5px var(--washi) }
+.title-screen .sub { font: 400 clamp(14px, 3.6cqw, 30px)/1.2 var(--brush); color: var(--washi); letter-spacing: .35em; background: var(--sumi); padding: .2em .8em }
 .title-screen .menu { display: grid; gap: 8px; min-width: 12em; margin-top: 1.5cqw }
-.title-screen .note { font-size: clamp(10px, 2.2cqw, 14px); color: var(--kinari-dim) }
+.title-screen .note { font-size: clamp(10px, 2.2cqw, 14px); color: var(--washi) }
 
 /* ---- 会話窓とコマンド ---- */
 .console { display: grid; gap: 8px }
-.msgbox { position: relative; min-height: 4.4em; background: var(--ai); border: 2px solid var(--kinari);
-  box-shadow: inset 0 0 0 2px var(--ai), inset 0 0 0 3px var(--kinari-dim), 4px 4px 0 var(--shadow); padding: 10px 30px 10px 14px; font-size: 16px; line-height: 1.6 }
-.msgbox .caret { position: absolute; right: 10px; bottom: 6px; font-style: normal; color: var(--ukon); animation: blink 1s steps(2) infinite }
-.msgbox .who { color: var(--ukon); margin-right: 6px }
+.msgbox { position: relative; min-height: 4.6em; padding: 10px 30px 10px 14px; font-size: 16px; line-height: 1.7 }
+.msgbox .caret { position: absolute; right: 10px; bottom: 6px; font-style: normal; color: var(--shu); animation: blink 1s steps(2) infinite }
+.msgbox .who { display: inline-block; font: 400 14px/1 var(--brush); background: var(--shu); color: var(--washi); padding: 4px 6px; margin-right: 8px; vertical-align: 2px }
+.msgbox .hint { color: var(--sumi-dim) }
 @keyframes blink { 50% { opacity: 0 } }
 .commands { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px }
-.cmd { position: relative; background: var(--ai); border: 2px solid var(--kinari); box-shadow: 3px 3px 0 var(--shadow); padding: 8px 4px; font-size: 16px; line-height: 1.2 }
-.cmd small { display: block; font-size: 11px; color: var(--kinari-dim); margin-top: 2px }
-.cmd:hover:not(:disabled) { background: var(--ai-hi) }
+/* 木札 */
+.cmd { position: relative; background: linear-gradient(var(--ki-hi), var(--ki) 30%, var(--ki) 80%, var(--ki-lo)); color: var(--sumi);
+  border: 2px solid var(--kogecha); box-shadow: 3px 3px 0 var(--shadow); padding: 8px 4px 7px; font: 400 19px/1.1 var(--brush) }
+.cmd small { display: block; font: 400 11px/1.3 var(--mincho); color: #4a3424; margin-top: 3px }
+.cmd:hover:not(:disabled) { filter: brightness(1.08) }
 .cmd:active:not(:disabled) { translate: 2px 2px; box-shadow: 1px 1px 0 var(--shadow) }
-.cmd:disabled { opacity: .45; cursor: default }
-.cmd.next { background: var(--shu); grid-column: span 2; font-size: 18px }
-.cmd.next:hover:not(:disabled) { background: #d8573f }
-.cmd .dot { position: absolute; top: -7px; right: -5px; background: var(--ukon); color: var(--night); font-size: 11px; padding: 0 4px; border: 2px solid var(--night) }
+.cmd:disabled { filter: grayscale(.6) brightness(.75); cursor: default }
+.cmd.next { background: linear-gradient(var(--shu-hi), var(--shu)); color: var(--washi); grid-column: span 2; font-size: 22px }
+.cmd.next small { color: #f3d6c8 }
+.cmd .dot { position: absolute; top: -8px; right: -6px; background: var(--shu); color: var(--washi); font: 400 12px/1 var(--brush); padding: 3px 4px; border: 2px solid var(--washi); border-radius: 50% }
 
 /* ---- 窓 ---- */
-.modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #05080fb0;
+.modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #0b1222b8;
   padding: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)) }
-.win { width: min(720px, 100%); max-height: 100%; display: grid; grid-template-rows: auto 1fr; background: var(--ai); border: 2px solid var(--kinari);
-  box-shadow: inset 0 0 0 2px var(--ai), inset 0 0 0 3px var(--kinari-dim), 6px 6px 0 var(--shadow); animation: pop .12s steps(3) }
-@keyframes pop { from { scale: .94 } }
-.win-h { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 2px solid var(--kinari-dim) }
-.win-h h2 { margin: 0; flex: 1; font-weight: 400; font-size: 19px; color: var(--ukon); letter-spacing: .08em }
-.x { background: none; border: 2px solid var(--kinari-dim); width: 34px; height: 34px; font-size: 18px; line-height: 1 }
+.win { width: min(720px, 100%); max-height: 100%; display: grid; grid-template-rows: auto 1fr; animation: pop .12s steps(3);
+  border-width: 4px; box-shadow: inset 0 0 0 2px var(--washi), inset 0 0 0 3px var(--ki-lo), 6px 6px 0 var(--shadow) }
+@keyframes pop { from { scale: .95 } }
+.win-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 2px solid var(--washi-3) }
+.win-h h2 { margin: 0; flex: 1; font: 400 22px/1.2 var(--brush); letter-spacing: .08em; display: flex; align-items: center; gap: 10px }
+.win-h h2::before { content: ""; width: 12px; height: 22px; background: var(--shu); flex: none }
+.x { background: none; border: 2px solid var(--sumi-dim); width: 34px; height: 34px; font-size: 18px; line-height: 1; color: var(--sumi) }
 .win-b { overflow: auto; padding: 12px 14px 16px; display: grid; gap: 12px; align-content: start; min-width: 0 }
 .sec { display: grid; gap: 6px; min-width: 0 }
-.sec > h3 { margin: 0; font-weight: 400; font-size: 13px; color: var(--kinari-dim); letter-spacing: .15em }
-.hint { color: var(--kinari-dim); font-size: 13px }
-.warn { color: #ff8f7a }
-.pos { color: #b9e08a } .neg { color: #ff8f7a }
-.ukon { color: var(--ukon) }
+.sec > h3 { margin: 0; font: 400 16px/1.3 var(--brush); color: var(--sumi); letter-spacing: .12em; border-bottom: 1px solid var(--washi-3); padding-bottom: 2px }
+.sec > h3 .hint { font: 400 12px var(--mincho); letter-spacing: 0 }
+.hint { color: var(--sumi-dim); font-size: 13px }
+.warn { color: var(--shu); font-weight: 700 }
+.pos { color: var(--wakatake); font-weight: 700 } .neg { color: var(--shu); font-weight: 700 }
+.ukon { color: var(--shu); font-weight: 700 }
 
 /* 選べる札（タイル） */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px }
-.tile { position: relative; text-align: left; background: var(--night); border: 2px solid var(--kinari-dim); padding: 6px 8px; line-height: 1.3; min-width: 0 }
-.tile b { display: block; font-weight: 400; font-size: 16px }
-.tile span { display: block; font-size: 12px; color: var(--kinari-dim) }
-.tile.on { border-color: var(--ukon); background: var(--ai-hi); color: var(--ukon); box-shadow: inset 0 0 0 1px var(--ukon) }
-.tile:disabled { opacity: .4; cursor: default }
-.tile .tag { position: absolute; top: -8px; right: 4px; background: var(--matcha); color: var(--night); font-size: 11px; padding: 0 4px }
-.tile .tag.shu { background: var(--shu); color: var(--kinari) }
+.tile { position: relative; text-align: left; background: #fbf5e4; border: 2px solid var(--washi-3); padding: 6px 8px; line-height: 1.3; min-width: 0; color: var(--sumi) }
+.tile b { display: block; font: 400 17px/1.3 var(--brush) }
+.tile span { display: block; font-size: 12px; color: var(--sumi-dim) }
+.tile.on { border-color: var(--shu); background: #fff; box-shadow: inset 0 0 0 1px var(--shu), 2px 2px 0 var(--washi-3) }
+.tile.on b { color: var(--shu) }
+.tile:disabled { opacity: .45; cursor: default }
+.tile .tag { position: absolute; top: -9px; right: 4px; background: var(--wakatake); color: var(--washi); font: 400 12px/1 var(--brush); padding: 3px 5px; font-style: normal }
 
-.btn { background: var(--ai-hi); border: 2px solid var(--kinari); box-shadow: 3px 3px 0 var(--shadow); padding: 8px 14px; font-size: 16px }
-.btn:active:not(:disabled) { translate: 2px 2px; box-shadow: 1px 1px 0 var(--shadow) }
-.btn:disabled { opacity: .4; cursor: default }
-.btn.main { background: var(--shu) }
-.btn.gold { background: var(--ukon); color: var(--night) }
-.btn.ghost { background: transparent; border-color: var(--kinari-dim) }
+.btn { background: linear-gradient(var(--ki-hi), var(--ki) 35%, var(--ki-lo)); color: var(--sumi); border: 2px solid var(--kogecha); box-shadow: 3px 3px 0 #0005; padding: 8px 14px; font: 400 17px/1.2 var(--brush) }
+.btn:active:not(:disabled) { translate: 2px 2px; box-shadow: 1px 1px 0 #0005 }
+.btn:disabled { filter: grayscale(.7); opacity: .55; cursor: default }
+.btn.main { background: linear-gradient(var(--shu-hi), var(--shu)); color: var(--washi) }
+.btn.gold { background: linear-gradient(#e3b44c, var(--yamabuki)); color: var(--sumi) }
+.btn.ghost { background: transparent; border-color: var(--sumi-dim); box-shadow: none }
+.title-screen .btn { font-size: clamp(16px, 3.4cqw, 24px) }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
 .row.end { justify-content: flex-end }
 
 /* 塩の目盛り */
 .salt { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center }
-.salt output { font-size: 22px; color: var(--ukon); min-width: 3.4em; text-align: right; font-variant-numeric: tabular-nums }
-input[type=range] { width: 100%; accent-color: var(--ukon) }
-.stepper { width: 36px; height: 36px; background: var(--night); border: 2px solid var(--kinari-dim); font-size: 18px; line-height: 1 }
+.salt output { font: 700 22px/1 var(--mincho); color: var(--shu); min-width: 3.4em; text-align: right; font-variant-numeric: tabular-nums }
+input[type=range] { width: 100%; accent-color: var(--shu) }
+.stepper { width: 36px; height: 36px; background: #fbf5e4; border: 2px solid var(--sumi-dim); font-size: 18px; line-height: 1; color: var(--sumi) }
+select { font: inherit; background: #fbf5e4; color: var(--sumi); border: 1px solid var(--sumi-dim) }
 
 /* 味の棒 */
 .bars { display: grid; gap: 4px }
 .bar { display: grid; grid-template-columns: 6.5em 1fr 6.5em; gap: 8px; align-items: center; font-size: 13px }
-.bar i { height: 10px; background: var(--night); border: 1px solid var(--kinari-dim); position: relative }
+.bar i { height: 10px; background: #fbf5e4; border: 1px solid var(--sumi-dim); position: relative }
 .bar i s { position: absolute; inset: 0 auto 0 0; text-decoration: none }
-.bar span:last-child { color: var(--kinari-dim) }
-.panel { background: var(--night); border: 2px solid var(--kinari-dim); padding: 8px 10px; display: grid; gap: 6px; min-width: 0 }
-.stage-tag { display: inline-block; padding: 0 6px; font-size: 13px; border: 1px solid currentColor }
-.stage-tag.ripe { color: #b9e08a } .stage-tag.raw { color: var(--kinari-dim) } .stage-tag.over { color: var(--ukon) } .stage-tag.sour { color: #ff8f7a }
+.bar span:last-child { color: var(--sumi-dim) }
+.panel { background: #fbf5e4; border: 1px solid var(--washi-3); box-shadow: inset 0 0 0 3px #fbf5e4, inset 0 0 0 4px var(--washi-2); padding: 10px 12px; display: grid; gap: 6px; min-width: 0 }
+.stage-tag { display: inline-block; padding: 1px 6px; font: 400 13px/1.2 var(--brush); border: 1px solid currentColor }
+.stage-tag.ripe { color: var(--washi); background: var(--wakatake); border-color: var(--wakatake) }
+.stage-tag.raw { color: var(--sumi-dim) } .stage-tag.over { color: #8a5a00 } .stage-tag.sour { color: var(--washi); background: var(--shu); border-color: var(--shu) }
 
 /* 帳面（表） */
 .tabs { display: flex; gap: 4px; flex-wrap: wrap }
-.tabs button { background: var(--night); border: 2px solid var(--kinari-dim); padding: 4px 12px }
-.tabs button.on { border-color: var(--ukon); color: var(--ukon) }
+.tabs button { background: #fbf5e4; border: 2px solid var(--washi-3); padding: 4px 12px; font: 400 16px/1.2 var(--brush) }
+.tabs button.on { border-color: var(--shu); color: var(--shu) }
 .tbl { overflow-x: auto }
 table { border-collapse: collapse; width: 100%; font-size: 13px }
-th, td { text-align: left; padding: 4px 6px; border-bottom: 1px dashed #43507a; vertical-align: top }
-th { color: var(--kinari-dim); font-weight: 400 }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px dotted var(--sumi-dim); vertical-align: top }
+th { color: var(--sumi-dim); font-weight: 400 }
 td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
-.meter { height: 12px; background: var(--night); border: 2px solid var(--kinari-dim); position: relative; flex: 1; min-width: 120px }
-.meter i { position: absolute; inset: 0 auto 0 0; background: var(--ukon) }
+.meter { height: 12px; background: #fbf5e4; border: 1px solid var(--sumi-dim); position: relative; flex: 1; min-width: 120px }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--shu) }
 .list { display: grid; gap: 6px }
-.item { display: flex; gap: 10px; align-items: center; background: var(--night); border: 2px solid var(--kinari-dim); padding: 8px 10px; min-width: 0 }
+.item { display: flex; gap: 10px; align-items: center; background: #fbf5e4; border: 2px solid var(--washi-3); padding: 8px 10px; min-width: 0; text-align: left; color: var(--sumi) }
 .item .grow { flex: 1; min-width: 0 }
-.item.ok { border-color: var(--matcha) }
+.item.ok { border-color: var(--wakatake) }
+.app.titling .console, .app.titling .hud { visibility: hidden }
 
 @media (max-width: 520px) {
   body { font-size: 14px; padding-block: 8px 12px }
-  .hud { font-size: 13px; gap: 4px 10px; padding: 5px 8px }
-  .hud .day, .hud .money { font-size: 16px }
-  .msgbox { font-size: 14px; min-height: 4.6em }
+  .hud { font-size: 13px; gap: 2px 10px; padding: 5px 8px }
+  .hud .day { font-size: 18px } .hud .money { font-size: 17px }
+  .msgbox { font-size: 14px; min-height: 4.8em }
   .commands { grid-template-columns: repeat(4, 1fr) }
-  .cmd { font-size: 14px; padding: 7px 2px }
+  .cmd { font-size: 17px; padding: 7px 2px }
   .cmd.next { grid-column: span 4 }
   .bar { grid-template-columns: 5.5em 1fr 5.5em }
 }
 @media (prefers-reduced-motion: reduce) { .float, .win, .msgbox .caret { animation: none } }
-.chip .long { display: none }
-@container (min-width: 700px) { .chip.sel .long { display: inline } .chip.sel { z-index: 1 } }
-.app.titling .console, .app.titling .hud { visibility: hidden }
+.title-screen .btn.ghost { color: var(--washi); border-color: var(--washi); background: #1a274099 }

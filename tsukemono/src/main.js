@@ -12,7 +12,7 @@ import { SCENE, IMAGES } from '../assets/scene.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
 
 const $ = (id) => document.getElementById(id);
-const yen = (n) => `¥${Math.round(n).toLocaleString('ja-JP')}`;
+const yen = (n) => `${Math.round(n).toLocaleString('ja-JP')}円`;
 const trim = (n, d = 2) => String(+n.toFixed(d));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const C = CONFIG;
@@ -83,12 +83,23 @@ const WORDS = {
 const word = (k, v) => WORDS[k].find(([lim]) => v < lim)[1];
 function bars(t, { numbers = false } = {}) {
   const row = (label, k, v, col) => `<div class="bar"><span>${label}</span><i><s style="width:${Math.min(100, Math.max(0, v))}%;background:${col}"></s></i><span>${numbers ? Math.round(v) + ' ' : ''}${word(k, v)}</span></div>`;
-  return `<div class="bars">${row('酸味', 'acid', t.acid, '#e7b53c')}${row('塩味', 'salt', t.saltiness, '#8fb0e8')}${row('食感', 'texture', t.texture, '#7fa857')}${row('風味の深さ', 'complexity', t.complexity, '#c79be0')}${row('傷みリスク', 'spoil', t.spoilRisk, '#c8452e')}</div>`;
+  return `<div class="bars">${row('酸味', 'acid', t.acid, '#d29a2c')}${row('塩味', 'salt', t.saltiness, '#2f4f7f')}${row('食感', 'texture', t.texture, '#4f7f3c')}${row('風味の深さ', 'complexity', t.complexity, '#6b4a7a')}${row('傷みリスク', 'spoil', t.spoilRisk, '#b5381f')}</div>`;
 }
 const filmWord = (f) => (f < 0.15 ? 'なし' : f < C.care.filmVisible ? 'うっすら' : f < 0.7 ? '出ている' : '一面');
-const stars = (rep) => { const n = Math.round(rep / 20); return `<span class="stars" title="評判 ${Math.round(rep)}">${'★'.repeat(n)}<s>${'★'.repeat(5 - n)}</s></span>`; };
-const WEATHER_ICON = { sunny: '☀', rain: '☂', snow: '❄' };
+const stars = (rep) => { const n = Math.round(rep / 20); return `<span class="stars" title="評判 ${Math.round(rep)}">${'●'.repeat(n)}<s>${'●'.repeat(5 - n)}</s></span>`; };
+const WEATHER_ICON = { sunny: '晴', rain: '雨', snow: '雪' };
 const TIME_ICON = { morning: '朝', noon: '昼', evening: '夕', night: '夜' };
+/** 漢数字（日付に使う）。 */
+function kanjiNum(n) {
+  const D = '〇一二三四五六七八九';
+  if (n < 10) return D[n];
+  let s = '';
+  for (const [v, k] of [[1000, '千'], [100, '百'], [10, '十']]) {
+    const q = Math.floor(n / v);
+    if (q) { s += (q > 1 ? D[q] : '') + k; n %= v; }
+  }
+  return s + (n ? D[n] : '');
+}
 const barrelName = (b) => `${C.vegetables[b.veg].name}の${C.pickles[b.pickle].name}`;
 const stageOfSlot = (i) => (game.barrels[i] ? game.tasteOf(i).stage : null);
 const canSellNow = () => game.isOpen() && game.lastSaleTick !== game.tick;
@@ -121,11 +132,11 @@ $('message').addEventListener('click', () => finishTyping());
 function renderHud() {
   const s = C.season[game.season()];
   $('hud').innerHTML = `
-    <span class="day">${s.name} ${game.day()}日目</span>
-    <span>${TIME_ICON[game.timeOfDay()]} ${WEATHER_ICON[game.weather]} ${game.ambientTemp()}℃</span>
+    <span class="day"><span class="season">${s.name}</span>　${kanjiNum(game.day())}日目</span>
+    <span class="tw"><b>${TIME_ICON[game.timeOfDay()]}</b><b>${WEATHER_ICON[game.weather]}</b>${game.ambientTemp()}℃</span>
     <span class="grow"></span>
     <span><span class="k">評判</span>${stars(game.reputation)}</span>
-    <span class="money">${yen(ui.shownMoney)}</span>`;
+    <span class="money">${Math.round(ui.shownMoney).toLocaleString('ja-JP')}<small>円</small></span>`;
 }
 
 // ------------------------------------------------------------ 樽の札（店先の画面の上）
@@ -312,9 +323,9 @@ WINS.nuka = () => {
     title: 'ぬか床',
     body: `<div class="panel">
       <div>塩分 <b class="ukon">${trim(n.salt, 1)}%</b> ・ 店の中 ${game.ambientTemp()}℃ ・ ${today ? '今日はかき混ぜた' : '<span class="warn">今日はまだかき混ぜていない</span>'}</div>
-      <div class="bars">${bar('酸味', n.sour, '#e7b53c', n.sour < 0.25 ? 'ちょうどいい' : n.sour < 0.5 ? 'やや酸っぱい' : n.sour < 0.8 ? '酸っぱい' : 'かなり酸っぱい')}
-      ${bar('白い膜', n.film, '#b9ad90', filmWord(n.film))}
-      ${bar('熟成度', n.maturity, '#c79be0', n.maturity < 0.3 ? '若い床' : n.maturity < 0.7 ? '育ってきた' : n.maturity < 1 ? 'いい床' : '最高の床')}</div></div>
+      <div class="bars">${bar('酸味', n.sour, '#d29a2c', n.sour < 0.25 ? 'ちょうどいい' : n.sour < 0.5 ? 'やや酸っぱい' : n.sour < 0.8 ? '酸っぱい' : 'かなり酸っぱい')}
+      ${bar('白い膜', n.film, '#9a8f7c', filmWord(n.film))}
+      ${bar('熟成度', n.maturity, '#6b4a7a', n.maturity < 0.3 ? '若い床' : n.maturity < 0.7 ? '育ってきた' : n.maturity < 1 ? 'いい床' : '最高の床')}</div></div>
     <div class="row"><button class="btn main" data-act="stir" ${stirred ? 'disabled' : ''}>${stirred ? 'かき混ぜた' : 'かき混ぜる'}</button>
       <button class="btn" data-act="saltNuka" ${n.salt >= c.maxSalt || game.money < c.addSaltCost ? 'disabled' : ''}>塩を足す（${yen(c.addSaltCost)}）</button></div>
     <div class="hint">毎日かき混ぜると床が育ち、ぬか漬けの風味が深くなる。放っておくと酸っぱくなり、白い膜が張る。26℃以上は特に早い。</div>`,
@@ -375,7 +386,7 @@ WINS.rest = () => ({
 WINS.dayend = ({ t }) => {
   const d = Math.round(t.repEnd) - Math.round(t.repStart);
   return {
-    title: `${t.day}日目　店じまい`,
+    title: `${kanjiNum(t.day)}日目　店じまい`,
     body: `<div class="tbl"><table>
       <tr><td>お客</td><td class="r">${t.visitors}人</td></tr>
       <tr><td>売れた数</td><td class="r">${t.sold}個</td></tr>
@@ -451,7 +462,7 @@ async function advance(ticks, { summary = true } = {}) {
         ui.busy = false; renderAll();
         sound.se('dayEnd');
         openWin('dayend', { t });
-        say(`${t.day}日目が終わった。`);
+        say(`${kanjiNum(t.day)}日目が終わった。`);
         return;
       }
     }
@@ -460,7 +471,7 @@ async function advance(ticks, { summary = true } = {}) {
   }
   ui.busy = false;
   const tod = game.timeOfDay();
-  say(`${C.season[game.season()].name} ${game.day()}日目、${C.timeName[tod]}。${{ morning: '朝は仕込みどき。', noon: 'お昼どき、お客が多い。', evening: '夕方。もうひと売り。', night: '夜は閉店。翌朝まで休もう。' }[tod]}`);
+  say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[tod]}。${{ morning: '朝は仕込みどき。', noon: 'お昼どき、お客が多い。', evening: '夕方。もうひと売り。', night: '夜は閉店。翌朝まで休もう。' }[tod]}`);
   renderAll();
 }
 
@@ -581,7 +592,7 @@ document.addEventListener('click', (e) => {
   }
   if (act === 'stir') { const r = game.stirNuka(); if (!r.ok) { say(r.error); return; } sound.se('stir'); say('ぬか床をかき混ぜた。いい香りだ。', '店主'); world.careScene(); renderAll(); return; }
   if (act === 'saltNuka') { const r = game.saltNuka(); say(r.ok ? 'ぬか床に塩を足した。酸味が和らいだ。' : r.error); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
-  if (act === 'dayClose') { closeWin(); say(`${C.season[game.season()].name} ${game.day()}日目の朝。今日も店を開けよう。`); return; }
+  if (act === 'dayClose') { closeWin(); say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目の朝。今日も店を開けよう。`); return; }
   if (act === 'help') { openWin('help'); return; }
   if (act === 'ambient') { closeWin(); if (!world.busy) world.ambientVisit(view().season); return; }
   if (act === 'toTitle') { closeWin(); showTitle(); return; }
@@ -621,7 +632,7 @@ function showTitle() {
   ui.started = false;
   const t = $('title');
   const hasProgress = game.tick > 0 || game.stats.revenue > 0 || game.barrels.some(Boolean);
-  t.innerHTML = `<h1>漬物！</h1><div class="sub">最強の漬物への道</div>
+  t.innerHTML = `<div class="logo"><h1>漬物！</h1><span class="hanko" aria-hidden="true">漬</span></div><div class="sub">最強の漬物への道</div>
     <div class="menu">
       ${hasProgress ? '<button class="btn main" data-title="continue">つづきから</button>' : ''}
       <button class="btn${hasProgress ? '' : ' main'}" data-title="new">${hasProgress ? (ui.confirm === 'new' ? '本当に最初から？' : 'はじめから') : 'はじめる'}</button>
@@ -652,7 +663,7 @@ $('title').addEventListener('click', (e) => {
   if (k === 'new' || (k !== 'continue' && game.tick === 0)) {
     say('いらっしゃい…じゃなくて、今日からここがあなたの漬物屋。まずは「仕込む」で、樽にきゅうりの浅漬けを漬けてみよう。浅漬けは1日で食べ頃になる。', '先代');
   } else {
-    say(`おかえりなさい。${C.season[game.season()].name} ${game.day()}日目、${C.timeName[game.timeOfDay()]}から。`, '店主');
+    say(`おかえりなさい。${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[game.timeOfDay()]}から。`, '店主');
   }
 });
 

@@ -26,7 +26,7 @@ const safe = (s) => s.replace(/<\/script/gi, '<\\/script');
 const parts = [
   '<title>漬物！最強の漬物への道</title>',
   '<meta name="claude:viewport-fit-sides" content="cover">',
-  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&display=swap">',
+  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Old+Mincho:wght@400;700&display=swap">',
   `<style>\n${css}</style>`,
   markup,
   `<script>window.TSUKEMONO_IMAGES=${safe(JSON.stringify(images))};</script>`,
