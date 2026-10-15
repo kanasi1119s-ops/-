@@ -181,6 +181,12 @@ def main():
                         dx = (knee_dx + (dfoot - knee_dx) * u) if bend else dfoot * (y - hip) / max(1, sole - hip)
                         dy = -round(lift * u) if bend else (-lift if y >= sole - 2 else 0)
                     rows.append((y, round(dx), dy))
+                # 隣の行とのずれは1ドットまで（細い脚がちぎれないように）。足先が届かなければ歩幅を少し小さくする
+                prev = 0
+                for i, (y, dx, dy) in enumerate(rows):
+                    dx = max(prev - 1, min(prev + 1, dx))
+                    rows[i] = (y, dx, dy)
+                    prev = dx
                 # 同じずらし方の行をまとめて1回で動かす（上の行から）
                 i = 0
                 while i < len(rows):
@@ -192,7 +198,7 @@ def main():
                         ops.append({'frame': f, 'layer': side, 'rect': [y0, 0, rows[j][0], W - 1], 'flip': False, 'dx': dx, 'dy': dy})
                     i = j + 1
                 if lift == 0:
-                    feet.append(hx + tx * s)
+                    feet.append(hx + orig_x[side] * s + rows[-1][1])
             # 影: 着いている足のあいだ（足が1本なら、その足のまわり）
             if feet:
                 x0 = min(feet) - 5
