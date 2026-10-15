@@ -145,8 +145,13 @@ def main():
             xs = [x for y, x in px if y >= yb - 1]
             return (min(xs) + max(xs)) / 2
         fb, ff = foot_center(back_px), foot_center(front_px)
-        hx = (fb + ff) / 2
-        s = max(2.0, abs(fb - ff) / 2 * t.get('stride', 1.0))
+        # 脚はそれぞれ自分の腰の下で前後に振る（手前の脚は手前の列、奥の脚は奥の列。前に出た足が反対の足の位置に行かない）
+        top = cut + max(2, (sole - cut) // 4)
+        def hip_center(px):
+            xs = [x for y, x in px if y <= top]
+            return sum(xs) / len(xs)
+        hips = {'back': hip_center(back_px), 'front': hip_center(front_px)}
+        s = max(2.0, ((fb - hips['back']) + (hips['front'] - ff)) / 2 * t.get('stride', 1.0))
         L = max(2, min(3, round((sole - hip) * 0.12 * t.get('lift', 1.0))))  # 足を上げる高さ（脚が切れないよう3ドットまで）
         # 8コマの足の位置（腰からの横の位置を歩幅 s の倍数で。上げる高さ）。前=手前の脚、奥=奥の脚
         # 参考（歩きのドット絵の基本）: すれ違いでは、支える脚は体の真下でまっすぐ、浮いた脚は ひざを前・足を体の後ろで持ち上げる
@@ -160,7 +165,7 @@ def main():
             (0.0, 0, -0.3, L),      # 6 すれ違い: 手前の脚は真下でまっすぐ、奥の足は体の後ろで持ち上がる
             (-0.5, 1, 0.75, 1),     # 7 奥の足が前へ伸びる・手前のかかとが上がる
         ]
-        orig_x = {'front': (ff - hx) / s, 'back': (fb - hx) / s}
+        orig_x = {'front': (ff - hips['front']) / s, 'back': (fb - hips['back']) / s}
         ops, shadows = [], []
         kr = hip + (sole - hip) * 0.5  # ひざ
         for f, (xf, lf, xb, lb) in enumerate(keys):
@@ -198,7 +203,7 @@ def main():
                         ops.append({'frame': f, 'layer': side, 'rect': [y0, 0, rows[j][0], W - 1], 'flip': False, 'dx': dx, 'dy': dy})
                     i = j + 1
                 if lift == 0:
-                    feet.append(hx + orig_x[side] * s + rows[-1][1])
+                    feet.append(hips[side] + orig_x[side] * s + rows[-1][1])
             # 影: 着いている足のあいだ（足が1本なら、その足のまわり）
             if feet:
                 x0 = min(feet) - 5
