@@ -1,0 +1,188 @@
+{
+ "woman": {
+  "sheet": "woman.sheet.png",
+  "frameWidth": 35,
+  "frameHeight": 74,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 35,
+    "ms": 110
+   },
+   {
+    "x": 70,
+    "ms": 110
+   },
+   {
+    "x": 105,
+    "ms": 110
+   },
+   {
+    "x": 140,
+    "ms": 110
+   },
+   {
+    "x": 175,
+    "ms": 110
+   }
+  ]
+ },
+ "oldman": {
+  "sheet": "oldman.sheet.png",
+  "frameWidth": 34,
+  "frameHeight": 76,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 34,
+    "ms": 110
+   },
+   {
+    "x": 68,
+    "ms": 110
+   },
+   {
+    "x": 102,
+    "ms": 110
+   },
+   {
+    "x": 136,
+    "ms": 110
+   },
+   {
+    "x": 170,
+    "ms": 110
+   }
+  ]
+ },
+ "boy": {
+  "sheet": "boy.sheet.png",
+  "frameWidth": 27,
+  "frameHeight": 57,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 27,
+    "ms": 110
+   },
+   {
+    "x": 54,
+    "ms": 110
+   },
+   {
+    "x": 81,
+    "ms": 110
+   },
+   {
+    "x": 108,
+    "ms": 110
+   },
+   {
+    "x": 135,
+    "ms": 110
+   }
+  ]
+ },
+ "gakuran": {
+  "sheet": "gakuran.sheet.png",
+  "frameWidth": 32,
+  "frameHeight": 66,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 32,
+    "ms": 110
+   },
+   {
+    "x": 64,
+    "ms": 110
+   },
+   {
+    "x": 96,
+    "ms": 110
+   },
+   {
+    "x": 128,
+    "ms": 110
+   },
+   {
+    "x": 160,
+    "ms": 110
+   }
+  ]
+ },
+ "suit": {
+  "sheet": "suit.sheet.png",
+  "frameWidth": 33,
+  "frameHeight": 74,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 33,
+    "ms": 110
+   },
+   {
+    "x": 66,
+    "ms": 110
+   },
+   {
+    "x": 99,
+    "ms": 110
+   },
+   {
+    "x": 132,
+    "ms": 110
+   },
+   {
+    "x": 165,
+    "ms": 110
+   }
+  ]
+ },
+ "student": {
+  "sheet": "student.sheet.png",
+  "frameWidth": 30,
+  "frameHeight": 64,
+  "frames": [
+   {
+    "x": 0,
+    "ms": 110
+   },
+   {
+    "x": 30,
+    "ms": 110
+   },
+   {
+    "x": 60,
+    "ms": 110
+   },
+   {
+    "x": 90,
+    "ms": 110
+   },
+   {
+    "x": 120,
+    "ms": 110
+   },
+   {
+    "x": 150,
+    "ms": 110
+   }
+  ]
+ }
+}

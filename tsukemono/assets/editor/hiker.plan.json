@@ -1,0 +1,257 @@
+{
+ "name": "hiker",
+ "w": 32,
+ "h": 72,
+ "pad": 1,
+ "frameMs": 110,
+ "shoe": "G",
+ "frames": [
+  {
+   "dy": 1,
+   "legs": {
+    "B": {
+     "layer": 0,
+     "sym": "d",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      15
+     ],
+     "ankle": [
+      70,
+      11
+     ],
+     "shoe": "toe"
+    },
+    "A": {
+     "layer": 1,
+     "sym": "a",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      21
+     ],
+     "ankle": [
+      70,
+      24
+     ],
+     "shoe": "heel"
+    }
+   }
+  },
+  {
+   "dy": 1,
+   "legs": {
+    "B": {
+     "layer": 0,
+     "sym": "d",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      20
+     ],
+     "ankle": [
+      68,
+      13
+     ],
+     "shoe": "toe"
+    },
+    "A": {
+     "layer": 1,
+     "sym": "a",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      21
+     ],
+     "ankle": [
+      70,
+      19
+     ],
+     "shoe": "flat"
+    }
+   }
+  },
+  {
+   "dy": 0,
+   "legs": {
+    "B": {
+     "layer": 0,
+     "sym": "d",
+     "width": 4,
+     "hip": [
+      49,
+      17
+     ],
+     "knee": [
+      57,
+      24
+     ],
+     "ankle": [
+      66,
+      18
+     ],
+     "shoe": "swing"
+    },
+    "A": {
+     "layer": 1,
+     "sym": "a",
+     "width": 4,
+     "hip": [
+      49,
+      17
+     ],
+     "knee": [
+      59,
+      17
+     ],
+     "ankle": [
+      70,
+      16
+     ],
+     "shoe": "flat"
+    }
+   }
+  },
+  {
+   "dy": 1,
+   "legs": {
+    "B": {
+     "layer": 0,
+     "sym": "d",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      21
+     ],
+     "ankle": [
+      70,
+      24
+     ],
+     "shoe": "heel"
+    },
+    "A": {
+     "layer": 1,
+     "sym": "a",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      15
+     ],
+     "ankle": [
+      70,
+      11
+     ],
+     "shoe": "toe"
+    }
+   }
+  },
+  {
+   "dy": 1,
+   "legs": {
+    "B": {
+     "layer": 0,
+     "sym": "d",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      21
+     ],
+     "ankle": [
+      70,
+      19
+     ],
+     "shoe": "flat"
+    },
+    "A": {
+     "layer": 1,
+     "sym": "a",
+     "width": 4,
+     "hip": [
+      50,
+      17
+     ],
+     "knee": [
+      60,
+      20
+     ],
+     "ankle": [
+      68,
+      13
+     ],
+     "shoe": "toe"
+    }
+   }
+  },
+  {
+   "dy": 0,
+   "legs": {
+    "B": {
+     "layer": 0,
+     "sym": "d",
+     "width": 4,
+     "hip": [
+      49,
+      17
+     ],
+     "knee": [
+      59,
+      17
+     ],
+     "ankle": [
+      70,
+      16
+     ],
+     "shoe": "flat"
+    },
+    "A": {
+     "layer": 1,
+     "sym": "a",
+     "width": 4,
+     "hip": [
+      49,
+      17
+     ],
+     "knee": [
+      57,
+      24
+     ],
+     "ankle": [
+      66,
+      18
+     ],
+     "shoe": "swing"
+    }
+   }
+  }
+ ],
+ "note": "腰 49行・脚の長さ 21・歩幅 6.3・脚の太さ 4"
+}
