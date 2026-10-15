@@ -221,9 +221,9 @@ Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
 # ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
-POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)]}
-WARM_SHADOW = {'boy', 'girl', 'student'}
-POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64}
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)]}
+WARM_SHADOW = {'boy', 'girl', 'student', 'gakuran'}
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66}
 
 
 def extract_poses(name):
