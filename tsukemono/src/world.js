@@ -1,7 +1,7 @@
 // 店先の人の動かし方（段取り）。ゲームの結果を受けて、客と店主を動かすだけ。
 // 状態は一切書き換えない。止めても遊びは進む（結果は game.js が先に確定している）。
 import { SCENE } from '../assets/scene.js';
-import { CUSTOMER_LOOKS, KEEPER_LOOK, randomLook, AMBIENT_LINES } from '../assets/characters.js';
+import { KEEPER_LOOK, randomLook, AMBIENT_LINES } from '../assets/characters.js';
 
 const WALK_SPEED = 70; // px/秒 【仮置き】
 
@@ -83,10 +83,10 @@ export class World {
   }
 
   // ---- 客 ----
-  /** 客1人の来店〜退店。v = { customer, bought, soldOut, reaction }。 */
-  async serve(v, { look, line, onTalk } = {}) {
+  /** 客1人の来店〜退店。v = { customer, bought, soldOut, reaction }。見た目は look（なければランダム）。 */
+  async serve(v, { look, line, onTalk, season = null } = {}) {
     const lane = SCENE.lane;
-    const c = this.spawn('customer', look ?? CUSTOMER_LOOKS[v.customer.id], lane.startX, lane.y, 'walk');
+    const c = this.spawn('customer', look ?? randomLook(Math.random, season), lane.startX, lane.y, 'walk');
     const prevFree = this.standFree;
     let release;
     this.standFree = new Promise((r) => { release = r; });
@@ -118,12 +118,12 @@ export class World {
   }
 
   /** 販売の結果を順に見せる。 */
-  async saleScene(visitors, _slot, onTalk) {
+  async saleScene(visitors, season, onTalk) {
     this.busy++;
     try {
       const jobs = [];
       for (const v of visitors) {
-        jobs.push(this.serve(v, { onTalk }));
+        jobs.push(this.serve(v, { onTalk, season }));
         await this.wait(2600); // 次の客は少し遅れて来る
       }
       await Promise.all(jobs);

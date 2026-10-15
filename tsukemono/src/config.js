@@ -140,43 +140,45 @@ export const CONFIG = {
     autumn: { sunny: 7, rain: 3, snow: 0 },
     winter: { sunny: 5, rain: 1, snow: 4 },
   },
-  // 来店率 = baseVisit × 天気 × 時間帯 【仮置き】
+  // 来店: 最大 slots 人まで、1人ずつ「来店率 = base × 天気 × 時間帯」で来るか決める 【仮置き】
   visit: {
+    slots: 5,
     base: 0.8,
     weather: { sunny: 1.0, rain: 0.5, snow: 0.4 },
     time: { morning: 0.7, noon: 1.0, evening: 1.0, night: 0 },
   },
 
   // ---------------------------------------------------------------
-  // 客（5人）。target は 0〜100 の理想の味。weights は重視度。
+  // 客の好みのタイプ（5つ）。客は名前なしでランダムに来て、来るたびにどれかのタイプになる。
+  // target は 0〜100 の理想の味。weights は重視度。 【仮置き】
   // ---------------------------------------------------------------
   customers: [
     {
-      id: 'ume', name: '梅ばあちゃん', hint: 'あっさり。浅漬けが好き',
+      id: 'light', name: 'あっさり好き', hint: '浅漬けが好き',
       likes: 'asazuke',
       target: { acid: 15, salt: 30, texture: 80, complexity: 30 },
       weights: { acid: 1, salt: 1.5, texture: 1, complexity: 0.3 },
     },
     {
-      id: 'gen', name: '源さん', hint: 'しょっぱめが好き。酒の肴に',
+      id: 'salty', name: 'しょっぱめ好き', hint: '酒の肴に。よく漬かった白菜漬け',
       likes: 'hakusaizuke',
       target: { acid: 40, salt: 75, texture: 55, complexity: 50 },
       weights: { acid: 0.8, salt: 1.6, texture: 0.6, complexity: 0.6 },
     },
     {
-      id: 'kiku', name: '菊さん', hint: '酸っぱいのが好き。よく漬かったもの',
+      id: 'sour', name: '酸っぱい好き', hint: 'よく漬かって酸味の出たもの',
       likes: 'hakusaizuke',
       target: { acid: 70, salt: 45, texture: 45, complexity: 60 },
       weights: { acid: 1.8, salt: 0.8, texture: 0.5, complexity: 0.6 },
     },
     {
-      id: 'ken', name: '健太', hint: 'シャキシャキの食感が命',
+      id: 'crunchy', name: '食感重視', hint: 'シャキシャキが命',
       likes: 'asazuke',
       target: { acid: 12, salt: 40, texture: 95, complexity: 20 },
       weights: { acid: 0.7, salt: 0.8, texture: 2.0, complexity: 0.2 },
     },
     {
-      id: 'shige', name: '茂さん', hint: '通。風味の深さにうるさい',
+      id: 'gourmet', name: '通', hint: '風味の深さにうるさい',
       likes: 'hakusaizuke',
       target: { acid: 50, salt: 50, texture: 55, complexity: 90 },
       weights: { acid: 0.8, salt: 0.8, texture: 0.5, complexity: 2.0 },

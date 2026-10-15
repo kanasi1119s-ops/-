@@ -121,3 +121,21 @@ test('味見は同じ樽の同じ時点では1回まで。時間が進めばま�
   g.brew(1, recipe);
   assert.equal(g.tasteTest(1).already, false); // 別の樽は別
 });
+
+test('客は名前なしでランダムに来て、好みのタイプもばらける', () => {
+  const types = new Set();
+  let total = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const g = createGame({ seed });
+    g.weather = 'sunny';
+    g.advance(1);
+    g.weather = 'sunny';
+    g.brew(0, recipe);
+    const r = g.sell(0);
+    total += r.visitors.length;
+    for (const v of r.visitors) types.add(v.customer.id);
+  }
+  assert.equal(types.size, CONFIG.customers.length);
+  const avg = total / 200;
+  assert.ok(avg > 3 && avg < 5, `平均 ${avg}人`); // 最大5人 × 来店率0.8
+});

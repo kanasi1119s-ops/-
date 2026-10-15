@@ -101,7 +101,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const taste = g.tasteOf(slot);
     const season = g.season();
     const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()];
-    const coming = cfg.customers.filter(() => rng() < visitP);
+    // 名前のない客がランダムに来る。来た客の好みのタイプもランダム
+    const coming = [];
+    for (let i = 0; i < cfg.visit.slots; i++) {
+      if (rng() < visitP) coming.push(cfg.customers[Math.floor(rng() * cfg.customers.length)]);
+    }
     g.stats.visits += coming.length;
     const spoiled = coming.length > 0 && rng() * 100 < taste.spoilRisk;
     const visitors = [];

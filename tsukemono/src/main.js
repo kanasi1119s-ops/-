@@ -134,7 +134,8 @@ function renderBrew() {
 function renderCustomers() {
   const s = game.season(), shift = C.season[s].prefShift;
   const note = shift.salt < 0 ? '夏はみんなあっさり寄り' : shift.salt > 0 ? '冬はみんなしょっぱめ寄り' : '';
-  $('customers').innerHTML = C.customers.map((c) => `<div class="cust"><b>${c.name}</b><span class="hint">${c.hint}</span></div>`).join('')
+  $('customers').innerHTML = '<div class="hint" style="margin-bottom:4px">お客はランダムに来て、それぞれ次のどれかの好みを持っています。</div>'
+    + C.customers.map((c) => `<div class="cust"><b>${c.name}</b><span class="hint">${c.hint}</span></div>`).join('')
     + `<div class="hint" style="margin-top:6px">${note}${note ? '。' : ''}雨・雪の日は客が減ります。</div>`;
 }
 
@@ -142,7 +143,7 @@ function renderLog() {
   if (!ui.log.length) return;
   $('log').innerHTML = ui.log.map((s) => `
     <div style="margin-bottom:10px"><b>${s.day}日目 ${s.time}</b> ・ ${s.weather} ・ ${s.what}
-    <table><tr><th>客</th><th>一言</th><th class="r">満足度</th><th class="r">支払</th></tr>
+    <table><tr><th>お客の好み</th><th>一言</th><th class="r">満足度</th><th class="r">支払</th></tr>
     ${s.rows.map((r) => `<tr><td>${r.name}</td><td>${r.line}</td><td class="r">${r.sat == null ? '-' : Math.round(r.sat)}</td><td class="r">${r.price ? yen(r.price) : '—'}</td></tr>`).join('')}
     </table>
     <div>売上 <b class="pos">${yen(s.revenue)}</b> ${s.batch ? `／ この樽の収支 <b class="${s.batch.profit >= 0 ? 'pos' : 'neg'}">${s.batch.profit >= 0 ? '+' : ''}${yen(s.batch.profit)}</b>（仕入れ ${yen(s.batch.cost)}）` : ''}</div></div>`).join('');
@@ -202,7 +203,7 @@ async function sell(slot) {
     ui.busy = false; renderAll(); return;
   }
   setMessage(`${res.visitors.length}人のお客が来た。`);
-  await world.saleScene(res.visitors, slot, () => {});
+  await world.saleScene(res.visitors, res.season, () => {});
   ui.shownMoney = game.money;
   ui.log.unshift({
     day: game.day(), time: C.timeName[res.time], weather: C.weatherName[res.weather], what: res.spoiled ? '傷んでいた！' : `${res.sold}個売れた`,
