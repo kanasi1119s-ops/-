@@ -10,8 +10,8 @@ const SKY = {
   night: ['#0d1230', '#2a3a6e'],
 };
 const SEASON = {
-  spring: { mountainFar: '#9bb7c8', mountainNear: '#6fae6a', paddy: ['#a5d27f', '#8fc46d', '#9bc9d6'], bank: '#8bbf5a', ground: '#b99b6a', tree: 'tree_spring', particles: 'petal', snowcap: false },
-  summer: { mountainFar: '#6f9a8a', mountainNear: '#3f8a4a', paddy: ['#4f9a3f', '#3f8a35', '#5aa845'], bank: '#4a9a3a', ground: '#a98d5c', tree: 'tree_summer', particles: null, snowcap: false },
+  spring: { mountainFar: '#9bb7c8', mountainNear: '#6fae6a', paddy: ['#7fb6dc', '#6fa8d2', '#9ccf74'], bank: '#8bbf5a', ground: '#b99b6a', tree: 'tree_spring', particles: 'petal', snowcap: false },
+  summer: { mountainFar: '#5f8fa0', mountainNear: '#3f8a4a', paddy: ['#62a8d8', '#4f9a3f', '#7ab84f'], bank: '#4a9a3a', ground: '#a98d5c', tree: 'tree_summer', particles: null, snowcap: false },
   autumn: { mountainFar: '#a08a7a', mountainNear: '#c0743a', paddy: ['#dcb94c', '#c9a53c', '#e6c75a'], bank: '#b09a4a', ground: '#b58f56', tree: 'tree_autumn', particles: 'leaf', snowcap: false },
   winter: { mountainFar: '#aebfcf', mountainNear: '#8fa49a', paddy: ['#e8eef3', '#d6dde5', '#c8d2dc'], bank: '#dde5ec', ground: '#e6ecf1', tree: 'tree_winter', particles: null, snowcap: true },
 };

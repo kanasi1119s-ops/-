@@ -72,21 +72,19 @@ export const CUSTOMER_FRAME = { w: 12, h: 21 };
 
 // ---- 背景の動き（コマ送りの順番と周期）----
 // seq: スプライト名の並び / ms: 1コマの長さ / ここでは周期を物ごとに少しずつ変えて揃わないようにする。
+const NOREN_SEQS = [['noren_0', 'noren_1', 'noren_0', 'noren_3'], ['noren_0', 'noren_3', 'noren_0', 'noren_1']];
 export const SCENERY_ANIMS = {
-  noren: [
-    { x: 160, y: 92, seq: ['noren_0', 'noren_1', 'noren_0', 'noren_3'], ms: 900, phase: 0 },
-    { x: 178, y: 92, seq: ['noren_0', 'noren_1', 'noren_0', 'noren_3'], ms: 1100, phase: 400 },
-    { x: 196, y: 92, seq: ['noren_0', 'noren_3', 'noren_0', 'noren_1'], ms: 1300, phase: 150 },
-    { x: 214, y: 92, seq: ['noren_0', 'noren_1', 'noren_0', 'noren_3'], ms: 1000, phase: 700 },
-  ],
+  noren: Array.from({ length: 7 }, (_, i) => ({
+    x: 88 + i * 20, y: 77, seq: NOREN_SEQS[i % 2], ms: 900 + ((i * 230) % 600), phase: (i * 370) % 1000,
+  })),
   daikon: [
-    { x: 128, y: 92, seq: ['daikon_0', 'daikon_1', 'daikon_0', 'daikon_2'], ms: 800, phase: 0 },
-    { x: 137, y: 92, seq: ['daikon_0', 'daikon_2', 'daikon_0', 'daikon_1'], ms: 1000, phase: 300 },
-    { x: 146, y: 92, seq: ['daikon_0', 'daikon_1', 'daikon_0', 'daikon_2'], ms: 1200, phase: 650 },
+    { x: 90, y: 95, seq: ['daikon_0', 'daikon_1', 'daikon_0', 'daikon_2'], ms: 800, phase: 0 },
+    { x: 99, y: 95, seq: ['daikon_0', 'daikon_2', 'daikon_0', 'daikon_1'], ms: 1000, phase: 300 },
+    { x: 108, y: 95, seq: ['daikon_0', 'daikon_1', 'daikon_0', 'daikon_2'], ms: 1200, phase: 650 },
   ],
   chili: [
-    { x: 250, y: 92, seq: ['chili_0', 'chili_1', 'chili_0', 'chili_2'], ms: 900, phase: 100 },
-    { x: 258, y: 92, seq: ['chili_0', 'chili_2', 'chili_0', 'chili_1'], ms: 1150, phase: 500 },
+    { x: 132, y: 95, seq: ['chili_0', 'chili_1', 'chili_0', 'chili_2'], ms: 900, phase: 100 },
+    { x: 140, y: 95, seq: ['chili_0', 'chili_2', 'chili_0', 'chili_1'], ms: 1150, phase: 500 },
   ],
   // 雲: 速さ(px/秒)がバラバラ
   clouds: [

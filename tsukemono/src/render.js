@@ -69,17 +69,43 @@ export class SceneRenderer {
       px(x, y, 2, 1, theme.groundShade);
     }
     if (theme.puddles) for (const [x, y] of [[40, 160], [120, 168], [200, 176], [270, 161], [80, 174]]) g.drawImage(getSprite('puddle'), x, y);
+    // 離れ（左の小屋）・電柱・電線・自転車・木箱
+    const sh = SCENE.shed;
+    px(sh.x, sh.y, sh.w, SCENE.groundY - sh.y, '#8a6238');
+    for (let x = sh.x + 3; x < sh.x + sh.w; x += 5) px(x, sh.y, 1, SCENE.groundY - sh.y, '#6a4824');
+    px(sh.x + 8, sh.y + 10, 12, 16, '#2a1c14'); px(sh.x + 9, sh.y + 11, 10, 14, '#3d2a1c');
+    for (let x = sh.x + 11; x < sh.x + 19; x += 3) px(x, sh.y + 11, 1, 14, '#8a6238');
+    for (let y = 88; y < 98; y++) {
+      const left = sh.x - 6 + (97 - y) * 3;
+      for (let x = left; x < 80; x++) px(x, y, 1, 1, (y + (x >> 1)) % 3 === 0 ? PALETTE.T : PALETTE.t);
+    }
+    px(sh.x - 6, 96, 46, 2, PALETTE.k);
+    const pl = SCENE.pole;
+    px(pl.x, pl.top, 4, SCENE.groundY - pl.top + 2, '#8a8a84'); px(pl.x, pl.top, 1, SCENE.groundY - pl.top + 2, '#a8a8a2');
+    px(pl.x - 6, pl.top + 4, 16, 2, '#6a5a44'); px(pl.x - 4, pl.top + 12, 12, 2, '#6a5a44');
+    for (let y = 108; y < 126; y += 6) { px(pl.x, y, 4, 3, '#e6c25a'); px(pl.x, y + 3, 4, 3, '#2a1c14'); }
+    for (const [y0, y1, sag] of [[pl.top + 4, 62, 8], [pl.top + 13, 70, 7], [pl.top + 5, 40, 6]]) {
+      const x0 = pl.x + 4, x1 = 66;
+      for (let x = x0; x <= x1; x++) { const t = (x - x0) / (x1 - x0); px(x, Math.round(y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * sag), 1, 1, '#3a3a44'); }
+    }
+    g.drawImage(getSprite('bicycle'), SCENE.bicycle.x, SCENE.bicycle.y);
+    g.drawImage(getSprite('crate'), SCENE.crate.x, SCENE.crate.y + 4);
     // 店の中（暗い土間と壁）、柱、梁
     const it = SCENE.interior;
     px(it.x, it.y, it.w, it.h, PALETTE.i);
     for (let y = it.y + 4; y < it.y + it.h; y += 6) px(it.x, y, it.w, 1, '#3d2813');
     px(it.x, SCENE.groundY - 2, it.w, 2, PALETTE.X);
+    // 奥の棚と貼り紙
+    px(200, 108, 38, 2, PALETTE.x); px(200, 126, 38, 2, PALETTE.x);
+    for (const [x, y, w, h, col] of [[203, 100, 8, 8, '#8d8d88'], [214, 102, 7, 6, '#c18c52'], [224, 99, 9, 9, '#8d8d88'], [204, 118, 9, 8, '#c18c52'], [218, 117, 8, 9, '#8d8d88']]) px(x, y, w, h, col);
+    px(184, 84, 14, 10, '#d8cfae'); px(185, 85, 12, 8, '#efe6c8');
+    for (let y = 87; y < 92; y += 2) px(187, y, 8, 1, '#8a7a5a');
     // 屋根・看板
     g.drawImage(getSprite('roof'), SCENE.roof.x, SCENE.roof.y);
     if (theme.roofSnow) g.drawImage(getSprite('roof_snow'), SCENE.roof.x, SCENE.roof.y - 1);
     const sg = SCENE.sign;
     g.drawImage(getSprite('signboard'), sg.x, sg.y);
-    const t = getText(sg.text, { px: 12, color: '#2a1c14' });
+    const t = getText(sg.text, { px: 13, color: '#2a1c14' });
     g.drawImage(t, Math.round(sg.x + (sg.w - t.width) / 2), sg.y + 1);
     for (const p of SCENE.posts) px(p.x, p.y, p.w, p.h, PALETTE.x), px(p.x, p.y, 1, p.h, PALETTE.W);
     px(SCENE.beam.x, SCENE.beam.y, SCENE.beam.w, SCENE.beam.h, PALETTE.X);
@@ -114,11 +140,17 @@ export class SceneRenderer {
     SCENERY_ANIMS.daikon.forEach(swing);
     SCENERY_ANIMS.chili.forEach(swing);
     SCENERY_ANIMS.noren.forEach(swing);
+    SCENE.noren.texts.forEach((ch, i) => {
+      if (!ch) return;
+      const tx = getText(ch, { px: 11, color: '#f6f1e4' });
+      g.drawImage(tx, SCENE.noren.x + i * SCENE.noren.w + Math.round((19 - tx.width) / 2), SCENE.noren.y + 3);
+    });
     g.drawImage(getSprite('lantern'), SCENE.lantern.x, SCENE.lantern.y);
     // 樽
     view.barrels.forEach((b, i) => {
       const x = SCENE.barrels[i].x, y = SCENE.groundY - SCENE.barrelH;
-      g.drawImage(getSprite(b.filled ? 'barrel_full' : 'barrel_empty'), x, y);
+      g.drawImage(getSprite(b.filled ? 'barrel_full' : 'barrel_empty', b.filled ? { pal: { w: b.veg === 'kyuri' ? '#6fae4a' : '#dfe9b8' } } : undefined), x, y);
+      g.drawImage(getSprite('tag'), x + 3, SCENE.groundY - 12);
       if (b.label) this.label(b.label, x + SCENE.barrelW / 2, SCENE.groundY + 2, b.selected);
       else if (b.selected) this.label('空', x + SCENE.barrelW / 2, SCENE.groundY + 2, true);
     });
@@ -170,7 +202,7 @@ export class SceneRenderer {
     const outfit = theme.outfit;
     const pal = a.kind === 'customer'
       ? { h: look.hair, c: mix(look.clothes, outfit.toward, outfit.amt), C: mix(look.clothes2, outfit.toward, outfit.amt), p: mix(look.pants, outfit.toward, outfit.amt * 0.6), s: look.skin ?? PALETTE.s }
-      : { h: look.hair, c: look.clothes, C: look.clothes2, p: look.pants, s: look.skin ?? PALETTE.s };
+      : { h: look.hair, c: look.clothes, C: look.clothes2, p: look.pants, s: look.skin ?? PALETTE.s, a: look.apron ?? PALETTE.a };
     const style = look.style;
     const flipAll = a.facing === -1;
     const W = 12;
@@ -187,6 +219,7 @@ export class SceneRenderer {
     }
     if (a.kind === 'customer') {
       const bob = frame.bob;
+      if (look.pack) place('acc_randoseru', 0, 9 + bob, false);
       if (outfit.scarf) place('acc_scarf', 2, 7 + bob, false, { r: '#c63d2f', R: '#8f2a20' });
       if (outfit.hat && look.hat && theme.weather === 'sunny') place('acc_strawhat', 0, bob, false);
       if (theme.weather !== 'sunny') {

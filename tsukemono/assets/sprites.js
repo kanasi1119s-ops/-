@@ -7,9 +7,9 @@ export const PALETTE = {
   r: '#c63d2f', R: '#8f2a20', g: '#5d9c3f', G: '#3c7a2e', b: '#2d4b7c', B: '#46689f',
   s: '#f2c9a0', S: '#d5a077', h: '#3a2a22', H: '#b9b9b9', c: '#6a8f5a', C: '#8a6a3a',
   p: '#4a4a5c', e: '#231710', m: '#a5483a', M: '#5a2a22', n: '#8d8d88', N: '#5c5c58',
-  t: '#6e4c3c', T: '#4a3228', d: '#efece0', D: '#c8c4b0', a: '#ece6d4', y: '#e6c25a',
+  t: '#4d5a6e', T: '#2f3a4b', d: '#efece0', D: '#c8c4b0', a: '#ece6d4', y: '#e6c25a',
   Y: '#b8933a', u: '#c63d2f', U: '#8f2a20', l: '#6aa84f', L: '#4c8a3a', q: '#f2b6c4',
-  o: '#e8892a', z: '#7a5a3a', f: '#fff8c8',
+  o: '#e8892a', z: '#7a5a3a', f: '#fff8c8', j: '#7aa3cc', J: '#9fc0e0', V: '#3b4a5a',
 };
 
 // ---- 小道具: 文字グリッドを組み立てる ----
@@ -83,45 +83,48 @@ def('salt_c', ['.w..w', '..w..', 'w....']);
 def('bubble_tail', ['kk.', '.wk', '..k'].map((r) => r));
 
 // ---------------- 背景 ----------------
-// 屋根（瓦）
+// 屋根（濃い瓦、棟の端に飾り）
 {
-  const W = 206, H = 22, g = grid(W, H);
-  for (let y = 0; y < H; y++) {
-    const inset = Math.round((H - 1 - y) * 0.45);
+  const W = 188, H = 24, g = grid(W, H);
+  for (let y = 3; y < H; y++) {
+    const inset = Math.round((H - 1 - y) * 0.38);
     for (let x = inset; x < W - inset; x++) {
-      const odd = y % 3 === 2;
-      g[y][x] = odd ? ((x + y) % 5 === 0 ? 'T' : 't') : ((x + (y >> 1)) % 6 === 0 ? 'T' : 't');
+      const col = (x + (Math.floor(y / 3) % 2) * 3) % 6; // 瓦の列（段ごとに半分ずらす）
+      const row = y % 3;
+      g[y][x] = row === 2 ? 'T' : col === 0 ? 'T' : (row === 0 ? 'V' : 't');
     }
-    if (y === H - 1) for (let x = inset; x < W - inset; x++) g[y][x] = 'X';
-    if (y === H - 2) for (let x = inset; x < W - inset; x++) g[y][x] = (x % 4 < 2 ? 'T' : 'X');
+    if (y >= H - 2) for (let x = inset; x < W - inset; x++) g[y][x] = y === H - 1 ? 'k' : (x % 6 < 3 ? 'T' : 'V');
   }
+  // 棟（むね）と鬼瓦
+  const ri = Math.round((H - 1 - 3) * 0.38);
+  fill(g, ri, 0, W - ri * 2, 3, 'T'); fill(g, ri, 0, W - ri * 2, 1, 'V');
+  for (let x = ri; x < W - ri; x += 4) g[2][x] = 'k';
+  fill(g, ri - 2, 0, 4, 5, 'T'); fill(g, W - ri - 2, 0, 4, 5, 'T');
   def('roof', toRows(g));
-  const s = grid(W, H);
-  for (let y = 0; y < 9; y++) {
-    const inset = Math.round((H - 1 - y) * 0.45);
-    const depth = 4 + ((y * 3) % 3) + (y < 5 ? 0 : 2);
-    for (let x = inset; x < W - inset; x++) { const edge = 5 + ((x * 7) % 4); if (y < edge) s[y][x] = y >= edge - 2 && (x % 3 === 0) ? 'D' : 'w'; void depth; }
+  const sn = grid(W, H);
+  for (let y = 0; y < 10; y++) {
+    const inset = Math.round((H - 1 - y) * 0.38);
+    for (let x = inset; x < W - inset; x++) { const edge = 4 + ((x * 7) % 4); if (y < edge) sn[y][x] = y >= edge - 2 && (x % 3 === 0) ? 'D' : 'w'; }
   }
-  def('roof_snow', toRows(s));
+  def('roof_snow', toRows(sn));
 }
 // 看板
 {
-  const W = 60, H = 16, g = grid(W, H);
+  const W = 84, H = 18, g = grid(W, H);
   fill(g, 0, 0, W, H, 'X'); fill(g, 2, 2, W - 4, H - 4, 'W');
-  for (let y = 2; y < H - 2; y += 4) for (let x = 2; x < W - 2; x++) if ((x + y) % 7 === 0) g[y][x] = 'x';
-  fill(g, 6, H, 3, 4, 'X'); fill(g, W - 9, H, 3, 4, 'X');
+  for (let y = 3; y < H - 2; y += 4) for (let x = 2; x < W - 2; x++) if ((x * 3 + y) % 11 === 0) g[y][x] = 'x';
+  fill(g, 0, 0, W, 1, 'x'); fill(g, 6, H - 1, 3, 1, 'k'); fill(g, W - 9, H - 1, 3, 1, 'k');
   def('signboard', toRows(g));
 }
-// 暖簾（4枚、揺れ4コマ）
+// 暖簾（7枚、揺れ4コマ）。文字は render 側で重ねる
 {
-  const W = 17, H = 20, base = grid(W, H);
-  fill(base, 0, 0, W, 2, 'k'); fill(base, 0, 2, W, H - 2, 'b');
-  for (let y = 3; y < H - 3; y++) for (let x = 2; x < W; x += 5) base[y][x] = 'B';
-  fill(base, 0, H - 3, W, 3, 'w'); // 裾
-  fill(base, W - 1, 2, 1, H - 2, '.'); // 切れ目
+  const W = 19, H = 18, base = grid(W, H);
+  fill(base, 0, 0, W, 2, 'V'); fill(base, 0, 2, W, H - 2, 'j');
+  for (let y = 3; y < H - 3; y++) { base[y][0] = 'J'; base[y][W - 1] = 'B'; }
+  fill(base, 0, H - 2, W, 2, 'J');
+  for (let x = 0; x < W; x += 3) base[0][x] = 'k';
   const rows = toRows(base);
-  const shifts = [0, 2, 0, -2];
-  shifts.forEach((s, i) => def(`noren_${i}`, shear(rows, s)));
+  [0, 2, 0, -2].forEach((sh, i) => def(`noren_${i}`, shear(rows, sh)));
 }
 // 吊るし大根（3コマ）
 {
@@ -164,7 +167,6 @@ def('bubble_tail', ['kk.', '.wk', '..k'].map((r) => r));
   def('barrel_full', make(true));
 }
 // 札
-def('tag', ['kkkkkkkkkkk', 'kwwwwwwwwwk', 'kwwwwwwwwwk', 'kwwwwwwwwwk', 'kwwwwwwwwwk', '.kkkkkkkkk.']);
 def('lantern', ['..kkkk..', '.rrrrrr.', 'rrrrrrrr', 'rRrrrrRr', 'rrrrrrrr', 'rRrrrrRr', 'rrrrrrrr', '.rrrrrr.', '..kkkk..', '...kk...']);
 def('puddle', ['...nnnnnn...', '.nnnnnnnnnn.', '...nnnnnn...'], { n: '#7d97ad' });
 
@@ -203,6 +205,36 @@ tree('tree_spring', { leaves: 'q', pal: { l: '#f4c1cf', L: '#e59bb1', q: '#ffe3e
 tree('tree_summer', { leaves: 'l', pal: { l: '#4f9a3a', L: '#357a2b' } });
 tree('tree_autumn', { leaves: 'l', pal: { l: '#e08a2c', L: '#b94d22' } });
 tree('tree_winter', { leaves: 'l', bare: true, snow: true });
+
+
+// ランドセル（人の両脇にのぞく）
+def('acc_randoseru', ['rr........rr', 'rr........rr', 'rR........Rr', 'rr........rr', 'RR........RR']);
+// 自転車
+def('bicycle', [
+  '..........kkk.......',
+  '.........k.kN.......',
+  '.....kkkkkkkk.kk....',
+  '....k...k..k..k.....',
+  '...k....k.k...k.....',
+  '.nnnn..kkkkk.nnnn...',
+  'nNkkkNnk.k.knNkkkNn.',
+  'nkn.nkn.k.k.nkn.nkn.',
+  'nk...kn....nk...kn..',
+  'nkn.nkn....nkn.nkn..',
+  'nNkkkNn....nNkkkNn..',
+  '.nnnnn......nnnnn...',
+].map((r) => r.padEnd(20, '.')), { n: '#9fb4c8', N: '#6f86a0', k: '#2a3a5a' });
+// 野菜の木箱
+def('crate', [
+  '..gg.dd.gg..d.',
+  '.gggdddggggdd.',
+  'xxxxxxxxxxxxxx',
+  'XxXxXxXxXxXxXx',
+  'xxxxxxxxxxxxxx',
+  'XXXXXXXXXXXXXX',
+]);
+// 樽の札
+def('tag', ['wwww', 'wkwk', 'wwww', 'wkkw', 'wwww', 'wkwk', 'wwww']);
 
 export function validateSprites() {
   const errors = [];

@@ -41,7 +41,7 @@ function view() {
   return {
     ...v,
     barrels: game.barrels.map((b, i) => ({
-      filled: !!b, selected: i === ui.slot,
+      filled: !!b, veg: b?.veg, selected: i === ui.slot,
       label: b ? `${trim(game.barrelAge(b), 1)}日` : null,
     })),
     actors: world.actors,
