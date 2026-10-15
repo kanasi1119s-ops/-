@@ -5,7 +5,9 @@
 // エディタでの手順（人ごと。8コマの中身は tools/walk_plan.py の説明）:
 //   1. 「作品を開く」で元の絵を開く。「下絵」にも元の絵を敷く。左右対称を切る
 //   2. レイヤーを足す: 影（いちばん下・不透明度32%）、後ろ脚・前脚・持ち物（からだの上）
-//   3. 「範囲選択」→ 切り取り（Ctrl+X）→ 貼り付け（Ctrl+V）→ Enter で、かご・袋を「持ち物」、ひざから下の脚を「後ろ脚」「前脚」へ分ける
+//   3. かご・袋は、からだを「複製」した「持ち物」レイヤーと、からだのレイヤーの両方から、消しゴムで相手のぶんを消して形どおりに分ける。
+//      股から下の脚は「範囲選択」→ 切り取り（Ctrl+X）→ 貼り付け（Ctrl+V）→ Enter で「後ろ脚」「前脚」へ。
+//      かごに隠れていた手前の脚（もも・ひざ・すね）は「えんぴつ」で描き足す
 //      （同じ場所に置くので見た目は元の絵のまま）
 //   4. 「複製」でフレームを8つに
 //   5. コマごとに: すそを「範囲選択」→「動かす」で揺らす／からだと持ち物を「動かす」で沈める／
@@ -77,13 +79,28 @@ for (const name of names) {
     await page.fill('#layerName', nm);
     await page.$eval('#layerName', (el) => { el.dispatchEvent(new Event('change', { bubbles: true })); el.blur(); });
   }
+  // 消しゴムで消す（行ごとのつながりを1回ずつなぞる）
+  async function eraseRuns(layer, runs) {
+    await cel(layer, 0);
+    await key('Escape');
+    await tool('eraser');
+    for (const [y, x0, x1] of runs) await drag([y, x0, y, x1]);
+  }
   // 2. レイヤー: 影（からだの下へ）、持ち物（いちばん上）
   await cel(0, 0);
   await addLayer('影');
   await page.click('#layerDown');
   await setRange('#layerOpacity', Math.round(plan.shadow.opacity * 100));
   await cel(1, 0);
-  await addLayer('持ち物'); // 2
+  if (plan.keepRuns?.length) {
+    // 持ち物は形どおりに分ける: からだを複製して「持ち物」にし、消しゴムで、持ち物からは体を、からだからは持ち物を消す
+    // （1ドットの所も消しゴムなら確実に消せる）
+    await page.click('#layerDup'); // 2
+    await page.fill('#layerName', '持ち物');
+    await page.$eval('#layerName', (el) => { el.dispatchEvent(new Event('change', { bubbles: true })); el.blur(); });
+  } else {
+    await addLayer('持ち物'); // 2
+  }
   // 3. 持ち物（かご・袋）を切り取って「持ち物」へ。股から下の脚を切り取って「後ろ脚」へ → 複製して「前脚」
   async function cutPaste(rect, fromLayer, toLayer) {
     await cel(fromLayer, 0);
@@ -93,7 +110,10 @@ for (const name of names) {
     await page.keyboard.press('Control+v');
     await key('Enter'); await key('Escape');
   }
-  for (const k of plan.keep) await cutPaste(k, 1, 2);
+  if (plan.keepRuns?.length) {
+    await eraseRuns(2, plan.bodyRuns);
+    await eraseRuns(1, plan.keepRuns);
+  } else for (const k of plan.keep) await cutPaste(k, 1, 2);
   await cel(1, 0);
   await addLayer('後ろ脚'); // 2（持ち物は3へ）
   await cutPaste(plan.legs, 1, 2);
@@ -101,13 +121,6 @@ for (const name of names) {
   await page.click('#layerDup'); // 3（持ち物は4へ）
   await page.fill('#layerName', '前脚');
   await page.$eval('#layerName', (el) => { el.dispatchEvent(new Event('change', { bubbles: true })); el.blur(); });
-  // 消しゴムで、それぞれのレイヤーからもう片方の脚を消す
-  async function eraseRuns(layer, runs) {
-    await cel(layer, 0);
-    await key('Escape');
-    await tool('eraser');
-    for (const [y, x0, x1] of runs) await drag([y, x0, y, x1]);
-  }
   await eraseRuns(LAYER.back, plan.eraseBack);
   await eraseRuns(LAYER.front, plan.eraseFront);
   // 手前の脚の、持ち物に隠れていた もも・ひざ を「えんぴつ」で描き足す（色ごと、横につながる所は1回でなぞる）

@@ -18,6 +18,9 @@ import os
 import numpy as np
 from PIL import Image
 from walk_prep import SPEC, TRACE, IMG, OUT, SYMS, SKIP, drop_specks, trace_legs
+from walk_items import segment_items
+
+RECT_KEEP = {'witch'}
 
 FRAME_MS = 110
 PAD_T, PAD_B = 1, 2  # 上: 体が沈むぶん（余裕）、下: 影のぶん
@@ -92,9 +95,14 @@ def main():
         head = int(np.nonzero(al.any(1))[0].min())
         hip = cut - 2 if not t.get('skirt') else round(sole - 0.47 * (sole - head))  # 腰（脚を振る軸）
         keep = [[k[0] + PAD_T, k[1], k[2] + PAD_T, k[3]] for k in t.get('keep', [])]
-        kept = np.zeros_like(al)
-        for k in keep:
-            kept[k[0]:k[2] + 1, k[1]:k[3] + 1] = True
+        # 持ち物は色とつながりで形どおりに切り分ける（tools/walk_items.py）。魔女はほうきと服が混ざるので四角のまま
+        if keep and name not in RECT_KEEP:
+            kept = segment_items(canvas, keep, cut) & al
+        else:
+            kept = np.zeros_like(al)
+            for k in keep:
+                kept[k[0]:k[2] + 1, k[1]:k[3] + 1] = True
+            kept &= al
         leg = al & ~kept
         leg[:cut] = False
         # 行ごとに、奥の脚（左）と手前の脚（右）の境の列を決める。2本に分かれている行はすき間の真ん中、
@@ -255,6 +263,8 @@ def main():
             hem = {'rect': [max(0, cut - 4), 0, cut - 1, W - 1], 'seq': HEM}
         plan = {'name': name, 'w': W, 'h': H, 'padTop': PAD_T, 'padBottom': PAD_B, 'frameMs': FRAME_MS, 'frames': 8,
                 'shadow': {'sym': shadow_sym, 'opacity': SHADOW_OPACITY}, 'keep': keep,
+                'keepRuns': runs_px([(int(y), int(x)) for y, x in np.argwhere(kept)]),  # 持ち物の画素（からだのレイヤーから消す）
+                'bodyRuns': runs_px([(int(y), int(x)) for y, x in np.argwhere(al & ~kept)]),  # 持ち物でない画素（持ち物のレイヤーから消す）
                 'legs': [cut, 0, H - 1, W - 1],  # 脚のレイヤーへ切り取る範囲
                 'eraseBack': runs_px(front_px),  # 奥の脚のレイヤーから消す（手前の脚のぶん）
                 'eraseFront': runs_px(back_px),  # 手前の脚のレイヤーから消す（奥の脚のぶん）
