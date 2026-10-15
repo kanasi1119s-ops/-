@@ -86,7 +86,7 @@ export class World {
   /** 客1人の来店〜退店。v = { customer, bought, soldOut, reaction }。見た目は look（なければランダム）。 */
   async serve(v, { look, line, onTalk, season = null } = {}) {
     const lane = SCENE.lane;
-    const c = this.spawn('customer', look ?? randomLook(Math.random, season), lane.startX, lane.y, 'walk');
+    const c = this.spawn('customer', look ?? randomLook(Math.random, season, v.customer?.id), lane.startX, lane.y, 'walk');
     const prevFree = this.standFree;
     let release;
     this.standFree = new Promise((r) => { release = r; });

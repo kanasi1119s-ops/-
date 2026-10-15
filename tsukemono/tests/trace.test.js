@@ -44,3 +44,9 @@ test('通りがかりの人: 来やすさ（weight）が低い人はめったに
   const others = PASSERS.filter((p) => !p.seasons || p.seasons.includes('spring')).length - 1;
   assert.ok(alien > 0 && alien < n / others, `alien ${alien}`);
 });
+
+test('見た目は好みのタイプに合う人が選ばれやすい（おばあちゃんは、あっさり好きのとき多め）', () => {
+  const count = (type) => Array.from({ length: 1000 }, (_, i) => randomLook(() => i / 1000, 'spring', type)).filter((p) => p.body.startsWith('granny')).length;
+  assert.ok(count('light') > count('salty') * 2, `${count('light')} vs ${count('salty')}`);
+  for (const p of PASSERS) for (const t of p.likes ?? []) assert.ok(['light', 'salty', 'sour', 'crunchy', 'gourmet'].includes(t), t);
+});

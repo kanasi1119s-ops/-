@@ -59,28 +59,49 @@ export const KEEPER_LOOK = { body: 'keeper' };
 // seasons があれば、その季節にだけ来る。
 // ownUmbrella: 自分の傘を持っている絵なので、雨・雪の日に傘を重ねない
 // weight: 来やすさ（既定1）。0.2 なら他の人の5分の1くらい
+// likes: その見た目の人がなりやすい好みのタイプ（config.js の customers の id）。そのタイプの客のとき選ばれやすい
+const L = 'light', SA = 'salty', SO = 'sour', CR = 'crunchy', GO = 'gourmet';
 export const PASSERS = [
-  { body: 'woman', umbrella: '#c63d2f' }, { body: 'granny', umbrella: '#2d4b7c' }, { body: 'oldman', umbrella: '#5a5a66' },
-  { body: 'oldman', recolor: 'genOutfit', umbrella: '#2d4b7c' }, { body: 'granny2', umbrella: '#c63d2f' }, { body: 'boy', umbrella: '#3f8a4a' },
-  { body: 'girl', umbrella: '#e0b43c' }, { body: 'student', umbrella: '#2d4b7c' }, { body: 'gakuran', umbrella: '#5a5a66' }, { body: 'blazer', umbrella: '#c63d2f' }, { body: 'yankee', umbrella: '#8a4b9a' },
-  { body: 'suit', umbrella: '#2a2a33' }, { body: 'shades', umbrella: '#2a2a33' }, { body: 'volley', umbrella: '#c63d2f' }, { body: 'soccer', umbrella: '#2d4b7c' },
-  { body: 'racer', umbrella: '#c63d2f' }, { body: 'karate', umbrella: '#2d4b7c' },
-  { body: 'samurai', umbrella: '#c18c52' },
-  { body: 'beach', umbrella: '#46689f', seasons: ['summer'] }, // 水着なので夏だけ
-  { body: 'parasol', ownUmbrella: true, seasons: ['spring', 'summer'] }, // 日傘を持っているので傘は重ねない
-  { body: 'angler', umbrella: '#3f8a4a' }, { body: 'hiker', umbrella: '#3f8a4a' },
-  { body: 'knight', umbrella: '#8f2a20' },
-  { body: 'alien', umbrella: '#7aa3cc', weight: 0.2 }, // めったに来ない
-  { body: 'centaur', umbrella: '#8d5c2e', weight: 0.2 }, // めったに来ない
-  { body: 'witch', umbrella: '#2a1c3a', seasons: ['autumn'] }, // ハロウィンの季節（秋）だけ
-  { body: 'demon', umbrella: '#2a1c14', seasons: ['autumn'] }, // ハロウィンの季節（秋）だけ
-  { body: 'kid1', umbrella: '#e0b43c' }, { body: 'kid2', umbrella: '#c63d2f' }, { body: 'kid3', umbrella: '#3f8a4a' },
+  { body: 'woman', umbrella: '#c63d2f', likes: [SO, L] },
+  { body: 'granny', umbrella: '#2d4b7c', likes: [L] },
+  { body: 'granny2', umbrella: '#c63d2f', likes: [L] },
+  { body: 'oldman', umbrella: '#5a5a66', likes: [GO] },
+  { body: 'oldman', recolor: 'genOutfit', umbrella: '#2d4b7c', likes: [SA] },
+  { body: 'suit', umbrella: '#2a2a33', likes: [GO] },
+  { body: 'boy', umbrella: '#3f8a4a', likes: [CR] },
+  { body: 'girl', umbrella: '#e0b43c', likes: [CR, L] },
+  { body: 'student', umbrella: '#2d4b7c', likes: [L, CR] },
+  { body: 'gakuran', umbrella: '#5a5a66', likes: [CR, SA] },
+  { body: 'blazer', umbrella: '#c63d2f', likes: [L, SO] },
+  { body: 'volley', umbrella: '#c63d2f', likes: [CR] },
+  { body: 'soccer', umbrella: '#2d4b7c', likes: [CR, SA] },
+  { body: 'yankee', umbrella: '#8a4b9a', likes: [SA] },
+  { body: 'shades', umbrella: '#2a2a33', likes: [SA, SO] },
+  { body: 'racer', umbrella: '#c63d2f', likes: [L] },
+  { body: 'karate', umbrella: '#2d4b7c', likes: [SA] },
+  { body: 'samurai', umbrella: '#c18c52', likes: [GO, SA] },
+  { body: 'angler', umbrella: '#3f8a4a', likes: [SA] },
+  { body: 'hiker', umbrella: '#3f8a4a', likes: [SA, CR] },
+  { body: 'knight', umbrella: '#8f2a20', likes: [GO] },
+  { body: 'beach', umbrella: '#46689f', likes: [L, CR], seasons: ['summer'] }, // 水着なので夏だけ
+  { body: 'parasol', ownUmbrella: true, likes: [L], seasons: ['spring', 'summer'] }, // 日傘を持っているので傘は重ねない
+  { body: 'witch', umbrella: '#2a1c3a', likes: [SO], seasons: ['autumn'] }, // ハロウィンの季節（秋）だけ
+  { body: 'demon', umbrella: '#2a1c14', likes: [SO, SA], seasons: ['autumn'] }, // ハロウィンの季節（秋）だけ
+  { body: 'alien', umbrella: '#7aa3cc', likes: [GO], weight: 0.2 }, // めったに来ない
+  { body: 'centaur', umbrella: '#8d5c2e', likes: [SA], weight: 0.2 }, // めったに来ない
+  // 店先の絵から切り抜いたランドセルの子ども（1枚の絵をずらして動かすので、少なめ）
+  { body: 'kid1', umbrella: '#e0b43c', likes: [CR], weight: 0.4 },
+  { body: 'kid2', umbrella: '#c63d2f', likes: [CR], weight: 0.4 },
+  { body: 'kid3', umbrella: '#3f8a4a', likes: [CR], weight: 0.4 },
 ];
-export function randomLook(rand = Math.random, season = null) {
+export const LIKE_BOOST = 4; // 好みのタイプが合う見た目は、この倍だけ選ばれやすい 【仮置き】
+/** 季節に合う人から、来やすさ（と、好みのタイプが合うか）に応じてランダムに選ぶ。 */
+export function randomLook(rand = Math.random, season = null, type = null) {
   const list = PASSERS.filter((p) => !p.seasons || !season || p.seasons.includes(season));
-  const total = list.reduce((s, p) => s + (p.weight ?? 1), 0);
+  const w = (p) => (p.weight ?? 1) * (type && p.likes?.includes(type) ? LIKE_BOOST : 1);
+  const total = list.reduce((s, p) => s + w(p), 0);
   let r = rand() * total;
-  for (const p of list) { r -= p.weight ?? 1; if (r < 0) return p; }
+  for (const p of list) { r -= w(p); if (r < 0) return p; }
   return list[list.length - 1];
 }
 export const AMBIENT_LINES = ['いい色だねぇ', 'おいしそう！', 'ひとつください', '今日は何が漬かってる？', 'ちょうどいい塩梅だ'];
