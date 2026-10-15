@@ -220,6 +220,8 @@ out = np.dstack([bg, alpha])
 Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
+# ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)]}
 POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75}
 
 
@@ -232,6 +234,8 @@ def extract_poses(name):
     grid = (g > 235) & (b > 235) & (r < 240)  # 枠線
     fg = ((np.abs(a - bgc).sum(-1) > 40) & ~grid).astype(np.uint8)
     shadow = (b >= r - 10) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 70) & (mx < 205)
+    for x0e, y0e, x1e, y1e in POSE_ERASE.get(name, []):
+        fg[y0e:y1e, x0e:x1e] = 0
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     n2, _, st, _ = cv2.connectedComponentsWithStats(fg, 8)
     # 絵の端に触れている部品（渡す人の手など、枠の外から入っているもの）は除く
