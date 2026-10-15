@@ -304,4 +304,4 @@ setTimeout(function loop() {
 
 renderDebug(); renderAll(); fit();
 requestAnimationFrame(frame);
-window.__game = { game, ui, world, renderer, advance, brew, sell }; // 動作確認用
+window.__game = { game, ui, world, renderer, advance, brew, sell, renderAll }; // 動作確認用（scripts/e2e.js）
