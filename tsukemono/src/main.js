@@ -4,8 +4,8 @@ import { createGame } from './game.js';
 import { simulate, daysToRipe, ripeRangeDays } from './model.js';
 import { SceneRenderer } from './render.js';
 import { World } from './world.js';
-import { integerScale } from './pixel.js';
-import { SCENE } from '../assets/scene.js';
+import { integerScale, loadImages } from './pixel.js';
+import { SCENE, IMAGES } from '../assets/scene.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -15,6 +15,7 @@ const C = CONFIG;
 
 const game = createGame({ seed: (Date.now() & 0xffffffff) >>> 0 });
 const canvas = $('screen');
+await loadImages(IMAGES);
 const renderer = new SceneRenderer(canvas);
 const world = new World();
 
@@ -222,7 +223,7 @@ document.addEventListener('click', (e) => {
   if (t.dataset.adv) { if (!ui.busy) advance(+t.dataset.adv); return; }
   if (t.id === 'brewBtn') { brew(); return; }
   if (t.id === 'ambient') { ui.recipe.tempC = game.ambientTemp(); ui.tempTouched = false; renderBrew(); return; }
-  if (t.id === 'ambientVisit') { if (!world.busy) world.ambientVisit(ui.slot); return; }
+  if (t.id === 'ambientVisit') { if (!world.busy) world.ambientVisit(); return; }
   const act = t.dataset.act;
   if (act) {
     const slot = +t.dataset.slot;
@@ -273,7 +274,7 @@ function frame(now) {
 
 // 画面を開いて少し経つと、通りがかりの客が買っていく（デモ。ゲームの状態は変えない）
 setTimeout(function loop() {
-  if (!world.busy && !ui.busy && !ui.frozen && view().time !== 'night') world.ambientVisit(ui.slot);
+  if (!world.busy && !ui.busy && !ui.frozen && view().time !== 'night') world.ambientVisit();
   setTimeout(loop, 14000);
 }, 2500);
 

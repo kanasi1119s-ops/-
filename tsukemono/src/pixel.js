@@ -9,6 +9,62 @@ export function makeCanvas(w, h) {
   return c;
 }
 
+// ---------------------------------------------------------------- 画像（トレースした絵）
+const images = new Map();
+
+/** assets/img/<name>.png を読み込んで canvas にしておく。 */
+export async function loadImages(names, base = 'assets/img/') {
+  await Promise.all(names.map((name) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = makeCanvas(img.width, img.height);
+      c.getContext('2d').drawImage(img, 0, 0);
+      images.set(name, c);
+      resolve();
+    };
+    img.onerror = () => reject(new Error(`画像を読めません: ${base}${name}.png`));
+    img.src = `${base}${name}.png`;
+  })));
+}
+export function getImage(name) {
+  const c = images.get(name);
+  if (!c) throw new Error(`image not loaded: ${name}`);
+  return c;
+}
+
+export function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+export function hslToRgb(h, s, l) {
+  if (s === 0) return [l * 255, l * 255, l * 255];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = (t) => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+}
+
+/** 画素ごとに色を置き換えた写しを作る。fn(r,g,b,x,y) が [r,g,b] を返せば置き換え、null ならそのまま。 */
+export function recolor(src, fn, { flip = false } = {}) {
+  const c = makeCanvas(src.width, src.height), g = c.getContext('2d');
+  if (flip) { g.translate(src.width, 0); g.scale(-1, 1); }
+  g.drawImage(src, 0, 0);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  if (!fn) return c;
+  const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    const p = i / 4, out = fn(d[i], d[i + 1], d[i + 2], p % c.width, Math.floor(p / c.width));
+    if (out) { d[i] = out[0]; d[i + 1] = out[1]; d[i + 2] = out[2]; }
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+// ---------------------------------------------------------------- 小物（文字で描いたドット絵）
 const spriteCache = new Map();
 
 /** スプライトを canvas にして返す（キャッシュ）。pal で色を上書き、flip で左右反転。 */
@@ -25,8 +81,7 @@ export function getSprite(name, { pal, flip = false } = {}) {
     for (let x = 0; x < w; x++) {
       const ch = row[x];
       if (ch === '.') continue;
-      const color = pal?.[ch] ?? def.pal?.[ch] ?? PALETTE[ch];
-      ctx.fillStyle = color;
+      ctx.fillStyle = pal?.[ch] ?? def.pal?.[ch] ?? PALETTE[ch];
       ctx.fillRect(flip ? w - 1 - x : x, y, 1, 1);
     }
   });

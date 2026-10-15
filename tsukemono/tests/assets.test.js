@@ -4,5 +4,5 @@ import { validateSprites, SPRITES } from '../assets/sprites.js';
 
 test('スプライトの行幅がそろい、使う色が定義されている', () => {
   assert.deepEqual(validateSprites(), []);
-  assert.ok(Object.keys(SPRITES).length > 40);
+  assert.ok(SPRITES.umbrella && SPRITES.plate);
 });

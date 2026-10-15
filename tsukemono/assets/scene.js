@@ -1,28 +1,42 @@
-// 店先の配置（座標はすべて 320×180 のドット座標）。
-// 参考: 田んぼと山を背に、瓦屋根の小さな漬物店。店主は店内、樽は軒先に並ぶ。
+// 店先の配置（384×216 のドット座標）。絵は参考画像をトレースしたもの（assets/img/、tools/trace.py）。
+import { TRACE } from './trace.js';
+
+const [W, H] = TRACE.size;
+const at = (name) => ({ x: TRACE.chars[name][0], y: TRACE.chars[name][1] });
+
 export const SCENE = {
-  w: 320, h: 180,
-  horizonY: 96, // 山のふもと
-  paddyY: 98, paddyH: 28, bankY: 126, groundY: 142,
-  roof: { x: 66, y: 50 },
-  interior: { x: 80, y: 74, w: 160, h: 68 },
-  posts: [{ x: 78, y: 74, w: 4, h: 68 }, { x: 238, y: 74, w: 4, h: 68 }],
-  beam: { x: 80, y: 74, w: 160, h: 3 },
-  sign: { x: 118, y: 36, w: 84, h: 18, text: '○○漬物店' },
-  noren: { x: 88, y: 77, w: 20, texts: ['漬', '物', '', 'つ', 'け', 'も', 'の'] },
-  lantern: { x: 218, y: 96 },
-  tree: { x: 262, y: 82 },
-  pole: { x: 10, top: 22 },
-  shed: { x: 40, y: 98, w: 38 },
-  bicycle: { x: 12, y: 132 },
-  crate: { x: 54, y: 132 },
-  // 樽: x は左端、底は groundY
-  barrels: [{ x: 86 }, { x: 124 }, { x: 162 }],
-  barrelW: 36, barrelH: 32,
-  keeperHome: { x: 220, y: 146 }, // 足元の座標（中心x, 底y）
-  keeperAtBarrel: (slot) => 130 + slot * 38, // 樽の右側に立つ（中心x）
-  customerLane: { y: 172, startX: -16, standX: 254, endX: 340 },
-  sunPos: { morning: [44, 40], noon: [150, 14], evening: [286, 44] },
-  moonPos: [270, 20],
-  stars: 28,
+  w: W, h: H,
+  skyBottom: 112, // 空のグラデーションを描く高さ（背景の空は透明）
+  groundY: 196, // これより下が地面（季節の色替えで使う）
+  roofRect: [68, 28, 322, 84], // 屋根（冬に雪をのせる範囲）
+  // 店主は、絵の中で立っていた場所（のれんの下の入口）にそのまま立つ
+  keeper: at('keeper'),
+  // 売り場の樽（樽1〜3）。中身の絵を差し替えて、空・白菜・きゅうりを見せる
+  slots: TRACE.slots.map((s) => ({ ...s, cx: s.x + Math.round(s.w / 2) })),
+  labelY: 199,
+  // 吊るし物。panels = 別々に揺れる区切り（画像内のx範囲）
+  hanging: [
+    { img: 'hang_noren', ...pos('noren'), panels: [[0, 44], [44, 85], [85, 109], [109, 134], [134, 158], [158, 194]], ms: [1000, 1200, 900, 1300, 1100, 950] },
+    { img: 'hang_daikon', ...pos('daikon'), panels: [[0, 15], [15, 29], [29, 46]], ms: [800, 1000, 1150] },
+    { img: 'hang_chili_l', ...pos('chili_l'), panels: [[0, 12], [12, 25]], ms: [900, 1250] },
+    { img: 'hang_chili_r', ...pos('chili_r'), panels: [[0, 17]], ms: [1050] },
+  ],
+  // 浮いている雲（速さはバラバラ）
+  clouds: TRACE.clouds.map(([x, y], i) => ({ img: `cloud_${i}`, x0: x, y, speed: [4.5, 2.4][i] ?? 3 })),
+  // 客の通り道: 右から来て、樽の前で止まり、右へ帰る（足元のy）
+  lane: { y: 213, startX: W + 20, queueX: 300, standX: 266, endX: W + 24 },
+  doorLight: { x: 195, y: 128 }, // 夕方・夜に店の奥が灯る位置
+  sunPos: { morning: [52, 40], noon: [190, 14], evening: [330, 40] },
+  moonPos: [318, 20],
+  stars: 34,
 };
+
+function pos(name) { const [x, y] = TRACE.hanging[name]; return { x, y }; }
+
+/** 読み込む画像（assets/img/*.png）。 */
+export const IMAGES = [
+  'bg', 'basket', 'cloud_0', 'cloud_1',
+  'char_keeper', 'char_woman', 'char_kid1', 'char_kid2', 'char_kid3',
+  'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
+  ...[0, 1, 2].flatMap((i) => ['empty', 'hakusai', 'kyuri'].map((v) => `slot${i}_${v}`)),
+];
