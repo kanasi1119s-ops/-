@@ -221,9 +221,12 @@ Image.fromarray(out).save(os.path.join(OUT, 'bg.png'))
 # ---------------------------------------------------------------- ポーズ集（無地の背景）から人物のコマを切り出す
 # ポーズ集ごとの背丈（ドット）。ポーズの高さの中央値をこの背丈に合わせる（店先の店主が約76）
 # ポーズ集の中で消す所（x0, y0, x1, y1。元の画像の座標）: おじいさんの「受け取る」に写っている、渡す人の手
-POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)]}
-WARM_SHADOW = {'boy', 'girl', 'student', 'gakuran'}
-POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66}
+POSE_ERASE = {'oldman': [(960, 412, 1024, 441)], 'boy': [(1290, 552, 1376, 594)], 'girl': [(1290, 552, 1376, 594)], 'student': [(1290, 552, 1376, 594)], 'gakuran': [(1290, 552, 1376, 594)], 'blazer': [(1290, 552, 1376, 594)]}
+# 影が茶色がかった灰色の絵: 影とみなす明るさの範囲（黒い靴・白いソックスの陰を消さないように）
+WARM_SHADOW = {'boy': (55, 172), 'girl': (55, 172), 'student': (55, 172), 'gakuran': (55, 172), 'blazer': (95, 150)}
+# 輪郭のすき間を閉じてから内側を埋める（背景と同じ色の部分がある絵。値は閉じる幅）
+CLOSE_HOLES = {'blazer': 9}
+POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66, 'blazer': 65}
 
 
 def extract_poses(name):
@@ -236,7 +239,8 @@ def extract_poses(name):
     fg = ((np.abs(a - bgc).sum(-1) > 40) & ~grid).astype(np.uint8)
     shadow = (b >= r - 10) & (b - r <= 25) & ((mx - mn) < 30) & (mx > 70) & (mx < 205)
     if name in WARM_SHADOW:  # 影が茶色がかった灰色の絵
-        shadow |= ((mx - mn) < 20) & (mx > 55) & (mx < 172)
+        lo, hi = WARM_SHADOW[name]
+        shadow |= ((mx - mn) < 20) & (mx > lo) & (mx < hi)
     for x0e, y0e, x1e, y1e in POSE_ERASE.get(name, []):
         fg[y0e:y1e, x0e:x1e] = 0
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -266,9 +270,16 @@ def extract_poses(name):
         sh = shadow[y0:y1, x0:x1].copy()
         sh[:max(0, (y1 - y0) - int(34 * h0 / 572))] = False  # 足元の影だけ落とす
         m[sh] = 0
-        inv = (1 - m).astype(np.uint8)
+        k = CLOSE_HOLES.get(name)
+        pad = (k or 0) + 2  # 外側に余白を足してから閉じる（端がふさがらないように）
+        mp = np.pad(m, pad)
+        closed = cv2.morphologyEx(mp, cv2.MORPH_CLOSE, np.ones((k, k), np.uint8)) if k else mp
+        inv = (1 - closed).astype(np.uint8)
         cv2.floodFill(inv, np.zeros((inv.shape[0] + 2, inv.shape[1] + 2), np.uint8), (0, 0), 2)
+        inv, closed = inv[pad:-pad, pad:-pad], closed[pad:-pad, pad:-pad]
         m[inv == 1] = 1  # 内側の穴（白い服の影など）を埋める
+        if k:
+            m[(closed > 0) & ~sh] = 1
         m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(np.float32)
         tw, th = max(1, round((x1 - x0) * scale)), max(1, round((y1 - y0) * scale))
         rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
