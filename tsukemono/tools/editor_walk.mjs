@@ -77,25 +77,39 @@ for (const name of names) {
     await page.fill('#layerName', nm);
     await page.$eval('#layerName', (el) => { el.dispatchEvent(new Event('change', { bubbles: true })); el.blur(); });
   }
-  // 2. レイヤー: 影（からだの下へ）、後ろ脚・前脚・持ち物
+  // 2. レイヤー: 影（からだの下へ）、持ち物（いちばん上）
   await cel(0, 0);
   await addLayer('影');
   await page.click('#layerDown');
   await setRange('#layerOpacity', Math.round(plan.shadow.opacity * 100));
-  await cel(LAYER.body, 0);
-  for (const nm of ['後ろ脚', '前脚', '持ち物']) await addLayer(nm);
-  // 3. 持ち物・脚を別のレイヤーへ
-  async function moveToLayer(rect, layer) {
-    await cel(LAYER.body, 0);
+  await cel(1, 0);
+  await addLayer('持ち物'); // 2
+  // 3. 持ち物（かご・袋）を切り取って「持ち物」へ。股から下の脚を切り取って「後ろ脚」へ → 複製して「前脚」
+  async function cutPaste(rect, fromLayer, toLayer) {
+    await cel(fromLayer, 0);
     await selectRect(rect);
     await page.keyboard.press('Control+x');
-    await cel(layer, 0);
+    await cel(toLayer, 0);
     await page.keyboard.press('Control+v');
     await key('Enter'); await key('Escape');
   }
-  for (const k of plan.keep) await moveToLayer(k, LAYER.item);
-  await moveToLayer(plan.back, LAYER.back);
-  await moveToLayer(plan.front, LAYER.front);
+  for (const k of plan.keep) await cutPaste(k, 1, 2);
+  await cel(1, 0);
+  await addLayer('後ろ脚'); // 2（持ち物は3へ）
+  await cutPaste(plan.legs, 1, 2);
+  await cel(2, 0);
+  await page.click('#layerDup'); // 3（持ち物は4へ）
+  await page.fill('#layerName', '前脚');
+  await page.$eval('#layerName', (el) => { el.dispatchEvent(new Event('change', { bubbles: true })); el.blur(); });
+  // 消しゴムで、それぞれのレイヤーからもう片方の脚を消す
+  async function eraseRuns(layer, runs) {
+    await cel(layer, 0);
+    await key('Escape');
+    await tool('eraser');
+    for (const [y, x0, x1] of runs) await drag([y, x0, y, x1]);
+  }
+  await eraseRuns(LAYER.back, plan.eraseBack);
+  await eraseRuns(LAYER.front, plan.eraseFront);
   // 4. フレームを8つに
   await cel(LAYER.body, 0);
   for (let i = 1; i < plan.frames; i++) await page.click('#frameDup');

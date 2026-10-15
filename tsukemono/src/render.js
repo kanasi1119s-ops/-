@@ -4,6 +4,7 @@ import { SCENE } from '../assets/scene.js';
 import { PERSON_ANIMS, POSE_ANIMS, SWAY_SEQ } from '../assets/animations.js';
 import { BODIES, RECOLORS } from '../assets/characters.js';
 import { WALK } from '../assets/walk.js';
+import { MOUTHS } from '../assets/mouths.js';
 import { resolveTheme, mix, hex } from '../assets/themes.js';
 import { makeCanvas, getSprite, getText, getImage, recolor, rgbToHsl, hslToRgb } from './pixel.js';
 
@@ -129,12 +130,12 @@ export class SceneRenderer {
       const s = SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
       if (!s) return;
       const top = `slot${i}_${b.filled ? (b.top ?? b.veg) : 'empty'}`;
-      // 中身の絵は、口より上に盛り上がるぶんと、口の下2行ぶん大きい（tools/barrel_tops.py）。下端をそろえて描く
-      const ty = s.y + s.h + 2 - (getImage(top).height);
-      if (s.x != null) g.drawImage(getImage(top), s.x, ty);
-      if (s.x != null && b.film >= 0.15) { // 白い膜（濃さは膜の量）
+      // 中身の絵は、樽の口の内側に収まる位置へ（tools/barrel_tops.py が背景から測った位置）。4・5個目の樽は絵なし
+      const mouth = MOUTHS[top];
+      if (mouth) g.drawImage(getImage(top), mouth.x, mouth.y);
+      if (mouth && b.film >= 0.15) { // 白い膜（濃さは膜の量）
         g.globalAlpha = Math.min(0.85, b.film);
-        g.drawImage(this.whiteOf(top), s.x, ty);
+        g.drawImage(this.whiteOf(top), mouth.x, mouth.y);
         g.globalAlpha = 1;
       }
       const text = b.label ?? (b.selected ? '空' : null);

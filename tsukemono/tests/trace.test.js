@@ -1,4 +1,5 @@
 import { WALK } from '../assets/walk.js';
+import { MOUTHS } from '../assets/mouths.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,7 +13,7 @@ const pngSize = (name) => { const b = fs.readFileSync(new URL(`../assets/img/${n
 test('トレースした画像がそろい、背景の大きさが画面と同じ', () => {
   for (const n of IMAGES) assert.ok(pngSize(n)[0] > 0, n);
   assert.deepEqual(pngSize('bg'), [SCENE.w, SCENE.h]);
-  for (const [i, s] of TRACE.slots.entries()) for (const v of ['empty', 'hakusai', 'kyuri', 'daikon', 'nozawana', 'nasu', 'takuan']) assert.deepEqual(pngSize(`slot${i}_${v}`), [s.w, s.h + 2 + 4]); // 口の下2行・盛り上がり4行（tools/barrel_tops.py）
+  for (const [name, m] of Object.entries(MOUTHS)) assert.deepEqual(pngSize(name), [m.w, m.h], name); // 樽の中身（tools/barrel_tops.py）
 });
 
 test('人物の目印が絵の中に収まり、来る人全員に絵がある', () => {

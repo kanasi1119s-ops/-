@@ -1,7 +1,11 @@
-# 樽の中身のドット絵を作る。  python3 tools/barrel_tops.py [--preview 出力.png]
-# 樽の口（だ円。トレースした形）の中に、野菜を1つずつ置いて詰める。手前ほど後から置く（奥が隠れる）。
-# 真ん中は口より少し盛り上がる（HEAP 行ぶん上に絵がはみ出す）。空の樽は、内側の板・底・漬け汁の残りを描く。
-# 出力: assets/img/slot<番号>_<中身>.png（中身: empty / hakusai / kyuri / daikon / nozawana / nasu / takuan）
+# 樽の中身のドット絵の設計図を作る。  python3 tools/barrel_tops.py [--preview 出力.png]
+# 樽の口の内側（ふちの板の内側のだ円。背景の絵から測った）に収まるように、中身を1つずつ置いて詰める。
+# 口より上には盛らない（ふちに被らない）。値札（樽に立っている白い札）も隠さない。
+# 出力: assets/editor/barrels/<名前>.design.json（色と画素）。実際の絵は tools/editor_barrels.mjs が
+#       ドット絵エディタのペンで1ドットずつ描いて、assets/img/slot<番号>_<中身>.png に書き出す。
+#   中身: empty（空）/ hakusai / kyuri / daikon / nozawana / nasu / takuan
+import json
+import math
 import os
 import random
 import sys
@@ -10,120 +14,117 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 IMG = os.path.join(HERE, '..', 'assets', 'img')
-HEAP = 4  # 口より上に盛り上がる行
+OUT = os.path.join(HERE, '..', 'assets', 'editor', 'barrels')
 
-# ---- 色（1文字＝1色） ----
+# 樽の口の内側（背景の絵の座標。中心・横半径・縦半径）
+MOUTHS = [
+    {'cx': 113.5, 'cy': 168.7, 'rx': 16.0, 'ry': 4.9},
+    {'cx': 150.0, 'cy': 168.7, 'rx': 14.4, 'ry': 4.9},
+    {'cx': 229.6, 'cy': 169.7, 'rx': 15.0, 'ry': 4.9},
+]
+
 PAL = {
-    # 木
-    'W': (92, 60, 36), 'w': (70, 45, 27), 'v': (52, 33, 21), 'V': (118, 80, 48), 'b': (38, 24, 17), 'B': (28, 18, 13),
-    # 漬け汁
-    'q': (88, 70, 44), 'Q': (132, 112, 78), 'z': (176, 160, 120),
+    # 木（内側の板）・漬け汁
+    'W': (98, 64, 38), 'w': (74, 47, 28), 'v': (55, 35, 22), 'b': (40, 25, 17), 'B': (26, 16, 11), 'V': (128, 88, 54),
+    'q': (96, 74, 40), 'Q': (150, 122, 70), 'z': (206, 186, 128),
     # きゅうり
-    'k': (24, 52, 22), 'g': (52, 102, 40), 'G': (88, 140, 58), 'L': (150, 192, 98), 'y': (196, 214, 140),
+    'k': (22, 48, 20), 'g': (46, 96, 36), 'G': (78, 134, 52), 'L': (138, 186, 88), 'y': (196, 220, 140), 'Y': (110, 60, 30),
     # 白菜
-    'h': (238, 236, 220), 'H': (210, 206, 184), 'j': (172, 166, 140), 'f': (126, 170, 72), 'F': (88, 132, 52), 'e': (60, 96, 38),
+    'h': (244, 242, 228), 'H': (218, 214, 190), 'j': (178, 170, 140), 'J': (140, 132, 104), 'f': (138, 182, 78), 'F': (96, 144, 54), 'e': (58, 98, 36),
     # 大根
-    'd': (244, 240, 230), 'D': (220, 214, 198), 'c': (178, 170, 150), 'n': (150, 188, 96),
+    'd': (246, 244, 236), 'D': (224, 220, 206), 'c': (180, 172, 152), 'C': (140, 132, 112), 'n': (126, 168, 76), 'a': (82, 120, 50),
     # たくあん
-    't': (240, 204, 64), 'T': (210, 164, 34), 'u': (168, 122, 24), 'U': (250, 230, 130), 'r': (190, 60, 40),
+    't': (240, 202, 62), 'T': (212, 162, 34), 'u': (160, 114, 22), 'U': (252, 232, 136), 'r': (120, 82, 14),
     # 野沢菜
-    'o': (36, 72, 30), 'O': (60, 104, 42), 'p': (96, 140, 62), 's': (190, 204, 140), 'S': (152, 168, 106),
+    'o': (32, 66, 28), 'O': (54, 98, 40), 'p': (88, 136, 58), 'P': (128, 170, 84), 's': (198, 212, 150), 'S': (156, 172, 110),
     # なす
-    'm': (40, 20, 48), 'M': (72, 38, 88), 'N': (112, 66, 140), 'i': (170, 130, 196), 'x': (52, 92, 38), 'X': (82, 124, 52),
+    'm': (34, 16, 42), 'M': (66, 32, 82), 'N': (104, 60, 132), 'i': (176, 140, 206), 'I': (226, 210, 236), 'x': (48, 88, 36), 'X': (86, 128, 54),
 }
 
-# ---- 野菜の形（. は透明）。右向き。置くときに左右反転もする ----
+# 野菜の形（右向き。. は透明）。小さいながら、ふち・地の色・陰・照りを分ける
 SPRITES = {
-    'kyuri': [
-        ['.kkkkkkk..', 'kGLyLGGgk.', 'kgGGGgggkk', '.kkkkkkkk.'],
-        ['..kkkkkk', '.kGLLGgk', 'kgGgGggk', 'kgggggk.', '.kkkkk..'],
-        ['.kkkkkkkk.', 'kgLyGLGGgk', '.kkkkkkkk.'],
-        ['.kkk.', 'kGLgk', 'kgggk', '.kkk.'],  # 切り口
+    'kyuri': [  # きゅうり（いぼ＝明るい点、へた＝茶色）
+        ['.kkkkkkkkk.', 'kgLyLGLyGgk', 'kGgGgGgGggY', '.kkkkkkkkk.'],
+        ['.kkkkkkk.', 'kGLyGLGgY', 'kgggGgggk', '.kkkkkkk.'],
+        ['..kkkkkkkk', '.kgLyGLGgk', 'kgGgGgggk.', 'Ykkkkkkk..'],
     ],
-    'hakusai': [
-        ['..eFFe...', '.eFffFe..', 'efFhhHFe.', 'Fhhhhhhj.', 'jHhhhHjj.', '.jjjjj...'],
-        ['.eFFe..', 'eFffFe.', 'FhhhhH.', 'jhhhHj.', '.jjjj..'],
-        ['..eFe..eFe', '.eFfFeeFfF', 'eFhhHFFhhH', 'jHhhhjjHhj', '.jjjj.jjj.'],
-        ['.FFe', 'Fhhj', 'jHhj', '.jj.'],
+    'hakusai': [  # 白菜（4つ割りの断面: 白い軸の重なりと、先の緑の葉）
+        ['.eFFFe.....', 'eFfffFFe...', 'FfhhHfFFe..', 'jhhHhhhhHj.', 'JjHhhHhhjJ.', '.JJjjjjJJ..'],
+        ['..eFFe..', '.eFffFe.', 'eFhhhHFe', 'jhHhhHhj', '.JjjjjJ.'],
+        ['.eFFe.eFe.', 'eFffFFffFe', 'FhhHhhhHhj', 'JjhhHHhjJJ', '.JJjjjjJ..'],
     ],
-    'daikon': [
-        ['.cccccccc..', 'cdddddDDDcn', 'cDdddDDDDcn', '.cccccccc..'],
-        ['.ccc.', 'cdDdc', 'cDdDc', '.ccc.'],  # 切り口
-        ['..cccccc', '.cddddDc', 'cdddDDDc', 'cDDDDDc.', '.cccccc.'],
+    'daikon': [  # 大根（白い根、葉の付け根の緑、ひげ根）
+        ['.ccccccccc..', 'cdddddDDDDcn', 'cDdddDDDDCca', '.ccccccccc..'],
+        ['.cccccc..', 'cddddDDcn', 'cDDDDDCca', '.cccccc..'],
     ],
-    'takuan': [
-        ['.uuu.', 'uUtTu', 'utTTu', '.uuu.'],  # 輪切り
-        ['.uuuu.', 'uUttTu', 'utTTTu', '.uuuu.'],
-        ['.uuuuuuuu..', 'uUUtttTTTuu', 'utttTTTTTTu', '.uuuuuuuuu.'],  # まるごと
-        ['.uuu', 'uUtu', 'utTu', '.uu.'],
+    'takuan': [  # たくあん（干した大根のしわと、輪切りの断面）
+        ['.uuuuuuuuu.', 'uUtUttUtTTu', 'utTtTTtTTTu', '.uuuuuuuuu.'],
+        ['.uuu.', 'uUUtu', 'utTTu', '.uuu.'],
+        ['.uuuu.', 'uUUttu', 'utTTTu', '.uuuu.'],
     ],
-    'nozawana': [
-        ['..oOo.....', '.oOpOoSSS.', 'oOpppOsssS', '.oOOoSSS..'],
-        ['.oo..oo.', 'oOpOoOpo', 'oOppOpOo', '.SSssSS.', '..SSSS..'],
-        ['oOo', 'OpO', 'oSo', '.S.'],
+    'nozawana': [  # 野沢菜（長い葉。淡い緑の茎と、濃い葉）
+        ['..oOOo.....', '.oOpPpOoSSS', 'oOpPpOOsSsS', '.ooOOoSSSS.'],
+        ['.oOo..oOo.', 'oOpPOoOpPo', 'oOOpOOpOOo', '.SSssSsSS.'],
+        ['.ooOOo...', 'oOpPPpOSS', '.oOOoSsSS'],
     ],
-    'nasu': [
-        ['..mmmmm.x', '.mNiNMMxX', 'mNiMMMMmx', 'mMMMMMmm.', '.mmmmm...'],
-        ['.mmmm.x', 'mNiMMxX', 'mMMMMmx', '.mmmm..'],
-        ['.mmm.', 'mNMMm', 'mMiMm', '.mmm.'],  # 切り口ではなく小なす
+    'nasu': [  # なす（つやの照り、緑のへた）
+        ['..mmmmmm.x', '.mNIiNMMxX', 'mNiNMMMMmx', 'mMMMMMMmm.', '.mmmmmm...'],
+        ['.mmmmm.x', 'mNIiMMxX', 'mMNMMMmx', '.mmmmm..'],
     ],
 }
 
 
-def load_mask(i):
-    a = np.array(Image.open(os.path.join(IMG, f'slot{i}_empty_trace.png' if os.path.exists(os.path.join(IMG, f'slot{i}_empty_trace.png')) else f'slot{i}_hakusai.png')).convert('RGBA'))
-    return a[:, :, 3] > 0
+def mouth_mask(i):
+    """樽の口の内側のだ円（絵の大きさとその中の画素）と、絵を置く位置。値札の画素は外す。"""
+    m = MOUTHS[i]
+    x0, x1 = math.floor(m['cx'] - m['rx']), math.ceil(m['cx'] + m['rx'])
+    y0, y1 = math.floor(m['cy'] - m['ry']), math.ceil(m['cy'] + m['ry'])
+    w, h = x1 - x0 + 1, y1 - y0 + 1
+    mask = np.zeros((h, w), bool)
+    for y in range(h):
+        for x in range(w):
+            dx = (x0 + x + 0.5 - m['cx']) / m['rx']
+            dy = (y0 + y + 0.5 - m['cy']) / m['ry']
+            mask[y, x] = dx * dx + dy * dy <= 1.0
+    bg = np.array(Image.open(os.path.join(IMG, 'bg.png')).convert('RGB')).astype(int)
+    for y in range(h):
+        for x in range(w):
+            r, g, b = bg[y0 + y, x0 + x]
+            # 値札（白い札と、それを挿している棒）は残す: 左の2つの樽の、口の右奥にある
+            if i < 2 and mask[y, x] and x > w * 0.55 and y < h * 0.75 and min(r, g, b) > 140 and max(r, g, b) - min(r, g, b) < 70:
+                mask[y, x] = False
+    return mask, (x0, y0)
 
 
 def put(img, spr, x0, y0, flip, clip):
     h, w = img.shape[:2]
-    # 落ち影: 置く野菜の1ドット下を暗くする（となりの野菜と分かれて見える）
-    for yy, row in enumerate(spr):
-        if flip:
-            row = row[::-1]
+    rows = [r[::-1] if flip else r for r in spr]
+    # 落ち影: 野菜の下の1ドットを暗く（重なりが分かる）
+    for yy, row in enumerate(rows):
         for xx, ch in enumerate(row):
             if ch == '.':
                 continue
+            below = rows[yy + 1][xx] if yy + 1 < len(rows) and xx < len(rows[yy + 1]) else '.'
             x, y = x0 + xx, y0 + yy + 1
-            below = spr[yy + 1][::-1][xx] if (flip and yy + 1 < len(spr)) else (spr[yy + 1][xx] if yy + 1 < len(spr) else '.')
             if below == '.' and 0 <= x < w and 0 <= y < h and clip[y, x] and img[y, x, 3]:
                 img[y, x, :3] = (img[y, x, :3] * 0.55).astype(np.uint8)
-    for yy, row in enumerate(spr):
-        if flip:
-            row = row[::-1]
-        for xx, ch in enumerate(row):
-            if ch == '.':
-                continue
+    i = 0
+    for yy, row in enumerate(rows):
+        xx = 0
+        while xx < len(row):
+            ch = row[xx]
+            key = ch
             x, y = x0 + xx, y0 + yy
-            if 0 <= x < w and 0 <= y < h and clip[y, x]:
-                img[y, x] = (*PAL[ch], 255)
+            if key != '.' and 0 <= x < w and 0 <= y < h and clip[y, x]:
+                img[y, x] = (*PAL[key], 255)
+            xx += len(key) if key != '.' else 1
 
 
-def heap_mask(mask):
-    """口のだ円に、真ん中が HEAP 行まで盛り上がった山を足した範囲。"""
-    h, w = mask.shape
-    out = np.zeros((h + HEAP, w), bool)
-    out[HEAP:] = mask
-    xs = np.nonzero(mask.any(0))[0]
-    x0, x1 = xs.min(), xs.max()
-    cx, rx = (x0 + x1) / 2, (x1 - x0) / 2
-    top = np.nonzero(mask.any(1))[0].min() + HEAP
-    for x in range(w):
-        u = abs(x - cx) / (rx * 0.82)
-        if u >= 1:
-            continue
-        rise = int(round(HEAP * (1 - u * u) ** 0.6))
-        for y in range(top - rise, top + 2):
-            if 0 <= y < h + HEAP:
-                out[y, x] = True
-    return out
-
-
-def interior(mask, wet=True, seed=0):
-    """空の樽の中: 奥の内側の板（縦じま）、底、漬け汁の残り。"""
+def interior(mask, seed, wet):
+    """口の内側: 奥の内側の板（ふちの影で暗い。板の継ぎ目）、底、漬け汁の残り。"""
     rng = random.Random(seed)
     h, w = mask.shape
-    img = np.zeros((h + HEAP, w, 4), np.uint8)
+    img = np.zeros((h, w, 4), np.uint8)
     ys = np.nonzero(mask.any(1))[0]
     top, bot = ys.min(), ys.max()
     xs = np.nonzero(mask.any(0))[0]
@@ -132,129 +133,108 @@ def interior(mask, wet=True, seed=0):
         for x in range(w):
             if not mask[y, x]:
                 continue
-            t = (y - top) / max(1, bot - top)  # 0=奥 1=手前
-            if t < 0.5:  # 奥の内側の板（影の中。上ほど少し明るい。4ドットごとに板の継ぎ目）
-                col = PAL['W'] if t < 0.2 else PAL['w']
-                if x % 4 == 0:
-                    col = PAL['v']
-            else:  # 底（手前ほど暗い）
-                col = PAL['w'] if t < 0.7 else PAL['b']
-                if abs(x - cx) > rx * 0.8:
+            t = (y - top) / max(1, bot - top)
+            edge = abs(x - cx) / rx
+            if t < 0.45:  # 奥の内側の板
+                col = PAL['b'] if t < 0.12 else PAL['w'] if t < 0.3 else PAL['W']  # いちばん上はふちの影
+                if x % 4 == 1 and t >= 0.12:
+                    col = PAL['v']  # 板の継ぎ目
+            else:  # 底
+                col = PAL['w'] if t < 0.65 else PAL['b']
+                if edge > 0.8:
                     col = PAL['B']
-            img[y + HEAP, x] = (*col, 255)
-    if wet:  # 底に残った漬け汁（にぶい照り）
+            img[y, x] = (*col, 255)
+    if wet:
         for y in range(h):
             for x in range(w):
-                if mask[y, x]:
-                    t = (y - top) / max(1, bot - top)
-                    if 0.55 < t < 0.85 and abs(x - cx) < rx * 0.55:
-                        img[y + HEAP, x] = (*PAL['q'], 255)
-                        if rng.random() < 0.12:
-                            img[y + HEAP, x] = (*PAL['Q'], 255)
-        img[int(top + (bot - top) * 0.62) + HEAP, int(cx) - 3:int(cx) + 1] = (*PAL['z'], 255)
+                t = (y - top) / max(1, bot - top)
+                if mask[y, x] and 0.55 < t < 0.9 and abs(x - cx) < rx * 0.6:
+                    img[y, x] = (*PAL['q'], 255)
+                    if rng.random() < 0.15:
+                        img[y, x] = (*PAL['Q'], 255)
+        yy = int(top + (bot - top) * 0.68)
+        for x in range(int(cx) - 4, int(cx)):
+            if mask[yy, x]:
+                img[yy, x] = (*PAL['z'], 255)  # 漬け汁の照り
     return img
 
 
 def filled(mask, kind, seed):
     rng = random.Random(seed)
     h, w = mask.shape
-    img = interior(mask, wet=True, seed=seed)
-    # 下地（すき間から見える暗い色）
-    dark = {'kyuri': 'k', 'hakusai': 'j', 'daikon': 'c', 'takuan': 'u', 'nozawana': 'o', 'nasu': 'm'}[kind]
-    hm = heap_mask(mask)
-    for y in range(h + HEAP):
-        for x in range(w):
-            if hm[y, x] and (y < HEAP or not mask[y - HEAP, x] or (y - HEAP) > 1):
-                img[y, x] = (*PAL[dark], 255)
-    sprites = SPRITES[kind]
-    big = [sp for sp in sprites if len(sp[0]) >= 6] or sprites
-    # 奥（上）から手前（下）へ、段に分けて並べる。段ごとに半個ずらし、となりと1ドットだけ重ねる
-    ys = np.nonzero(hm.any(1))[0]
-    y = ys.min() - 1
-    row = 0
-    while y < h + HEAP:
-        x = -rng.randint(1, 4) - (3 if row % 2 else 0)
-        while x < w:
-            spr = rng.choice(big if rng.random() < 0.85 else sprites)
-            put(img, spr, x, y + rng.choice((0, 0, 1)), rng.random() < 0.3, hm)
-            x += len(spr[0]) - 1
-        y += max(2, min(len(sp) for sp in big) - 1)
-        row += 1
-    # 手前のふちの影（樽のふちが落とす影）と、両はしの暗がり
+    img = interior(mask, seed, wet=True)
     ys = np.nonzero(mask.any(1))[0]
-    bot = ys.max() + HEAP
-    for y in range(h + HEAP):
-        for x in range(w):
-            if img[y, x, 3] and hm[y, x]:
-                if y >= bot - 1:
-                    img[y, x, :3] = (img[y, x, :3] * 0.62).astype(np.uint8)
-                elif y == bot - 2:
-                    img[y, x, :3] = (img[y, x, :3] * 0.82).astype(np.uint8)
+    top, bot = ys.min(), ys.max()
+    # 中身は奥のふちの影（上の2行）より下に詰める。手前ほど後から置く
+    clip = mask.copy()
+    clip[:top + 2] = False
+    sprites = SPRITES[kind]
+    y = top + 1
+    row = 0
+    while y <= bot:
+        x = -rng.randint(1, 5) - (2 if row % 2 else 0)
+        while x < w:
+            spr = rng.choice(sprites)
+            put(img, spr, x, y + rng.choice((0, 0, 1)) - 1, rng.random() < 0.35, clip)
+            x += len(spr[0]) - 1 + rng.choice((0, 0, 1))
+        y += 2
+        row += 1
+    # 漬け汁が手前のふちぎわにのぞく（つやの点）
+    for x in range(w):
+        for y in range(h - 1, -1, -1):
+            if mask[y, x]:
+                if rng.random() < 0.5:
+                    img[y, x] = (*PAL['q'], 255)
+                if rng.random() < 0.12:
+                    img[y, x] = (*PAL['Q'], 255)
+                break
+    # 左右のはしと、手前のふちぎわは暗く（樽の中の影）
     xs = np.nonzero(mask.any(0))[0]
-    for y in range(h + HEAP):
-        for x in (xs.min(), xs.min() + 1, xs.max() - 1, xs.max()):
+    cx, rx = (xs.min() + xs.max()) / 2, (xs.max() - xs.min()) / 2
+    for y in range(h):
+        for x in range(w):
             if img[y, x, 3]:
-                img[y, x, :3] = (img[y, x, :3] * 0.7).astype(np.uint8)
+                e = abs(x - cx) / rx
+                f = 1.0
+                if e > 0.86:
+                    f = 0.6
+                elif e > 0.72:
+                    f = 0.8
+                if y == bot:
+                    f *= 0.7
+                img[y, x, :3] = (img[y, x, :3] * f).astype(np.uint8)
     return img
 
 
-def opening(mask0, i):
-    """樽の口の形: トレースした形を下へ2行のばし（背景に残る元の中身を隠す）、
-    口に立っている値札（白い札）は隠さない。返す形は、元の絵の大きさより2行高い。"""
-    import json
-    trace = open(os.path.join(HERE, '..', 'assets', 'trace.js'), encoding='utf8').read()
-    slot = json.loads(trace[trace.index('{'):trace.rindex('}') + 1])['slots'][i]
-    h, w = mask0.shape
-    m = np.zeros((h + 2, w), bool)
-    for d in (1, 2):  # トレースした形は口より1行ほど高いので、1〜2行下げる（奥のふちの板は隠さない）
-        m[d:d + h] |= mask0
-    bg = np.array(Image.open(os.path.join(IMG, 'bg.png')).convert('RGB')).astype(int)
-    for y in range(h + 2):
-        for x in range(w):
-            r, g, b = bg[slot['y'] + y, slot['x'] + x]
-            if i < 2 and y < 7 and x > w * 0.55 and m[y, x] and min(r, g, b) > 150 and max(r, g, b) - min(r, g, b) < 60:
-                m[y, x] = False  # 値札（左の2つの樽の奥に立っている）
-    return m
-
-
 def main():
+    os.makedirs(OUT, exist_ok=True)
     preview = sys.argv[sys.argv.index('--preview') + 1] if '--preview' in sys.argv else None
-    rows = []
+    designs = {}
     for i in range(3):
-        # 口の形は、トレースした空の樽の絵から（はじめの1回だけ控えを作る）
-        ctrl = os.path.join(IMG, f'slot{i}_empty_trace.png')
-        if not os.path.exists(ctrl):
-            Image.open(os.path.join(IMG, f'slot{i}_empty.png')).save(ctrl)
-        mask0 = np.array(Image.open(ctrl).convert('RGBA'))[:, :, 3] > 0
-        mask = opening(mask0, i)
-        row = []
+        mask, (ox, oy) = mouth_mask(i)
         for kind in ['empty', 'hakusai', 'kyuri', 'daikon', 'nozawana', 'nasu', 'takuan']:
-            if kind == 'empty':  # 空の樽は口の内側だけ（まわりのふちの板を見せる）
-                er = mask.copy()
-                er[1:-1, 1:-1] = mask[1:-1, 1:-1] & mask[:-2, 1:-1] & mask[2:, 1:-1] & mask[1:-1, :-2] & mask[1:-1, 2:]
-                er[0] = False
-                img = interior(er, wet=True, seed=i)
-                # 口のふち（板の切り口）: 奥は明るく、手前は暗く
-                ys_ = np.nonzero(mask.any(1))[0]
-                midy = (ys_.min() + ys_.max()) / 2
-                for y in range(mask.shape[0]):
-                    for x in range(mask.shape[1]):
-                        if mask[y, x] and not er[y, x]:
-                            img[y + HEAP, x] = (*PAL['V' if y < midy else 'W'], 255)
-            else:
-                img = filled(mask, kind, seed=i * 7 + len(kind))
-            Image.fromarray(img).save(os.path.join(IMG, f'slot{i}_{kind}.png'))
-            row.append(img)
-        rows.append(row)
+            img = interior(mask, seed=i, wet=True) if kind == 'empty' else filled(mask, kind, seed=i * 11 + len(kind))
+            name = f'slot{i}_{kind}'
+            Image.fromarray(img).save(os.path.join(OUT, f'{name}.design.png'))
+            designs[name] = {'x': ox, 'y': oy, 'w': img.shape[1], 'h': img.shape[0]}
+    with open(os.path.join(OUT, 'mouths.json'), 'w', encoding='utf8') as f:
+        json.dump(designs, f, ensure_ascii=False, indent=1)
+    with open(os.path.join(HERE, '..', 'assets', 'mouths.js'), 'w', encoding='utf8') as f:
+        f.write('// tools/barrel_tops.py が作る（手で書きかえない）。樽の中身の絵を置く位置（背景の座標）と大きさ。\n')
+        f.write(f'export const MOUTHS = {json.dumps(designs, ensure_ascii=False)};\n')
     if preview:
-        cw, ch = rows[0][0].shape[1] + 8, rows[0][0].shape[0] + 6
-        cw = max(r[0].shape[1] for r in rows) + 8
-        out = Image.new('RGBA', (cw * 7, ch * 3), (120, 80, 50, 255))
-        for r, row in enumerate(rows):
-            for c, img in enumerate(row):
-                im = Image.fromarray(img)
-                out.alpha_composite(im, (c * cw + 4, r * ch + 3))
-        out.resize((out.width * 8, out.height * 8), Image.NEAREST).save(preview)
+        bg = Image.open(os.path.join(IMG, 'bg.png')).convert('RGBA')
+        rows = []
+        for kinds in (['empty', 'kyuri', 'hakusai'], ['daikon', 'nozawana', 'nasu'], ['takuan', 'empty', 'empty']):
+            c = bg.copy()
+            for i in range(3):
+                d = designs[f'slot{i}_{kinds[i]}']
+                c.alpha_composite(Image.open(os.path.join(OUT, f'slot{i}_{kinds[i]}.design.png')), (d['x'], d['y']))
+            rows.append(c.crop((90, 148, 255, 182)))
+        out = Image.new('RGBA', (rows[0].width, rows[0].height * 3))
+        for k, r in enumerate(rows):
+            out.paste(r, (0, k * r.height))
+        out.resize((out.width * 6, out.height * 6), Image.NEAREST).save(preview)
 
 
 if __name__ == '__main__':
