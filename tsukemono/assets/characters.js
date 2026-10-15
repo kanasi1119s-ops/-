@@ -1,7 +1,7 @@
 // 登場人物（参考画像からトレースした絵）と、動かすための目印。
 //
 // 種類は2つ:
-//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子・麦わら帽子の女の子・セーラー服の女の子・学生服の男の子・ブレザーの女の子・紫の服のお兄さん・スーツのおじいさん・サングラスのおじさん・バレー部の女の子・サッカー部の男の子・レースクイーン風のお姉さん・空手着の男の子・お侍さん・水着の女の子・日傘の女の子・釣り人のおじさん・バックパッカーのお兄さん）
+//   poses … ポーズ集から切り出した絵を、コマごとに差し替える（店主・女性・おばあちゃん2人・おじいさん・男の子・麦わら帽子の女の子・セーラー服の女の子・学生服の男の子・ブレザーの女の子・紫の服のお兄さん・スーツのおじいさん・サングラスのおじさん・バレー部の女の子・サッカー部の男の子・レースクイーン風のお姉さん・空手着の男の子・お侍さん・水着の女の子・日傘の女の子・釣り人のおじさん・バックパッカーのお兄さん・甲冑の騎士）
 //   shift … 1枚の絵を頭・胴・左右の脚に分けて、1〜2ドットずらしてコマを作る（通りがかりの子ども）
 //     hipY: ここから下が脚 / legX: 左脚と右脚の境目 / headY: ここから上が頭 / hand: かごを持つ位置
 // faces: 絵の向き。'right' / 'left' / 'front'。進む向きに合わせて左右反転する。
@@ -32,6 +32,7 @@ export const BODIES = {
   parasol: { kind: 'poses', faces: 'right', poses: posesOf('parasol') },
   angler: { kind: 'poses', faces: 'right', poses: posesOf('angler') },
   hiker: { kind: 'poses', faces: 'right', poses: posesOf('hiker') },
+  knight: { kind: 'poses', faces: 'right', poses: posesOf('knight') },
   kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 38, legX: 9, headY: 16, hand: [-4, 22] },
   kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 38, legX: 10, headY: 15, hand: [-4, 22] },
   kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 38, legX: 11, headY: 15, hand: [-4, 22] },
@@ -69,6 +70,7 @@ export const PASSERS = [
   { body: 'beach', umbrella: '#46689f', seasons: ['summer'] }, // 水着なので夏だけ
   { body: 'parasol', ownUmbrella: true, seasons: ['spring', 'summer'] }, // 日傘を持っているので傘は重ねない
   { body: 'angler', umbrella: '#3f8a4a' }, { body: 'hiker', umbrella: '#3f8a4a' },
+  { body: 'knight', umbrella: '#8f2a20' },
   { body: 'kid1', umbrella: '#e0b43c' }, { body: 'kid2', umbrella: '#c63d2f' }, { body: 'kid3', umbrella: '#3f8a4a' },
 ];
 export function randomLook(rand = Math.random, season = null) {
