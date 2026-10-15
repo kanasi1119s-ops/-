@@ -287,4 +287,5 @@ def main():
         json.dump(index, f, ensure_ascii=False)
 
 
-main()
+if __name__ == '__main__':
+    main()

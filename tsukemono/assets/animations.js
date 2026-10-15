@@ -300,7 +300,7 @@ export const PERSON_ANIMS = {
   talk_basket: { loop: true, frames: [fr(240, { head: [0, -1], props: BASKET }), fr(240, { props: BASKET })] },
 };
 
-// 歩き: ドット絵エディタで描いた6コマ（assets/editor/、tools/editor_walk.mjs）。体の上下はコマの絵に入っている
+// 歩き: ドット絵エディタで、元の絵の脚を切り分けて動かした4コマ（assets/editor/、tools/editor_walk.mjs）
 for (const [name, frames] of Object.entries(WALK_FRAMES)) {
   if (!POSE_ANIMS[name]) continue;
   const cycle = { loop: true, frames: frames.map((f, k) => ({ ms: f.ms ?? 130, walk: k, dy: 0, props: [] })) };

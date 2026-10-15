@@ -3,7 +3,7 @@
 import { SCENE } from '../assets/scene.js';
 import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES } from '../assets/characters.js';
 
-const WALK_SPEED = 48; // px/秒 【仮置き】歩くコマの長さ（tools/walk_import.py）は、足が地面を滑らないようこの速さに合わせてある
+const WALK_SPEED = 48; // px/秒 【仮置き】歩くコマ（150ms×2で1歩）と合う速さ
 
 export class World {
   constructor(nowFn = () => performance.now()) {
