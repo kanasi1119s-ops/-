@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { simulate, daysToRipe } from '../src/model.js';
-import { satisfaction, priceFor, targetFor, reactionOf } from '../src/sales.js';
+import { satisfaction, priceFor, targetFor, reactionOf, LINES } from '../src/sales.js';
 import { CONFIG } from '../src/config.js';
 
 const C = Object.fromEntries(CONFIG.customers.map((c) => [c.id, c]));
@@ -60,4 +60,13 @@ test('客の一言が返る', () => {
   const t = taste({ saltPct: 12, days: 7 });
   const s = satisfaction(t, 'hakusaizuke', C.light);
   assert.match(reactionOf(t, 'hakusaizuke', C.light, s).line, /.+/);
+});
+
+test('客の一言は言い回しが数通りあり、ズレの向きに合う', () => {
+  const t = taste({ saltPct: 12, days: 7 });
+  const c = C.light;
+  const s = satisfaction(t, 'hakusaizuke', c);
+  const lines = new Set([0, 1, 2].map((v) => reactionOf(t, 'hakusaizuke', c, s, 'spring', CONFIG, v).line));
+  assert.ok(lines.size >= 2);
+  for (const l of lines) assert.ok(LINES.salt_high.includes(l), l);
 });

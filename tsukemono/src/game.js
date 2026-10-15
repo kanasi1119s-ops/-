@@ -122,7 +122,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     for (const c of coming) {
       const sat = satisfaction(taste, b.pickle, c, season, cfg);
       if (spoiled) {
-        visitors.push({ customer: c, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: 'うっ、傷んでるよ！' } });
+        visitors.push({ customer: c, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: ['うっ、傷んでるよ！', 'これは食べられないよ…', 'すっぱい匂いがする…'][Math.floor(rng() * 3)] } });
         continue;
       }
       if (b.portions <= 0) {
@@ -132,7 +132,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       const price = priceFor(sat, b.pickle, cfg);
       const bought = price > 0;
       if (bought) { b.portions--; revenue += price; sold++; }
-      visitors.push({ customer: c, sat, price, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg) });
+      visitors.push({ customer: c, sat, price, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
     }
     g.money += revenue;
     g.stats.revenue += revenue;

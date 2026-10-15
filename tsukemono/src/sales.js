@@ -45,24 +45,33 @@ export function priceFor(sat, pickle, cfg = CONFIG) {
   return Math.round((cfg.pickles[pickle].price * f) / 10) * 10;
 }
 
-/** 最もズレた軸から客の一言を決める。 */
-export function reactionOf(taste, pickle, customer, sat, season = 'spring', cfg = CONFIG) {
-  if (taste.spoilRisk >= 60 && sat < cfg.sales.buyThreshold) return { key: 'rotten', line: 'なんだか傷んでない？' };
+// 客の一言（ズレの種類ごとに数通り。variant で選ぶ） 【仮置き】
+export const LINES = {
+  rotten: ['なんだか傷んでない？', '……これ、大丈夫？', 'においが変だよ'],
+  great: ['これだよ、これ！', '最高の漬かり具合だ！', 'また買いに来るよ！'],
+  good: ['うん、おいしい', 'いい塩梅だね', 'ご飯が進みそう'],
+  acid_high: ['酸っぱいねぇ', 'ちょっと漬かりすぎかな', '酸味が強いなぁ'],
+  acid_low: ['まだ酸味が足りないな', 'もう少し漬けてもいいかも', '浅いねぇ'],
+  salt_high: ['しょっぱいなぁ', '塩がきついね', '喉が渇きそう'],
+  salt_low: ['味が薄いねぇ', 'もうちょっと塩気がほしい', '物足りないかな'],
+  texture_high: ['硬いかな', '歯ごたえがありすぎる', 'まだ生っぽいね'],
+  texture_low: ['くたっとしてるな', '食感がもう少しほしい', 'やわらかすぎるね'],
+  complexity_high: ['凝りすぎかな', '味が濃いなぁ', 'クセが強いね'],
+  complexity_low: ['風味が単調だね', 'もう少し深みがほしい', '味に奥行きがないな'],
+};
+const pick = (key, variant) => { const l = LINES[key]; return l[((variant % l.length) + l.length) % l.length]; };
+
+/** 最もズレた軸から客の一言を決める。variant で言い回しを変える。 */
+export function reactionOf(taste, pickle, customer, sat, season = 'spring', cfg = CONFIG, variant = 0) {
+  if (taste.spoilRisk >= 60 && sat < cfg.sales.buyThreshold) return { key: 'rotten', line: pick('rotten', variant) };
   const target = targetFor(customer, season, cfg);
-  if (sat >= 80) return { key: 'great', line: 'これだよ、これ！' };
-  if (sat >= 60) return { key: 'good', line: 'うん、おいしい' };
+  if (sat >= 80) return { key: 'great', line: pick('great', variant) };
+  if (sat >= 60) return { key: 'good', line: pick('good', variant) };
   let worst = null, worstD = 0;
   for (const a of AXES) {
     const d = (taste[TASTE_KEY[a]] - target[a]) * customer.weights[a];
     if (Math.abs(d) > Math.abs(worstD)) { worst = a; worstD = d; }
   }
-  const high = worstD > 0;
-  const table = {
-    acid: [high, '酸っぱいねぇ', 'まだ酸味が足りないな'],
-    salt: [high, 'しょっぱいなぁ', '味が薄いねぇ'],
-    texture: [high, '硬いかな', 'くたっとしてるな'],
-    complexity: [high, '凝りすぎかな', '風味が単調だね'],
-  };
-  const [h, hi, lo] = table[worst];
-  return { key: `${worst}_${high ? 'high' : 'low'}`, line: h ? hi : lo };
+  const key = `${worst}_${worstD > 0 ? 'high' : 'low'}`;
+  return { key, line: pick(key, variant) };
 }
