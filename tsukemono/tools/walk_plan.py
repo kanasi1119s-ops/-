@@ -19,6 +19,7 @@ import numpy as np
 from PIL import Image
 from walk_prep import SPEC, TRACE, IMG, OUT, SYMS, SKIP, drop_specks, trace_legs
 from walk_items import segment_items
+from walk_touch import TOUCH
 
 RECT_KEEP = {'witch'}
 
@@ -91,7 +92,8 @@ def main():
                 'layers': [{'name': 'からだ', 'visible': True, 'opacity': 1}], 'frames': [{'dur': FRAME_MS}], 'cels': [[rows]], 'layer': 0, 'frame': 0}
         al = canvas[:, :, 3] > 0
         sole = info['bottom'] + PAD_T
-        cut = t['cut'] + PAD_T
+        touch = TOUCH.get(name, {})
+        cut = touch.get('cut', t['cut']) + PAD_T
         head = int(np.nonzero(al.any(1))[0].min())
         hip = cut - 2 if not t.get('skirt') else round(sole - 0.47 * (sole - head))  # 腰（脚を振る軸）
         keep = [[k[0] + PAD_T, k[1], k[2] + PAD_T, k[3]] for k in t.get('keep', [])]
@@ -147,6 +149,26 @@ def main():
         # 元の絵（右向き・少し手前向き）では、左側の脚が手前、右側（前に出ている足）が奥
         front_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x < split[y]]
         back_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x >= split[y]]
+        # 片方の脚から離れた小さなかけら（3ドットまで）は、となりのもう片方の脚のもの
+        def small_bits(px):
+            ps = set(px); seen = set(); bits = []
+            for p0 in px:
+                if p0 in seen:
+                    continue
+                comp = [p0]; seen.add(p0); st = [p0]
+                while st:
+                    y, x = st.pop()
+                    for dy in (-1, 0, 1):
+                        for dx in (-1, 0, 1):
+                            q = (y + dy, x + dx)
+                            if q in ps and q not in seen:
+                                seen.add(q); comp.append(q); st.append(q)
+                if len(comp) <= 3:
+                    bits += comp
+            return bits
+        fb_, bb_ = set(small_bits(front_px)), set(small_bits(back_px))
+        front_px, back_px = ([q for q in front_px if q not in fb_] + [q for q in back_px if q in bb_],
+                             [q for q in back_px if q not in bb_] + [q for q in front_px if q in fb_])
         # 手前の脚で、持ち物（かご等）に隠れていた もも・ひざ を描き足す。隠れていない行の脚の左の縁を直線でのばし、
         # 色は すぐ下の見えている行の並び（縁の暗い色・中の色）を幅に合わせて引きのばす。元の絵では持ち物の下なので見た目は変わらない
         fset = set(front_px)
@@ -162,7 +184,7 @@ def main():
         fill = []
         hid = [y for y in range(cut, sole + 1) if hidden(y)]
         hid = [y for y in hid if y < sole - 5]  # 足もとは描き足さない
-        if len(hid) >= 2 and len(vis) >= 2 and any(y > max(hid) and y < sole - 4 for y in vis):
+        if touch.get('autofill', True) and len(hid) >= 2 and len(vis) >= 2 and any(y > max(hid) and y < sole - 4 for y in vis):
             below = [y for y in vis if y > max(hid)][:6]
             above = [y for y in vis if y < min(hid)][-3:]
             pts = above + below
@@ -171,9 +193,10 @@ def main():
             ref = min(below[0], sole - 5)
             r0, r1 = span(ref)
             refc = [palette[tuple(int(v) for v in canvas[ref, x, :3])] if canvas[ref, x, 3] else None for x in range(r0, r1 + 1)]
+            maxw = int(np.median([span(y)[1] - span(y)[0] + 1 for y in vis])) + 1  # 見えている脚の太さまで
             for y in hid:
-                x0 = max(0, int(round(k_ * y + b_)))
                 x1 = int(np.ceil(split[y])) - 1
+                x0 = max(0, int(round(k_ * y + b_)), x1 - maxw + 1)
                 if x1 < x0:
                     continue
                 n = x1 - x0 + 1
@@ -185,6 +208,12 @@ def main():
                     fill.append((y, x, c))
                     front_px.append((y, x))
             fset = set(front_px)
+        # 人ごとの手直し（tools/walk_touch.py）: 手前の脚に描き足すドット
+        for (ty, tx, cs) in touch.get('front', []):
+            for i, c in enumerate(cs):
+                if c != '.' and (ty, tx + i) not in fset:
+                    fill.append((ty, tx + i, c)); front_px.append((ty, tx + i))
+        fset = set(front_px)
         def foot_center(px):
             ys = [y for y, _ in px]
             yb = max(ys)
@@ -211,7 +240,9 @@ def main():
         ]
         orig_x = {'front': (ff - hips['front']) / s, 'back': (fb - hips['back']) / s}
         ops, shadows = [], []
-        kr = hip + (sole - hip) * 0.5  # ひざ
+        # 足首。これより下（足・くつ）は形を変えず、まとめて動かす（くつが斜めに引きのばされないように）
+        ankle = touch['ankle'] if 'ankle' in touch else sole - max(3, round((sole - hip) * 0.15))
+        kr = hip + (ankle - hip) * 0.55  # ひざ
         for f, (xf, lf, xb, lb) in enumerate(keys):
             feet = []
             for side, tx, lift in (('back', xb, lb), ('front', xf, lf)):
@@ -221,19 +252,20 @@ def main():
                 knee_dx = (2 - orig_x[side] * s * 0.5) if bend else dfoot * 0.5
                 rows = []
                 for y in range(cut, sole + 1):
-                    if y <= kr:
-                        u = (y - hip) / max(1, kr - hip)
-                        dx = knee_dx * u if bend else dfoot * (y - hip) / max(1, sole - hip)
+                    ya = min(y, ankle)
+                    if ya <= kr:
+                        u = (ya - hip) / max(1, kr - hip)
+                        dx = knee_dx * u if bend else dfoot * (ya - hip) / max(1, ankle - hip)
                         dy = 0
                     else:
-                        u = (y - kr) / max(1, sole - kr)
-                        dx = (knee_dx + (dfoot - knee_dx) * u) if bend else dfoot * (y - hip) / max(1, sole - hip)
-                        dy = -round(lift * u) if bend else (-lift if y >= sole - 2 else 0)
+                        u = (ya - kr) / max(1, ankle - kr)
+                        dx = (knee_dx + (dfoot - knee_dx) * u) if bend else dfoot * (ya - hip) / max(1, ankle - hip)
+                        dy = -round(lift * u) if bend else (-lift if y >= ankle - 1 else 0)
                     rows.append((y, round(dx), dy))
                 # 隣の行とのずれは1ドットまで（細い脚がちぎれないように）。足先が届かなければ歩幅を少し小さくする
                 prev = 0
                 for i, (y, dx, dy) in enumerate(rows):
-                    dx = max(prev - 1, min(prev + 1, dx))
+                    dx = max(prev - 1, min(prev + 1, dx)) if y <= ankle else prev  # 足は足首と同じだけ
                     rows[i] = (y, dx, dy)
                     prev = dx
                 # 同じずらし方の行をまとめて1回で動かす（上の行から）
