@@ -98,6 +98,7 @@ def main():
         hip = cut - 2 if not t.get('skirt') else round(sole - 0.47 * (sole - head))  # 腰（脚を振る軸）
         keep = [[k[0] + PAD_T, k[1], k[2] + PAD_T, k[3]] for k in t.get('keep', [])]
         # 持ち物は色とつながりで形どおりに切り分ける（tools/walk_items.py）。魔女はほうきと服が混ざるので四角のまま
+        keep = [[k[0] + PAD_T, k[1], k[2] + PAD_T, k[3]] for k in touch['keep']] if 'keep' in touch else keep
         if keep and name not in RECT_KEEP:
             kept = segment_items(canvas, keep, cut) & al
         else:
@@ -149,9 +150,13 @@ def main():
         # 元の絵（右向き・少し手前向き）では、左側の脚が手前、右側（前に出ている足）が奥
         front_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x < split[y]]
         back_px = [(y, x) for y in range(cut, sole + 1) for x in range(W) if leg[y, x] and x >= split[y]]
-        # 片方の脚から離れた小さなかけら（3ドットまで）は、となりのもう片方の脚のもの
-        def small_bits(px):
-            ps = set(px); seen = set(); bits = []
+        # 人ごとの手直し: 奥の脚のものとする範囲（エディタの座標 [上, 左, 下, 右]）
+        for (y0_, x0_, y1_, x1_) in touch.get('toBack', []):
+            mv = [q for q in front_px if y0_ <= q[0] <= y1_ and x0_ <= q[1] <= x1_]
+            front_px = [q for q in front_px if q not in set(mv)]; back_px += mv
+        # 片方の脚の本体から離れたかけら（3ドットまでの小さなもの、またはもう片方の脚に接しているもの）は、もう片方の脚のもの
+        def small_bits(px, other):
+            ps = set(px); seen = set(); bits = []; comps = []
             for p0 in px:
                 if p0 in seen:
                     continue
@@ -163,10 +168,14 @@ def main():
                             q = (y + dy, x + dx)
                             if q in ps and q not in seen:
                                 seen.add(q); comp.append(q); st.append(q)
-                if len(comp) <= 3:
+                comps.append(comp)
+            comps.sort(key=len, reverse=True)
+            for comp in comps[1:]:
+                # いちばん大きなかたまり以外で、3ドットまでの小さなかけら、またはもう片方の脚に接しているかけら
+                if len(comp) <= 3 or any((y + dy, x + dx) in other for (y, x) in comp for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
                     bits += comp
             return bits
-        fb_, bb_ = set(small_bits(front_px)), set(small_bits(back_px))
+        fb_, bb_ = set(small_bits(front_px, set(back_px))), set(small_bits(back_px, set(front_px)))
         front_px, back_px = ([q for q in front_px if q not in fb_] + [q for q in back_px if q in bb_],
                              [q for q in back_px if q not in bb_] + [q for q in front_px if q in fb_])
         # 手前の脚で、持ち物（かご等）に隠れていた もも・ひざ を描き足す（元の絵では持ち物の下なので見た目は変わらない）
@@ -195,9 +204,16 @@ def main():
             brow = {}
             for (y, x) in back_px:
                 brow.setdefault(y, []).append(x)
+            def longest_run(xs):
+                xs = sorted(xs); best, cur = [], []
+                for x in xs:
+                    cur = cur + [x] if cur and x == cur[-1] + 1 else [x]
+                    if len(cur) > len(best):
+                        best = cur
+                return best
             for y in hid:
                 k = (min(y, ank) - hip) / max(1, ank - hip)
-                for x in brow.get(y, []):
+                for x in longest_run(brow.get(y, [])):  # 脚の本体だけ（縁のかけらは写さない）
                     nx = x + round(shift * k)
                     if 0 <= nx < W and (y, nx) not in fset:
                         fill.append((y, nx, palette[tuple(int(v) for v in canvas[y, x, :3])]))
