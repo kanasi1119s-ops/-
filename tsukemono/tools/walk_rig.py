@@ -207,9 +207,9 @@ def build(name):
     bag = rows_mask(C.get('bag', [])) & al & ~nearA  # カバン（肩掛け）は かごより先（かごや腕と一緒に動かない）
     item &= ~bag
     farA = rows_mask(C.get('farArm', [])) & al & ~item & ~bag & ~nearA
-    legzone = al & ~item & ~farA & ~nearA & ~bag
+    hem = rows_mask(C.get('hem', [])) & al & ~item & ~farA & ~nearA & ~bag  # スカート・着物のすそ（一歩ごとに揺れる）。脚より先に決める
+    legzone = al & ~item & ~farA & ~nearA & ~bag & ~hem
     legzone[:C['cut'] + PADY] = False
-    hem = rows_mask(C.get('hem', [])) & al & ~item & ~farA & ~nearA & ~bag & ~legzone  # スカート・着物のすそ（一歩ごとに揺れる）
     joints = {l: {k: J(v) for k, v in C['joints'][l].items()} for l in ('near', 'far')}
     seg = {(l, s): np.zeros((H, W), bool) for l in ('near', 'far') for s in SEG}
     for y, x in np.argwhere(legzone):
