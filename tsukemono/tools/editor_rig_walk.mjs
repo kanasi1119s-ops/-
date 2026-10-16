@@ -218,9 +218,36 @@ for (const name of names) {
     for (const nm of parts) { const c = proj.cels[names_.indexOf(nm)][f]; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (c[y][x] !== '.') g[y][x] = c[y][x]; }
     return g;
   };
+  // 外（絵のふち）から透明のままたどれない透明ドット（大きさ12ドットまでのかたまり）。上から順に並べる
+  const enclosed = (g) => {
+    const out = Array.from({ length: H }, () => Array(W).fill(false)), st = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if ((y === 0 || x === 0 || y === H - 1 || x === W - 1) && g[y][x] === '.') { out[y][x] = true; st.push([y, x]); }
+    while (st.length) {
+      const [y, x] = st.pop();
+      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const yy = y + dy, xx = x + dx;
+        if (yy >= 0 && xx >= 0 && yy < H && xx < W && !out[yy][xx] && g[yy][xx] === '.') { out[yy][xx] = true; st.push([yy, xx]); }
+      }
+    }
+    const res = [], seen = Array.from({ length: H }, () => Array(W).fill(false));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (g[y][x] !== '.' || out[y][x] || seen[y][x]) continue;
+      const comp = [], q = [[y, x]]; seen[y][x] = true;
+      while (q.length) {
+        const [a, b] = q.pop(); comp.push([a, b]);
+        for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const yy = a + dy, xx = b + dx;
+          if (g[yy][xx] === '.' && !out[yy][xx] && !seen[yy][xx]) { seen[yy][xx] = true; q.push([yy, xx]); }
+        }
+      }
+      if (comp.length <= 12) res.push(...comp);
+    }
+    return res.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  };
   const fixes = [];
   for (let f = 0; f < F; f++) {
     const g = sym2(f), fx = [];
+    for (let round = 0; round < 3; round++) {
     for (let pass = 0; pass < 6; pass++) {
       const add = [];
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
@@ -230,6 +257,15 @@ for (const name of names) {
       }
       for (const [y, x, s] of add) { g[y][x] = s; fx.push([y, x, s]); }
       if (!add.length) break;
+    }
+    // 外とつながっていない小さな透明のかたまり（2×2 など）も、まわりの色で埋める（埋めると新しいすき間ができることがあるので、もう一回り）
+    const enc = enclosed(g);
+    for (const [y, x] of enc) {
+      const nb = [[0, -1], [-1, 0], [0, 1], [1, 0]].map(([dy, dx]) => g[y + dy][x + dx]).filter((s) => s !== '.');
+      const s = nb[0] ?? g[y][x - 1];
+      g[y][x] = s; fx.push([y, x, s]);
+    }
+    if (!enc.length) break;
     }
     fixes.push(fx);
   }
@@ -283,6 +319,7 @@ for (const name of names) {
     const contact = g[rig.ground].filter((c) => c !== '.').length;
     let holes = 0;
     for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (g[y][x] === '.' && ((g[y][x - 1] !== '.' && g[y][x + 1] !== '.') || (g[y - 1][x] !== '.' && g[y + 1][x] !== '.'))) holes++;
+    holes += enclosed(g).length;
     report.push({ f, 足の裏の行: low, 地面のドット: contact, すき間: holes, かご: count('かご', f), カバン: count('カバン', f) });
   }
   const k0 = report[0].かご, b0 = report[0].カバン;
