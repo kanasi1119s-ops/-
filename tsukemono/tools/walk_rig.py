@@ -202,11 +202,11 @@ def build(name):
         if len(xs):
             item[y, :xs.min()] |= al[y, :xs.min()]
     item &= al
-    nearA = rows_mask(C['nearArm']) & al  # 手前の腕（袖と手）。かごより先に決める（手はかごの持ち手をにぎっている）
+    nearA = rows_mask(C.get('nearArm', [])) & al  # 手前の腕（袖と手）。かごより先に決める（手はかごの持ち手をにぎっている）
     item &= ~nearA
     bag = rows_mask(C.get('bag', [])) & al & ~nearA  # カバン（肩掛け）は かごより先（かごや腕と一緒に動かない）
     item &= ~bag
-    farA = rows_mask(C['farArm']) & al & ~item & ~bag & ~nearA
+    farA = rows_mask(C.get('farArm', [])) & al & ~item & ~bag & ~nearA
     legzone = al & ~item & ~farA & ~nearA & ~bag
     legzone[:C['cut'] + PADY] = False
     hem = rows_mask(C.get('hem', [])) & al & ~item & ~farA & ~nearA & ~bag & ~legzone  # スカート・着物のすそ（一歩ごとに揺れる）
@@ -359,12 +359,18 @@ def build(name):
             ops.update(leg_ops(l, q[l], bob))
         armK = C.get('armGain', 0.35)
         for nm, l, key in (('奥の腕', 'far', 'farShoulder'), ('手前の腕', 'near', 'nearShoulder')):
+            if key not in C:  # 腕を振らない（持ち物を抱えている など）: 体と一緒に上下だけ
+                ops[nm] = {'deg': 0, 'dy': bob, 'dx': 0}
+                continue
             sh = J(C[key]); a = -armK * (q[l]['th'] - meas[l]['th'])
             ops[nm] = {'deg': round(-a, 1), 'pr': sh[0], 'pc': sh[1], 'dy': bob, 'dx': 0, 'joint': '肩'}
-        sh = J(C['nearShoulder']); hand = J(C['nearHand'])
-        th = math.radians(-ops['手前の腕']['deg'])
-        dy = hand[0] - sh[0]; dx = hand[1] - sh[1]
-        ops['かご'] = {'deg': 0, 'dy': jsround(dy * math.cos(th) - dx * math.sin(th) - dy) + bob, 'dx': jsround(dy * math.sin(th) + dx * math.cos(th) - dx)}
+        if 'nearShoulder' in C and 'nearHand' in C:  # かごは手と一緒に（肩を軸に手が動いたぶん）
+            sh = J(C['nearShoulder']); hand = J(C['nearHand'])
+            th = math.radians(-ops['手前の腕']['deg'])
+            dy = hand[0] - sh[0]; dx = hand[1] - sh[1]
+            ops['かご'] = {'deg': 0, 'dy': jsround(dy * math.cos(th) - dx * math.sin(th) - dy) + bob, 'dx': jsround(dy * math.sin(th) + dx * math.cos(th) - dx)}
+        else:
+            ops['かご'] = {'deg': 0, 'dy': bob, 'dx': 0}
         ops['胴'] = {'deg': 0, 'dy': bob, 'dx': 0}
         ops['すそ'] = {'deg': 0, 'dy': bob, 'dx': int(round(C.get('hemSway', 1) * math.sin(4 * math.pi * f / N)))}  # 一歩ごとに左右へ
         ops['カバン'] = {'deg': 0, 'dy': bob, 'dx': 0}
