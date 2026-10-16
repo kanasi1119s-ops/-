@@ -18,6 +18,7 @@ import math
 import os
 import sys
 import numpy as np
+from walk_items import segment_items
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ED = os.path.join(HERE, '..', 'assets', 'editor')
@@ -31,7 +32,7 @@ SEG = ('foot', 'shin', 'thigh')
 JNAME = {'thigh': '股関節', 'shin': '膝', 'foot': '足首'}
 LNAME = {('far', 'foot'): '奥の足', ('far', 'shin'): '奥のすね', ('far', 'thigh'): '奥のもも',
          ('near', 'foot'): '手前の足', ('near', 'shin'): '手前のすね', ('near', 'thigh'): '手前のもも'}
-LAYERS = ['影', '奥の腕', '奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも', '胴', 'カバン', '手前の腕', 'かご']
+LAYERS = ['影', '奥の腕', '奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも', '胴', 'すそ', 'カバン', '手前の腕', 'かご']
 
 
 def jsround(v):  # JavaScript の Math.round と同じ（.5 は上へ）
@@ -176,8 +177,25 @@ def build(name):
         return m
     # 部品の範囲
     item = np.zeros((H, W), bool)
-    for y, a, b in p['keepRuns']:
-        item[y + PADY, a + PADX:b + PADX + 1] = True
+    if C.get('keepRects'):  # 四角の中を全部持ち物に。ただし keepExclude の色（となりの服の色など）は外す
+        ex = set(C.get('keepExclude', ''))
+        for y0, x0, y1, x1 in C['keepRects']:
+            for y in range(y0, y1 + 1):
+                for x in range(x0, x1 + 1):
+                    ch = grid[y + PADY][x + PADX]
+                    if ch != '.' and ch not in ex:
+                        item[y + PADY, x + PADX] = True
+    elif C.get('keep'):  # だいたいの四角から、色とつながりで形どおりに切り分ける（tools/walk_items.py）
+        pal = {sd['sym']: tuple(int(sd['color'][i:i + 2], 16) for i in (1, 3, 5)) for sd in o['symbols']}
+        rgba = np.zeros((H, W, 4), np.uint8)
+        for y in range(H):
+            for x in range(W):
+                if grid[y][x] != '.':
+                    rgba[y, x] = (*pal[grid[y][x]], 255)
+        item = segment_items(rgba, [[k[0] + PADY, k[1] + PADX, k[2] + PADY, k[3] + PADX] for k in C['keep']], C['cut'] + PADY)
+    else:
+        for y, a, b in p['keepRuns']:
+            item[y + PADY, a + PADX:b + PADX + 1] = True
     item[C.get('itemMaxRow', H0) + 1 + PADY:] = False
     for y in range(H):
         xs = np.nonzero(item[y])[0]
@@ -191,6 +209,7 @@ def build(name):
     farA = rows_mask(C['farArm']) & al & ~item & ~bag & ~nearA
     legzone = al & ~item & ~farA & ~nearA & ~bag
     legzone[:C['cut'] + PADY] = False
+    hem = rows_mask(C.get('hem', [])) & al & ~item & ~farA & ~nearA & ~bag & ~legzone  # スカート・着物のすそ（一歩ごとに揺れる）
     joints = {l: {k: J(v) for k, v in C['joints'][l].items()} for l in ('near', 'far')}
     seg = {(l, s): np.zeros((H, W), bool) for l in ('near', 'far') for s in SEG}
     for y, x in np.argwhere(legzone):
@@ -202,7 +221,7 @@ def build(name):
                 if best is None or d < best[0]:
                     best = (d, l, s)
         seg[(best[1], best[2])][y, x] = True
-    torso = al & ~item & ~farA & ~nearA & ~legzone & ~bag
+    torso = al & ~item & ~farA & ~nearA & ~legzone & ~bag & ~hem
     G = np.array(grid)
     # 胴の手直し: 腕の下に隠れていた胴を、胴のふちの色で2ドット（腕を振っても胴が欠けない）
     torso_fill = []
@@ -216,7 +235,7 @@ def build(name):
             for x in rng:
                 if arm[y, x]:
                     torso_fill.append([int(y), int(x), str(G[y, e])])
-    masks = {'奥の腕': farA, '胴': torso, 'カバン': bag, '手前の腕': nearA, 'かご': item}
+    masks = {'奥の腕': farA, '胴': torso, 'すそ': hem, 'カバン': bag, '手前の腕': nearA, 'かご': item}
     for (l, s), nm in LNAME.items():
         if l == 'far' or C.get('legFrom', {}).get('near') != 'far':
             masks[nm] = seg[(l, s)]
@@ -233,7 +252,9 @@ def build(name):
         pts = [(x, ys[xs == x].max()) for x in sorted(set(xs))]
         k_ = np.polyfit([q[0] for q in pts], [q[1] for q in pts], 1)[0] if len(pts) > 2 else 0
         sole_tilt[l] = math.degrees(math.atan(-k_))
-    TH, KN, FT = C['thighKeys'], C['kneeKeys'], C['footKeys']
+    TH = C.get('thighKeys', CFGS['suit']['thighKeys']); KN = C.get('kneeKeys', CFGS['suit']['kneeKeys']); FT = C.get('footKeys', CFGS['suit']['footKeys'])
+    if C.get('stride'):  # 歩幅（股関節の振れ）を人ごとに
+        TH = [[t, v * C['stride']] for t, v in TH]
     ground = C['ground'] + PADY
     base = {nm: [[(G[y, x] if masks[nm][y, x] else '.') for x in range(W)] for y in range(H)] for nm in masks}
     for y, x, ch in torso_fill:
@@ -252,17 +273,34 @@ def build(name):
     drawn = {}
     # 脚の付け根: もも の上の行の並びを、上着のすその下へ legRoot 行ぶん写す（脚を回しても付け根にすき間が出ない）
     root = []
+    # （スカートの人は もも が見えないので、見えているいちばん上の部品＝すね を、スカートの中へのばす）
     for l in ('far',) if leg_from == 'far' else ('near', 'far'):
-        m = seg[(l, 'thigh')]
-        ys = np.nonzero(m.any(1))[0]
-        if not len(ys):
+        top = next((sg for sg in ('thigh', 'shin', 'foot') if seg[(l, sg)].any()), None)
+        if not top:
             continue
+        m = seg[(l, top)]
+        ys = np.nonzero(m.any(1))[0]
         y0 = ys.min(); xs = np.nonzero(m[y0])[0]
         for k in range(1, C.get('legRoot', 3) + 1):
             for x in xs:
-                root.append((LNAME[(l, 'thigh')], int(y0 - k), int(x), base[LNAME[(l, 'thigh')]][y0][x]))
+                root.append((LNAME[(l, top)], int(y0 - k), int(x), base[LNAME[(l, top)]][y0][x]))
     for nm, items in draws.items():
         draw_into(nm, items, over=(nm == 'カバン' and C.get('bagRedraw', False)))
+    # 持ち物・腕の後ろに隠れていた服（スカートなど）: 左のふちの線から、その行の見えている服の手前まで塗る。
+    # 塗るのは、元の絵で持ち物か腕だった所だけ（体の輪郭の外には描かない）。ふちは edge の色、内側は body の色
+    hidden = item | nearA
+    for fb in C.get('fillBehind', []):
+        nm = fb['layer']; (ya, xa), (yb, xb) = fb['left']
+        for y in range(fb['rows'][0], fb['rows'][1] + 1):
+            xl = round(xa + (xb - xa) * (y - ya) / max(1, yb - ya))
+            row = base[nm][y + PADY]
+            vis = [x for x in range(xl + PADX, W) if row[x] != '.']
+            xr = vis[0] if vis else xl + PADX + fb.get('width', 6)
+            for x in range(xl + PADX, xr):
+                if hidden[y + PADY, x] and row[x] == '.':
+                    ch = fb['edge'] if x == xl + PADX else fb['body']
+                    row[x] = ch
+                    drawn.setdefault(nm, []).append([y + PADY, x, ch])
     for nm, y, x, ch in root:
         if base[nm][y][x] == '.':
             base[nm][y][x] = ch
@@ -328,6 +366,7 @@ def build(name):
         dy = hand[0] - sh[0]; dx = hand[1] - sh[1]
         ops['かご'] = {'deg': 0, 'dy': jsround(dy * math.cos(th) - dx * math.sin(th) - dy) + bob, 'dx': jsround(dy * math.sin(th) + dx * math.cos(th) - dx)}
         ops['胴'] = {'deg': 0, 'dy': bob, 'dx': 0}
+        ops['すそ'] = {'deg': 0, 'dy': bob, 'dx': int(round(C.get('hemSway', 1) * math.sin(4 * math.pi * f / N)))}  # 一歩ごとに左右へ
         ops['カバン'] = {'deg': 0, 'dy': bob, 'dx': 0}
         plan_frames.append({'t': [round(T['near'], 3), round(T['far'], 3)], 'bob': bob, 'ops': ops})
     # 手順どおりに作ったときの絵（エディタの結果と照らし合わせる）
@@ -342,7 +381,7 @@ def build(name):
         sim.append(cel)
     shadow_sym = next(ch for ch in '!#$%&*+-=?@^~' if ch not in {s['sym'] for s in o['symbols']} | set(C.get('extraColors', {})))
     rig = {'name': name, 'w': W, 'h': H, 'padLeft': PADX, 'padTop': PADY, 'ground': ground, 'frames': N, 'frameMs': FRAME_MS,
-           'layers': LAYERS, 'shadow': {'sym': shadow_sym, 'color': '#%02x%02x%02x' % SHADOW, 'opacity': SHADOW_OPACITY},
+           'layers': [nm for nm in LAYERS if nm == '影' or any(ch != '.' for row in base[nm] for ch in row)], 'shadow': {'sym': shadow_sym, 'color': '#%02x%02x%02x' % SHADOW, 'opacity': SHADOW_OPACITY},
            'orig': {'format': 'sunshine-pixel', 'version': 2, 'width': W, 'height': H,
                     'symbols': o['symbols'] + [{'sym': k, 'label': v[1], 'color': v[0]} for k, v in C.get('extraColors', {}).items()]
                     + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],

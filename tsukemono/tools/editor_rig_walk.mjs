@@ -171,7 +171,7 @@ for (const name of names) {
   for (let i = 1; i < F; i++) await page.click('#frameDup');
   // 6. コマごと・部品ごとに 回す → 動かす
   const L = (nm) => rig.layers.indexOf(nm);
-  const legLayers = ['奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも'];
+  const legLayers = ['奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも'].filter((nm) => rig.layers.includes(nm));
   for (let f = 0; f < F; f++) {
     const ops = rig.plan[f].ops;
     for (const nm of parts) {
@@ -274,7 +274,7 @@ for (const name of names) {
   // 10. 確かめる
   proj = await saveProject();
   const nm2 = proj.layers.map((l) => l.name);
-  const count = (nm, f) => proj.cels[nm2.indexOf(nm)][f].reduce((a, r) => a + [...r].filter((c) => c !== '.').length, 0);
+  const count = (nm, f) => nm2.indexOf(nm) < 0 ? 0 : proj.cels[nm2.indexOf(nm)][f].reduce((a, r) => a + [...r].filter((c) => c !== '.').length, 0);
   const report = [];
   for (let f = 0; f < F; f++) {
     const g = Array.from({ length: H }, () => Array(W).fill('.'));
