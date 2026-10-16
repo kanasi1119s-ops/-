@@ -183,7 +183,8 @@ def build(name):
     item &= al
     nearA = rows_mask(C['nearArm']) & al  # 手前の腕（袖と手）。かごより先に決める（手はかごの持ち手をにぎっている）
     item &= ~nearA
-    bag = rows_mask(C.get('bag', [])) & al & ~item & ~nearA
+    bag = rows_mask(C.get('bag', [])) & al & ~nearA  # カバン（肩掛け）は かごより先（かごや腕と一緒に動かない）
+    item &= ~bag
     farA = rows_mask(C['farArm']) & al & ~item & ~bag & ~nearA
     legzone = al & ~item & ~farA & ~nearA & ~bag
     legzone[:C['cut'] + PADY] = False
