@@ -227,72 +227,72 @@
    [
     39,
     2,
-    "...OOOOOOO0O."
+    "...OOOOOOOkO."
    ],
    [
     40,
     2,
-    "..OIEEEEEEI0O"
+    "..OfgggggghmO"
    ],
    [
     41,
     2,
-    ".OIEFFIIIIEIO"
+    ".OfgiihhggghO"
    ],
    [
     42,
     2,
-    ".OEIFIIIIIIEO"
+    ".OfgihgggggfO"
    ],
    [
     43,
     2,
-    ".OEIIIIIIIIEO"
+    ".OfngngngngfO"
    ],
    [
     44,
     2,
-    ".OIEDIDIDIEIO"
+    ".OeffjkkjffeO"
    ],
    [
     45,
     2,
-    "0OJIIEDDEIIJO"
+    "0OeeekmmkeeeO"
    ],
    [
     46,
     2,
-    "0JaaaO66OaaaJ"
+    "0fgggkOOkgggf"
    ],
    [
     47,
     2,
-    "FJaaaODDOaaaJ"
+    "hfgggjkkjgggf"
    ],
    [
     48,
     2,
-    "FJaFaaaaaaaJJ"
+    "hfghggggggfef"
    ],
    [
     49,
     2,
-    "FJaFaaaaaaaJT"
+    "hfghggggggfee"
    ],
    [
     50,
     2,
-    "FJaaaaaaaaaJT"
+    "hfggggggggfee"
    ],
    [
     51,
     2,
-    "OJJaaaaaaaJJO"
+    "OffggggggffeO"
    ],
    [
     52,
     2,
-    ".OTJJJJJJJTO."
+    ".OeffffffffO."
    ],
    [
     53,
@@ -301,6 +301,44 @@
    ]
   ],
   "legRoot": 3,
-  "bagRedraw": true
+  "bagRedraw": true,
+  "extraColors": {
+   "e": [
+    "#2a1216",
+    "革（いちばん暗い）"
+   ],
+   "f": [
+    "#4a1e22",
+    "革（暗い）"
+   ],
+   "g": [
+    "#6e2c2e",
+    "革"
+   ],
+   "h": [
+    "#8f4440",
+    "革（明るい）"
+   ],
+   "i": [
+    "#b8705f",
+    "革のつや"
+   ],
+   "j": [
+    "#8a6420",
+    "金（暗い）"
+   ],
+   "k": [
+    "#c9a040",
+    "金"
+   ],
+   "m": [
+    "#f2dc8a",
+    "金（光）"
+   ],
+   "n": [
+    "#b8946c",
+    "ステッチ"
+   ]
+  }
  }
 }

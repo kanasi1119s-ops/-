@@ -337,11 +337,12 @@ def build(name):
                 g[y] = ['.'] * W  # 地面より下にはみ出たドットは消す（エディタでも消す）
             cel[nm] = [''.join(r) for r in g]
         sim.append(cel)
-    shadow_sym = next(ch for ch in '!#$%&*+-=?@^~' if ch not in {s['sym'] for s in o['symbols']})
+    shadow_sym = next(ch for ch in '!#$%&*+-=?@^~' if ch not in {s['sym'] for s in o['symbols']} | set(C.get('extraColors', {})))
     rig = {'name': name, 'w': W, 'h': H, 'padLeft': PADX, 'padTop': PADY, 'ground': ground, 'frames': N, 'frameMs': FRAME_MS,
            'layers': LAYERS, 'shadow': {'sym': shadow_sym, 'color': '#%02x%02x%02x' % SHADOW, 'opacity': SHADOW_OPACITY},
            'orig': {'format': 'sunshine-pixel', 'version': 2, 'width': W, 'height': H,
-                    'symbols': o['symbols'] + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],
+                    'symbols': o['symbols'] + [{'sym': k, 'label': v[1], 'color': v[0]} for k, v in C.get('extraColors', {}).items()]
+                    + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],
                     'layers': [{'name': 'からだ', 'visible': True, 'opacity': 1}], 'frames': [{'dur': FRAME_MS}],
                     'cels': [[[''.join(r) for r in grid]]], 'layer': 0, 'frame': 0},
            'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor,
