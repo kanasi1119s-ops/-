@@ -12,6 +12,7 @@ for y,r in enumerate(o['cels'][0][0]):
 al=img[:,:,3]>0
 item=np.zeros((H,W),bool)
 for y,a,b in p['keepRuns']: item[y,a:b+1]=True
+item[CFG.get('itemMaxRow',H)+1:]=False  # かごの底より下は脚
 def rows_mask(rows):
     m=np.zeros((H,W),bool)
     for y0,y1,x0,x1 in rows: m[y0:y1+1,x0:x1+1]=True
@@ -91,7 +92,11 @@ tmpl=CFG.get('thighFrom',{})  # 隠れたももは もう片方の脚のもも�
 sole=CFG['ground']
 for f in range(N):
     tf=f/N; tn=tf+0.5   # 奥の脚 t=0 で前に着く（元の絵）、手前の脚は半周ずれ
-    pose={}
+    pose={}; FOOT={}
+    def a_ft_abs(l):
+        # 足の向き: 写すもとの脚の元の絵の時点の向きからの変化
+        src=CFG.get('legFrom',{}).get(l, l); t0s=0.5 if src=='near' else 0.0
+        return FOOT[l]-curve(FT,t0s)
     for l,t in (('near',tn),('far',tf)):
         m=measured[l]; L1=m['L1']; L2=m['L2']
         # 元の絵の時点（奥 t=0、手前 t=0.5）からの角度の変化を足す（最初のコマは元の絵のまま）
@@ -100,7 +105,7 @@ for f in range(N):
         a_th=curve(TH,t)
         a_sh=curve(TH,t)-curve(KN,t)
         a_ft=curve(FT,t)-curve(FT,t0)
-        pose[l]=(a_th,a_sh,a_ft,L1,L2)
+        pose[l]=(a_th,a_sh,a_ft,L1,L2); FOOT[l]=curve(FT,t)
     # 地面に着いている足で腰の高さを決める（足の一番下が地面に来る）
     lows=[]
     for l in ('near','far'):
@@ -116,13 +121,12 @@ for f in range(N):
         hip=(dh[0]+bob, dh[1]+PADX)
         k,a=fk(hip,a_th,a_sh,L1,L2)
         # すね・足を先に、もも を上に（膝の外側のすき間を、もも がふさぐ）
-        rot_paste(canvas, parts[(l,'foot')], j['ankle'], a, a_ft)
-        rot_paste(canvas, parts[(l,'shin')], j['knee'], k, a_sh-m['sh'])
-        if l in tmpl:
-            src=tmpl[l]; ms=measured[src]
-            rot_paste(canvas, parts[(src,'thigh')], J[src]['hip'], hip, a_th-ms['th'])  # a_th は手前の脚の角度
-        else:
-            rot_paste(canvas, parts[(l,'thigh')], j['hip'], hip, a_th-m['th'])
+        # かごの裏に隠れていた脚は、もう片方の脚の部品で まるごと描く（legFrom）
+        src=CFG.get('legFrom',{}).get(l, l); ms=measured[src]; js=J[src]
+        t0s=0.5 if src=='near' else 0.0
+        rot_paste(canvas, parts[(src,'foot')], js['ankle'], a, curve(FT,t)-curve(FT,t0s) if False else a_ft_abs(l))
+        rot_paste(canvas, parts[(src,'shin')], js['knee'], k, a_sh-ms['sh'])
+        rot_paste(canvas, parts[(src,'thigh')], js['hip'], hip, a_th-ms['th'])
     def draw_arm(mask, sh, a):
         rot_paste(canvas, mask, sh, (sh[0]+bob, sh[1]+PADX), a)
     near_th=pose['near'][0]; far_th=pose['far'][0]
