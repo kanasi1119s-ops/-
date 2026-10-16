@@ -226,6 +226,8 @@ def build(name):
     # 胴の手直し: 腕の下に隠れていた胴を、胴のふちの色で2ドット（腕を振っても胴が欠けない）
     torso_fill = []
     for arm, d in ((nearA, -1), (farA, +1)):
+        if ('near' if d < 0 else 'far') in C.get('noTorsoFill', []):  # この腕の後ろは fillBehind で服の色を描く
+            continue
         for y in range(H):
             xs = np.nonzero(arm[y])[0]; t = np.nonzero(torso[y])[0]
             if not len(xs) or not len(t):
