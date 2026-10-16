@@ -123,6 +123,25 @@ for (const name of names) {
       await key('Shift+KeyR');
     }
   }
+  // 描き足し: カバンの、手やかごの後ろに隠れていた所／脚の付け根（上着のすその下）など（えんぴつ）
+  for (const [nm, pts0] of Object.entries(rig.drawn || {})) {
+    if (!pts0.length) continue;
+    await cel(rig.layers.indexOf(nm) - 1, 0); // まだ影がないので1つ下
+    await key('Escape');
+    await tool('pencil');
+    const bySym = {};
+    for (const [y, x, s] of pts0) (bySym[s] ??= []).push([y, x]);
+    for (const [s, pts] of Object.entries(bySym)) {
+      await pickColor(s); await measure();
+      pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      for (let i = 0; i < pts.length;) {
+        let j = i;
+        while (j + 1 < pts.length && pts[j + 1][0] === pts[i][0] && pts[j + 1][1] === pts[j][1] + 1) j++;
+        await stroke(pts[i][0], pts[i][1], pts[j][1]);
+        i = j + 1;
+      }
+    }
+  }
   // 3. 胴の手直し（腕の下に隠れていた胴）
   const torsoL = parts.indexOf('胴');
   if (rig.torsoFill.length) {

@@ -1602,11 +1602,33 @@
     drawAll(); saveLocal();
   }
   /* 選んだ所を、軸（行・列。小数も可）のまわりに deg 度回す（＋で時計回り）。
-     1マスを 3×3 の点で調べ、絵に当たる点が5つ以上なら、いちばん多く当たった元の色を置く（ふちが崩れにくい）。
+     RotSprite の回し方: 絵を Scale2x で3回（8倍）にしてから回し、1マスを 3×3 の点で調べて、
+     絵に当たる点が5つ以上なら いちばん多く当たった色を置く。線（輪郭）が崩れにくい。
      回した絵は「動かす」中の絵になる（矢印キーで動かせる。Enter で確定） */
+  function scale2x(g) {
+    var h = g.length, w = g[0].length, out = [];
+    function at(r, c) { return r < 0 || r >= h || c < 0 || c >= w ? "." : g[r][c]; }
+    for (var r = 0; r < h; r++) {
+      var a = [], b = [];
+      for (var c = 0; c < w; c++) {
+        var E = g[r][c], B = at(r - 1, c), D = at(r, c - 1), F = at(r, c + 1), H = at(r + 1, c);
+        a.push(D === B && B !== F && D !== H ? D : E, B === F && B !== D && F !== H ? F : E);
+        b.push(D === H && D !== B && H !== F ? D : E, H === F && D !== H && B !== F ? F : E);
+      }
+      out.push(a, b);
+    }
+    return out;
+  }
   function rotateCells(cells, r0, c0, deg, pr, pc) {
+    // 絵のある所だけに切りつめる（まわりの透明な所は回しても同じ）
+    var top = Infinity, bot = -1, lef = Infinity, rig = -1;
+    cells.forEach(function (row, i) { row.forEach(function (v, j) { if (v !== ".") { top = Math.min(top, i); bot = Math.max(bot, i); lef = Math.min(lef, j); rig = Math.max(rig, j); } }); });
+    if (bot < 0) return { cells: cells, r: r0, c: c0 };
+    cells = cells.slice(top, bot + 1).map(function (row) { return row.slice(lef, rig + 1); });
+    r0 += top; c0 += lef;
     var th = deg * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
     var h = cells.length, w = cells[0].length;
+    var big = scale2x(scale2x(scale2x(cells))), K = 8;
     function fwd(r, c) { var y = r - pr, x = c - pc; return [pr + x * sn + y * cs, pc + x * cs - y * sn]; }
     var R0 = Infinity, C0 = Infinity, R1 = -Infinity, C1 = -Infinity;
     [[r0 - 0.5, c0 - 0.5], [r0 - 0.5, c0 + w - 0.5], [r0 + h - 0.5, c0 - 0.5], [r0 + h - 0.5, c0 + w - 0.5]].forEach(function (q) {
@@ -1618,15 +1640,15 @@
       var row = [];
       for (var tc = C0; tc <= C1; tc++) {
         var hits = {}, n = 0, best = ".", bn = 0;
-        offs.forEach(function (oy) { offs.forEach(function (ox) {
-          var y = tr + oy - pr, x = tc + ox - pc;
-          var sr = Math.round(pr + y * cs - x * sn), sc = Math.round(pc + x * cs + y * sn);
-          var i = sr - r0, j = sc - c0;
-          if (i >= 0 && i < h && j >= 0 && j < w && cells[i][j] !== ".") {
-            var k = i * w + j; hits[k] = (hits[k] || 0) + 1; n++;
-            if (hits[k] > bn) { bn = hits[k]; best = cells[i][j]; }
+        for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) {
+          var y = tr + offs[a] - pr, x = tc + offs[b] - pc;
+          var sr = pr + y * cs - x * sn, sc = pc + x * cs + y * sn;
+          var i = Math.floor((sr - r0 + 0.5) * K), j = Math.floor((sc - c0 + 0.5) * K);
+          if (i >= 0 && i < h * K && j >= 0 && j < w * K && big[i][j] !== ".") {
+            var v = big[i][j]; hits[v] = (hits[v] || 0) + 1; n++;
+            if (hits[v] > bn) { bn = hits[v]; best = v; }
           }
-        }); });
+        }
         row.push(n >= 5 ? best : ".");
       }
       out.push(row);
@@ -1649,7 +1671,7 @@
       '<div class="grid2"><div><label class="field" for="rtDeg">角度（度。＋で時計回り）</label><input type="number" id="rtDeg" step="0.5" value="10" /></div><div></div>' +
       '<div><label class="field" for="rtR">軸の行</label><input type="number" id="rtR" step="0.5" value="' + ((s.r0 + s.r1) / 2) + '" /></div>' +
       '<div><label class="field" for="rtC">軸の列</label><input type="number" id="rtC" step="0.5" value="' + ((s.c0 + s.c1) / 2) + '" /></div></div>' +
-      '<p class="hint">選んだ所（なければレイヤー全体）を、軸のマスを中心に回します。腕は肩、脚のももは股関節、すねは膝、足は足首を軸にすると、関節で曲がる動きが作れます。回したあとは「動かす」になるので、矢印キーで関節の位置に合わせて Enter で確定します。</p>',
+      '<p class="hint">選んだ所（なければレイヤー全体）を、軸のマスを中心に回します（ドット絵の線が崩れにくい RotSprite の回し方）。腕は肩、脚のももは股関節、すねは膝、足は足首を軸にすると、関節で曲がる動きが作れます。回したあとは「動かす」になるので、矢印キーで関節の位置に合わせて Enter で確定します。</p>',
       [{ label: "回す", primary: true, run: function () {
         rotateSel(parseFloat($("rtDeg").value) || 0, parseFloat($("rtR").value) || 0, parseFloat($("rtC").value) || 0);
       } }]);

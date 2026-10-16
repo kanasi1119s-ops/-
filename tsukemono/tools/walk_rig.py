@@ -3,7 +3,8 @@
 # ここでは、エディタの「回す（角度・軸）」と同じ計算（rotate_cells）で、各コマの各部品を何度回して何マス動かすかを決め、
 # 足の裏が地面に来る高さ・浮いた足が地面に食い込まない膝の曲げを前もって求める。
 #
-# 部品（レイヤー。下から）: 影 / 奥の腕 / 奥の足 / 奥のすね / 奥のもも / 胴 / 手前の足 / 手前のすね / 手前のもも / カバン / 手前の腕 / かご / 手直し
+# 部品（レイヤー。下から）: 影 / 奥の腕 / 奥の足 / 奥のすね / 奥のもも / 手前の足 / 手前のすね / 手前のもも / 胴 / カバン / 手前の腕 / かご / 手直し
+#   脚の付け根は胴（上着のすそ）の下に入る。カバン（肩掛け）は胴と一緒に動き、手やかごの後ろに隠れていた所は描き足す（bagDraw）
 #   もも＝股関節〜膝、すね＝膝〜足首、足＝足首〜つま先。かごの裏で元の絵にない手前の脚は、奥の脚のレイヤーを複製して作る（legFrom）
 # 動き（1歩＝1周を16コマ。左右の脚は半周ずれ）:
 #   股関節: 前へ約24°〜後ろへ約20°。膝関節: 着いている間ほぼまっすぐ、振り出すとき最大約58°曲がる。
@@ -30,18 +31,42 @@ SEG = ('foot', 'shin', 'thigh')
 JNAME = {'thigh': '股関節', 'shin': '膝', 'foot': '足首'}
 LNAME = {('far', 'foot'): '奥の足', ('far', 'shin'): '奥のすね', ('far', 'thigh'): '奥のもも',
          ('near', 'foot'): '手前の足', ('near', 'shin'): '手前のすね', ('near', 'thigh'): '手前のもも'}
-LAYERS = ['影', '奥の腕', '奥の足', '奥のすね', '奥のもも', '胴', '手前の足', '手前のすね', '手前のもも', 'カバン', '手前の腕', 'かご']
+LAYERS = ['影', '奥の腕', '奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも', '胴', 'カバン', '手前の腕', 'かご']
 
 
 def jsround(v):  # JavaScript の Math.round と同じ（.5 は上へ）
     return int(math.floor(v + 0.5))
 
 
+def scale2x(g):
+    """エディタの scale2x と同じ（Scale2x / EPX）"""
+    h, w = len(g), len(g[0])
+
+    def at(r, c):
+        return '.' if r < 0 or r >= h or c < 0 or c >= w else g[r][c]
+    out = []
+    for r in range(h):
+        a, b = [], []
+        for c in range(w):
+            E = g[r][c]; B = at(r - 1, c); D = at(r, c - 1); F = at(r, c + 1); Hh = at(r + 1, c)
+            a += [D if (D == B and B != F and D != Hh) else E, F if (B == F and B != D and F != Hh) else E]
+            b += [D if (D == Hh and D != B and Hh != F) else E, F if (Hh == F and D != Hh and B != F) else E]
+        out += [a, b]
+    return out
+
+
 def rotate_cells(cells, r0, c0, deg, pr, pc):
-    """エディタの rotateCells と同じ計算。cells は文字の2次元リスト（'.' は透明）。＋で時計回り"""
+    """エディタの rotateCells と同じ計算（RotSprite: Scale2x で8倍 → 回す → 1マスを3×3の点で多数決）。＋で時計回り"""
+    pts = [(i, j) for i, row in enumerate(cells) for j, v in enumerate(row) if v != '.']
+    if not pts:
+        return cells, r0, c0
+    top = min(p[0] for p in pts); bot = max(p[0] for p in pts); lef = min(p[1] for p in pts); rig = max(p[1] for p in pts)
+    cells = [row[lef:rig + 1] for row in cells[top:bot + 1]]
+    r0 += top; c0 += lef
     th = deg * math.pi / 180
     cs, sn = math.cos(th), math.sin(th)
     h, w = len(cells), len(cells[0])
+    big = scale2x(scale2x(scale2x(cells))); K = 8
 
     def fwd(r, c):
         y, x = r - pr, c - pc
@@ -58,12 +83,12 @@ def rotate_cells(cells, r0, c0, deg, pr, pc):
             for oy in offs:
                 for ox in offs:
                     y = tr + oy - pr; x = tc + ox - pc
-                    sr = jsround(pr + y * cs - x * sn); sc = jsround(pc + x * cs + y * sn)
-                    i, j = sr - r0, sc - c0
-                    if 0 <= i < h and 0 <= j < w and cells[i][j] != '.':
-                        k = i * w + j; hits[k] = hits.get(k, 0) + 1; n += 1
-                        if hits[k] > bn:
-                            bn = hits[k]; best = cells[i][j]
+                    sr = pr + y * cs - x * sn; sc = pc + x * cs + y * sn
+                    i = math.floor((sr - r0 + 0.5) * K); j = math.floor((sc - c0 + 0.5) * K)
+                    if 0 <= i < h * K and 0 <= j < w * K and big[i][j] != '.':
+                        v = big[i][j]; hits[v] = hits.get(v, 0) + 1; n += 1
+                        if hits[v] > bn:
+                            bn = hits[v]; best = v
             row.append(best if n >= 5 else '.')
         out.append(row)
     return out, R0, C0
@@ -156,9 +181,10 @@ def build(name):
         if len(xs):
             item[y, :xs.min()] |= al[y, :xs.min()]
     item &= al
-    bag = rows_mask(C.get('bag', [])) & al & ~item
-    farA = rows_mask(C['farArm']) & al & ~item & ~bag
-    nearA = rows_mask(C['nearArm']) & al & ~item & ~bag
+    nearA = rows_mask(C['nearArm']) & al  # 手前の腕（袖と手）。かごより先に決める（手はかごの持ち手をにぎっている）
+    item &= ~nearA
+    bag = rows_mask(C.get('bag', [])) & al & ~item & ~nearA
+    farA = rows_mask(C['farArm']) & al & ~item & ~bag & ~nearA
     legzone = al & ~item & ~farA & ~nearA & ~bag
     legzone[:C['cut'] + PADY] = False
     joints = {l: {k: J(v) for k, v in C['joints'][l].items()} for l in ('near', 'far')}
@@ -209,6 +235,36 @@ def build(name):
     for y, x, ch in torso_fill:
         base['胴'][y][x] = ch
     recolor = C.get('recolorNear', {})  # 奥の脚から写した手前の脚で、脚と脚の間の明るいふちの色を、脚の色に置きかえる
+    # 描き足し（人ごとの手直し。元の絵の座標で [行, 左の列, 色の並び]。'.' は描かない）
+    def draw_into(nm, items):
+        for y, x, cs in items:
+            for i, ch in enumerate(cs):
+                if ch != '.' and base[nm][y + PADY][x + PADX + i] == '.':  # 元の絵のドットはそのまま（空いている所だけ描く）
+                    base[nm][y + PADY][x + PADX + i] = ch
+                    drawn.setdefault(nm, []).append([y + PADY, x + PADX + i, ch])
+    draws = {'カバン': C.get('bagDraw', []), '胴': C.get('torsoDraw', [])}
+    drawn = {}
+    # 脚の付け根: もも の上の行の並びを、上着のすその下へ legRoot 行ぶん写す（脚を回しても付け根にすき間が出ない）
+    root = []
+    for l in ('far',) if leg_from == 'far' else ('near', 'far'):
+        m = seg[(l, 'thigh')]
+        ys = np.nonzero(m.any(1))[0]
+        if not len(ys):
+            continue
+        y0 = ys.min(); xs = np.nonzero(m[y0])[0]
+        for k in range(1, C.get('legRoot', 3) + 1):
+            for x in xs:
+                root.append((LNAME[(l, 'thigh')], int(y0 - k), int(x), base[LNAME[(l, 'thigh')]][y0][x]))
+    for nm, items in draws.items():
+        draw_into(nm, items)
+    for nm, y, x, ch in root:
+        if base[nm][y][x] == '.':
+            base[nm][y][x] = ch
+            drawn.setdefault(nm, []).append([y, x, ch])
+    if leg_from == 'far':  # 手前の脚は奥の脚から写すので、付け根の描き足しも写す（色の置きかえつき）
+        for s_ in SEG:
+            for y, x, ch in drawn.get(LNAME[('far', s_)], []):
+                drawn.setdefault(LNAME[('near', s_)], []).append([y, x, recolor.get(ch, ch)])
     if leg_from == 'far':
         for s in SEG:
             base[LNAME[('near', s)]] = [[recolor.get(ch, ch) for ch in row] for row in base[LNAME[('far', s)]]]
@@ -285,7 +341,8 @@ def build(name):
                     'symbols': o['symbols'] + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],
                     'layers': [{'name': 'からだ', 'visible': True, 'opacity': 1}], 'frames': [{'dur': FRAME_MS}],
                     'cels': [[[''.join(r) for r in grid]]], 'layer': 0, 'frame': 0},
-           'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor, 'torsoFill': torso_fill,
+           'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor,
+           'drawn': drawn, 'torsoFill': torso_fill,  # drawn: エディタで「えんぴつ」で描き足すドット（レイヤーごと。最初のコマ）
            'plan': plan_frames}
     with open(os.path.join(ED, f'{name}.rig.json'), 'w', encoding='utf8') as fh:
         json.dump(rig, fh, ensure_ascii=False)
