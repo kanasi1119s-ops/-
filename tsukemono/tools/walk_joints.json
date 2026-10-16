@@ -226,73 +226,68 @@
   "bagDraw": [
    [
     40,
-    6,
-    ".aaaaO"
+    2,
+    "..OOOOOOOOOO."
    ],
    [
     41,
-    6,
-    "aaaaaO"
+    2,
+    ".OIIIIIIIIIIO"
    ],
    [
     42,
-    6,
-    "aaaaaO"
+    2,
+    ".OIEEEEEEEEIO"
    ],
    [
     43,
-    6,
-    "aaaaaO"
+    2,
+    ".OIEaaaaaaEIO"
    ],
    [
     44,
-    6,
-    "aaaaaO"
+    2,
+    ".OIEaaaaaaEIO"
    ],
    [
     45,
-    6,
-    "JJJJJO"
+    2,
+    ".OOOOODDOOOOO"
    ],
    [
     46,
-    6,
-    "aaaaaO"
+    2,
+    ".OaaaaDDaaaaO"
    ],
    [
     47,
-    6,
-    "aaaaaO"
+    2,
+    ".OaaaaaaaaaaO"
    ],
    [
     48,
-    6,
-    "aaaaaO"
+    2,
+    ".OaaaaaaaaaaO"
    ],
    [
     49,
-    6,
-    "aaaaaO"
+    2,
+    ".OJaaaaaaaaJO"
    ],
    [
     50,
     2,
-    "0aaaaaaaaaO"
+    ".OJJaaaaaaJJO"
    ],
    [
     51,
     2,
-    "0aaaaaaaaaO"
+    ".OJJJJJJJJJJO"
    ],
    [
     52,
     2,
-    "0JJJJJJJJJO"
-   ],
-   [
-    53,
-    2,
-    ".OOOOOOOOO."
+    "..OOOOOOOOOO."
    ]
   ],
   "legRoot": 3
