@@ -13,7 +13,7 @@
 //      脚の部品は、地面より下にはみ出た所を「範囲選択」→ Delete で消す
 //   7. 作品を保存して読み返し、手順表どおりか1ドットずつ確かめる
 //   8. 「手直し」レイヤーを足し、部品を動かしてできたすき間を、コマごとに「えんぴつ」で描く。
-//      足まわり（腰より下の脚・すそ）の色のつぶはまわりの色で描きなおし、はなれたつぶは「消しゴム」で消す
+//      回して削れた脚のふち（太さ戻し）もここで描く。足まわり（腰より下の脚・すそ）の色のつぶはまわりの色で描きなおし、はなれたつぶは「消しゴム」で消す
 //   9. 「影」に、コマごとに「だ円（塗り）」で足もとの影
 //  10. 確かめる: 足の裏が地面の行にあるか、かご・カバンが欠けていないか、すき間が残っていないか（コマごと）
 //  11. オニオンスキンで写真、再生、「シート」「GIF」で書き出し、「作品を保存」（assets/editor/<名前>.json）
@@ -284,6 +284,7 @@ for (const name of names) {
   const legTop = Math.min(JOINTS[name].cut, JOINTS[name].joints.near.hip[0], JOINTS[name].joints.far.hip[0]) + rig.padTop;  // 腰（脚の付け根）の行
   for (let f = 0; f < F; f++) {
     const g = sym2(f), fx = [];
+    for (const [y, x, s] of rig.thick?.[f] || []) if (g[y][x] === '.') { g[y][x] = s; fx.push([y, x, s]); }  // 太さ戻し（回して削れた脚のふち）
     for (let round = 0; round < 3; round++) {
     for (let pass = 0; pass < 6; pass++) {
       const add = [];
@@ -365,7 +366,7 @@ for (const name of names) {
       }
     }
   }
-  log.push(`手直し: ${fixes.reduce((a, b) => a + b.length, 0)}ドット・消したつぶ: ${erases.reduce((a, b) => a + b.length, 0)}ドット`);
+  log.push(`手直し: ${fixes.reduce((a, b) => a + b.length, 0)}ドット（太さ戻し ${(rig.thick || []).reduce((a, b) => a + b.length, 0)}）・消したつぶ: ${erases.reduce((a, b) => a + b.length, 0)}ドット`);
   // 9. 影
   proj = await saveProject();
   const shadowSym = proj.symbols.some((s) => s.sym === rig.shadow.sym) ? rig.shadow.sym : null;

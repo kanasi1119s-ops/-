@@ -58,7 +58,7 @@ def scale2x(g):
     return out
 
 
-def rotate_cells(cells, r0, c0, deg, pr, pc):
+def rotate_cells(cells, r0, c0, deg, pr, pc, minhits=5):
     """エディタの rotateCells と同じ計算（RotSprite: Scale2x で8倍 → 回す → 1マスを3×3の点で多数決）。＋で時計回り"""
     pts = [(i, j) for i, row in enumerate(cells) for j, v in enumerate(row) if v != '.']
     if not pts:
@@ -92,7 +92,7 @@ def rotate_cells(cells, r0, c0, deg, pr, pc):
                         v = big[i][j]; hits[v] = hits.get(v, 0) + 1; n += 1
                         if hits[v] > bn:
                             bn = hits[v]; best = v
-            row.append(best if n >= 5 else '.')
+            row.append(best if n >= minhits else '.')
         out.append(row)
     return out, R0, C0
 
@@ -105,13 +105,13 @@ def stamp(grid, cells, r, c):
                 grid[r + i][c + j] = s
 
 
-def apply_op(grid, op):
+def apply_op(grid, op, minhits=5):
     """エディタでの1つの操作（全体を選ぶ → 回す → 動かす → 確定）を、同じように行う"""
     H, W = len(grid), len(grid[0])
     cells = [row[:] for row in grid]
     r, c = 0, 0
     if op.get('deg'):
-        cells, r, c = rotate_cells(cells, 0, 0, op['deg'], op['pr'], op['pc'])
+        cells, r, c = rotate_cells(cells, 0, 0, op['deg'], op['pr'], op['pc'], minhits)
     out = [['.'] * W for _ in range(H)]
     stamp(out, cells, r + op.get('dy', 0), c + op.get('dx', 0))
     return out
@@ -544,6 +544,37 @@ def build(name):
                 g[y] = ['.'] * W  # 地面より下にはみ出たドットは消す（エディタでも消す）
             cel[nm] = [''.join(r) for r in g]
         sim.append(cel)
+    # 太さ戻し: 回すと、ふちのドット（1マスを9つの点で見て5つに満たない所）が削れて脚が細くなる（元の1〜2割）。
+    #   4つ以上で残す甘い回し方との差（削れたふちのドット）を、脚の部品の横で、上に何も重なっていない所にだけ「手直し」で描き戻す
+    order = [nm for nm in LAYERS if nm in base]
+    thick = []
+    for fi, fr in enumerate(plan_frames):
+        cel = sim[fi]
+        top = [[None] * W for _ in range(H)]
+        for nm in order:
+            if nm in cel:
+                for y in range(H):
+                    for x in range(W):
+                        if cel[nm][y][x] != '.':
+                            top[y][x] = nm
+        add = {}
+        for l in ('near', 'far'):
+            for s_ in SEG:
+                nm = LNAME[(l, s_)]
+                if nm not in cel or nm not in fr['ops']:
+                    continue
+                fat = apply_op(base[nm], fr['ops'][nm], minhits=4)
+                g = cel[nm]
+                for y in range(min(ground + 1, H)):
+                    for x in range(W):
+                        if fat[y][x] == '.' or g[y][x] != '.' or (y, x) in add:
+                            continue
+                        if not any(0 <= y + dy < H and 0 <= x + dx < W and g[y + dy][x + dx] != '.' for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                            continue
+                        t = top[y][x]
+                        if t is None or order.index(t) < order.index(nm):
+                            add[(y, x)] = fat[y][x]
+        thick.append([[y, x, ch] for (y, x), ch in sorted(add.items())])
     shadow_sym = next(ch for ch in '!#$%&*+-=?@^~' if ch not in {s['sym'] for s in o['symbols']} | set(C.get('extraColors', {})))
     rig = {'name': name, 'w': W, 'h': H, 'padLeft': PADX, 'padTop': PADY, 'ground': ground, 'frames': N, 'frameMs': FRAME_MS,
            'layers': [nm for nm in LAYERS if nm == '影' or (nm in base and any(ch != '.' for row in base[nm] for ch in row))], 'shadow': {'sym': shadow_sym, 'color': '#%02x%02x%02x' % SHADOW, 'opacity': SHADOW_OPACITY},
@@ -554,7 +585,7 @@ def build(name):
                     'cels': [[[''.join(r) for r in orig_grid]]], 'layer': 0, 'frame': 0},
            'erase': [[y + PADY, x + PADX] for y, x in C.get('erase', [])], 'clean': clean,
            'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor,
-           'drawn': drawn, 'torsoFill': torso_fill,  # drawn: エディタで「えんぴつ」で描き足すドット（レイヤーごと。最初のコマ）
+           'drawn': drawn, 'torsoFill': torso_fill, 'thick': thick,  # drawn: エディタで「えんぴつ」で描き足すドット（レイヤーごと。最初のコマ）
            'plan': plan_frames}
     with open(os.path.join(ED, f'{name}.rig.json'), 'w', encoding='utf8') as fh:
         json.dump(rig, fh, ensure_ascii=False)
