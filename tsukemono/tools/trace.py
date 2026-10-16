@@ -19,6 +19,7 @@ import os
 import numpy as np
 import cv2
 from PIL import Image
+from defringe import defringe
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 SRC = os.path.join(ROOT, 'assets/reference/shop_reference.jpg')
@@ -236,6 +237,67 @@ CLOSE_HOLES = {'blazer': 9, 'yankee': 9, 'shades': 9, 'volley': 9, 'soccer': 9, 
 POSE_HEIGHT = {'keeper': 77, 'woman': 74, 'granny': 73, 'granny2': 72, 'oldman': 75, 'boy': 56, 'girl': 58, 'student': 64, 'gakuran': 66, 'blazer': 65, 'yankee': 70, 'suit': 74, 'shades': 72, 'volley': 64, 'soccer': 62, 'racer': 70, 'karate': 68, 'samurai': 70, 'beach': 66, 'parasol': 80, 'angler': 78, 'hiker': 72, 'knight': 74, 'alien': 66, 'centaur': 74, 'witch': 74, 'demon': 72}
 
 
+# 服の色をそろえる人物: ポーズ0（歩きの元の絵）の襟・スカートの色に、ほかのポーズの襟・スカートを塗り直す。
+# 値は塗らない所（ポーズ番号: [(x0, y0, x1, y1), ...]。切り抜いたコマの座標）。かご・財布・袋など、服に近い色の持ち物
+OUTFIT = {'granny': {6: [(21, 45, 99, 64)], 7: [(26, 24, 99, 36)]},
+          'granny2': {6: [(21, 32, 99, 40)]}}
+
+
+def _hsv(rgb):
+    x = cv2.cvtColor(rgb.astype(np.float32) / 255, cv2.COLOR_RGB2HSV)
+    return x[..., 0], x[..., 1], x[..., 2]
+
+
+def outfit_regions(rgb, alpha, skip=()):
+    """襟（上）とスカート（下）のドットを返す。服の色相（そのコマで多い色）から ±28° の、くすんだ暗めの色。
+    あごより上（顔・髪の線）と、スカートの裾より下（靴）は入れない。"""
+    h, s, v = _hsv(rgb)
+    hh = np.where(h <= 30, h + 360, h)
+    H = rgb.shape[0]
+    base = alpha & (s > 0.17) & (v > 0.05) & (v < 0.62)
+    broad = base & (hh >= 195) & (hh <= 370)
+    skin = alpha & (h > 12) & (h < 40) & (s > 0.25) & (v > 0.55)
+    chin = max([y for y in range(int(H * 0.3)) if skin[y].sum() >= 3] or [0])
+    band = np.zeros_like(alpha); band[int(H * 0.72):int(H * 0.88)] = True
+    neck = np.zeros_like(alpha); neck[chin:chin + 7] = True
+    out = []
+    for zone in (neck, band):
+        c0 = float(np.median(hh[broad & zone]))
+        c = base & (np.abs(hh - c0) <= 28)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(c.astype(np.uint8), 8)
+        keep = np.isin(lab, [i for i in range(1, n) if st[i, 4] >= 12])
+        keep[:max(0, chin - 1)] = False
+        for x0, y0, x1, y1 in skip:
+            keep[y0:y1, x0:x1] = False
+        out.append(keep)
+    upper, lower = out
+    cnt = lower.sum(1)
+    hem = max(y for y in range(H) if cnt[y] >= 9)
+    upper[hem + 1:] = False; lower[hem + 1:] = False
+    mid = (chin + hem) // 2  # 襟（胸の前の帯も）は上半分、スカートは下半分
+    upper[mid:] = False; lower[:mid] = False
+    return upper, lower
+
+
+def outfit_stats(rgb, masks):
+    h, s, v = _hsv(rgb)
+    hh = np.where(h <= 30, h + 360, h)
+    return [(float(np.median(hh[m])), float(np.median(s[m])), float(np.median(v[m]))) for m in masks]
+
+
+def recolor_outfit(rgb, masks, src, ref):
+    """色相をずらし、彩度・明るさを比で合わせる（陰影の段はそのまま残る）。"""
+    h, s, v = _hsv(rgb)
+    out = rgb.astype(np.float32) / 255
+    for m, (h0, s0, v0), (h1, s1, v1) in zip(masks, src, ref):
+        hn = (h[m] + (h1 - h0)) % 360
+        sn = np.clip(s[m] * s1 / max(s0, 1e-3), 0, 1)
+        vn = np.clip(v[m] * v1 / max(v0, 1e-3), 0, 1)
+        px = cv2.cvtColor(np.dstack([hn, sn, vn]).astype(np.float32), cv2.COLOR_HSV2RGB)
+        out[m] = px.reshape(-1, 3)
+    return np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)
+
+
 def extract_poses(name):
     a = np.asarray(Image.open(os.path.join(ROOT, f'assets/reference/pose_{name}.jpg')).convert('RGB')).astype(int)
     h0, w0, _ = a.shape
@@ -306,7 +368,14 @@ def extract_poses(name):
         cs, alpha = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1], alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         img = Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8))
         q = np.asarray(img.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
-        rgba = np.dstack([q, alpha * 255]).astype(np.uint8)
+        if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
+            masks = outfit_regions(q, alpha, OUTFIT[name].get(i, ()))
+            st_ = outfit_stats(q, masks)
+            if i == 0:
+                ref_outfit = st_
+            else:
+                q = recolor_outfit(q, masks, st_, ref_outfit)
+        rgba = defringe(np.dstack([q, alpha * 255]).astype(np.uint8))[0]  # ふちに残った白いにじみを取る
         Image.fromarray(rgba).save(os.path.join(OUT, f'pose_{name}_{i}.png'))
         feet = np.nonzero(alpha[-4:].any(0))[0]  # 足元の中心
         poses.append({'w': int(alpha.shape[1]), 'h': int(alpha.shape[0]), 'ax': int(round(feet.mean()))})

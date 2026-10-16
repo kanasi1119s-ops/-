@@ -2,6 +2,7 @@
 //   先に python3 tools/walk_rig.py で手順表（assets/editor/<名前>.rig.json）を作っておく。
 // エディタでの手順（人ごと。すべてエディタの操作）:
 //   1. 「作品を開く」で元の絵（まわりに余白をつけたもの）を開く
+//   1b. 脚のそうじ: ほとんど同じ色をそろえ、色のつぶ・白いにじみをまわりの色に（「えんぴつ」で描きなおす）
 //   2. 部品に分ける: 「からだ」レイヤーを「複製」し、名前を部品の名前にして、「消しゴム」で部品でない所を消す。
 //      部品は 奥の腕・奥の足・奥のすね・奥のもも・胴・手前の足・手前のすね・手前のもも・カバン・手前の腕・かご。
 //      かごの裏で元の絵にない手前の脚は、奥の脚と同じ所を残して作る（あとで手前の脚の位置へ回して動かす）。最後に「からだ」を削除
@@ -11,7 +12,8 @@
 //   6. コマごと・部品ごとに: Ctrl+A で選ぶ → 「回す（角度・軸）」で関節を軸に回す → 矢印キーで関節の行き先へ動かす → Enter で確定。
 //      脚の部品は、地面より下にはみ出た所を「範囲選択」→ Delete で消す
 //   7. 作品を保存して読み返し、手順表どおりか1ドットずつ確かめる
-//   8. 「手直し」レイヤーを足し、部品を動かしてできたすき間を、コマごとに「えんぴつ」で描く
+//   8. 「手直し」レイヤーを足し、部品を動かしてできたすき間を、コマごとに「えんぴつ」で描く。
+//      足まわり（腰より下の脚・すそ）の色のつぶはまわりの色で描きなおし、はなれたつぶは「消しゴム」で消す
 //   9. 「影」に、コマごとに「だ円（塗り）」で足もとの影
 //  10. 確かめる: 足の裏が地面の行にあるか、かご・カバンが欠けていないか、すき間が残っていないか（コマごと）
 //  11. オニオンスキンで写真、再生、「シート」「GIF」で書き出し、「作品を保存」（assets/editor/<名前>.json）
@@ -27,7 +29,8 @@ const EDITOR = process.env.EDITOR_HTML || path.join(root, 'tools/pixel-editor.ht
 const ED = path.join(root, 'assets/editor');
 const DOCS = path.join(root, 'docs/walk');
 fs.mkdirSync(DOCS, { recursive: true });
-const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(JSON.parse(fs.readFileSync(path.join(root, 'tools/walk_joints.json'), 'utf8')));
+const JOINTS = JSON.parse(fs.readFileSync(path.join(root, 'tools/walk_joints.json'), 'utf8'));
+const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(JOINTS);
 const dataUrlToFile = (url, file) => fs.writeFileSync(file, Buffer.from(url.split(',')[1], 'base64'));
 const sheetsFile = path.join(ED, 'sheets.json');
 const meta = fs.existsSync(sheetsFile) ? JSON.parse(fs.readFileSync(sheetsFile, 'utf8')) : {};
@@ -91,6 +94,23 @@ for (const name of names) {
   if (rig.erase?.length) {
     await cel(0, 0); await key('Escape'); await tool('eraser'); await measure();
     for (const [y, x] of rig.erase) { await stroke(y, x, x); body[y][x] = '.'; }
+  }
+  // 脚の色のつぶ（写し取ったときの色むら）を、まわりの色で「えんぴつ」で描きなおす
+  if (rig.clean?.length) {
+    await cel(0, 0); await key('Escape'); await tool('pencil');
+    const bySym = {};
+    for (const [y, x, s] of rig.clean) (bySym[s] ??= []).push([y, x]);
+    for (const [s, pts] of Object.entries(bySym)) {
+      await pickColor(s); await measure();
+      pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      for (let i = 0; i < pts.length;) {
+        let j = i;
+        while (j + 1 < pts.length && pts[j + 1][0] === pts[i][0] && pts[j + 1][1] === pts[j][1] + 1) j++;
+        await stroke(pts[i][0], pts[i][1], pts[j][1]);
+        for (let k = i; k <= j; k++) body[pts[k][0]][pts[k][1]] = s;
+        i = j + 1;
+      }
+    }
   }
   // 2. 部品に分ける（からだを複製 → 部品でない所を消しゴムで消す）。上の部品から作ると、下から LAYERS の順に並ぶ
   const parts = rig.layers.filter((nm) => nm !== '影');
@@ -253,7 +273,15 @@ for (const name of names) {
     }
     return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '.';
   };
-  const fixes = [];
+  const fixes = [], erases = [];
+  // どの部品のドットか（上の部品が見えている）
+  const owner = (f) => {
+    const o = Array.from({ length: H }, () => Array(W).fill(null));
+    for (const nm of parts) { const c = proj.cels[names_.indexOf(nm)][f]; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (c[y][x] !== '.') o[y][x] = nm; }
+    return o;
+  };
+  const cleanSet = new Set([...legLayers, 'すそ', 'すそ前', 'すそ後', 'すその裏', '手直し']);
+  const legTop = Math.min(JOINTS[name].cut, JOINTS[name].joints.near.hip[0], JOINTS[name].joints.far.hip[0]) + rig.padTop;  // 腰（脚の付け根）の行
   for (let f = 0; f < F; f++) {
     const g = sym2(f), fx = [];
     for (let round = 0; round < 3; round++) {
@@ -274,7 +302,46 @@ for (const name of names) {
     }
     if (!enc.length) break;
     }
+    // 足まわりのそうじ（腰より下の、脚・すその部品と手直しのドットだけ）:
+    //   ・まわり8マスに同じ色が1つもなく、5マス以上が同じ色 → その色にそろえる（回してできた色のつぶ）
+    //   ・まわり8マスにドットが1つ以下 → 消す（はなれたつぶ）
+    const own = owner(f);
+    for (const [y, x] of fx) own[y][x] = '手直し';
+    const ok = (y, x) => y >= legTop && g[y][x] !== '.' && cleanSet.has(own[y][x]);
+    const er = [];
+    for (let pass = 0; pass < 2; pass++) {
+      const rec = [], del = [];
+      for (let y = Math.max(1, legTop); y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        if (!ok(y, x)) continue;
+        const n = {}; let cnt = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const v = g[y + dy][x + dx];
+          if ((dy || dx) && v !== '.') { n[v] = (n[v] || 0) + 1; cnt++; }
+        }
+        if (cnt <= 1) { del.push([y, x]); continue; }
+        const [best, bc] = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
+        if (!n[g[y][x]] && bc >= 5) rec.push([y, x, best]);
+      }
+      for (const [y, x, c] of rec) { g[y][x] = c; fx.push([y, x, c]); own[y][x] = '手直し'; }
+      for (const [y, x] of del) {
+        g[y][x] = '.';
+        for (let i = fx.length - 1; i >= 0; i--) if (fx[i][0] === y && fx[i][1] === x) fx.splice(i, 1);
+        er.push([y, x]);
+      }
+      if (!rec.length && !del.length) break;
+    }
     fixes.push(fx);
+    erases.push(er);
+  }
+  // はなれたつぶは、そのドットがある部品すべてで「消しゴム」で消す
+  for (let f = 0; f < F; f++) {
+    for (const [li, nm] of names_.entries()) {
+      if (!parts.includes(nm)) continue;
+      const pts = erases[f].filter(([y, x]) => proj.cels[li][f][y][x] !== '.');
+      if (!pts.length) continue;
+      await cel(li, f); await key('Escape'); await tool('eraser'); await measure();
+      for (const [y, x] of pts) await stroke(y, x, x);
+    }
   }
   await cel(proj.layers.length - 1, 0);
   await page.click('#layerAdd');
@@ -298,7 +365,7 @@ for (const name of names) {
       }
     }
   }
-  log.push(`手直し: ${fixes.reduce((a, b) => a + b.length, 0)}ドット`);
+  log.push(`手直し: ${fixes.reduce((a, b) => a + b.length, 0)}ドット・消したつぶ: ${erases.reduce((a, b) => a + b.length, 0)}ドット`);
   // 9. 影
   proj = await saveProject();
   const shadowSym = proj.symbols.some((s) => s.sym === rig.shadow.sym) ? rig.shadow.sym : null;

@@ -3,7 +3,9 @@
 # シートは上に1行の余白つき（体が浮くぶん）。足もとの位置（ax）は元のポーズと同じ。
 import json
 import os
+import numpy as np
 from PIL import Image
+from defringe import defringe
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ED = os.path.join(HERE, '..', 'assets', 'editor')
@@ -22,6 +24,7 @@ for name, s in sheets.items():
     frames = []
     for k, fr in enumerate(s['frames']):
         im = sheet.crop((fr['x'], 0, fr['x'] + fw, fh))
+        im = Image.fromarray(defringe(np.asarray(im))[0])  # ふちに残った白いにじみを取る
         im.save(os.path.join(IMG, f'walk_{name}_{k}.png'))
         frames.append({'img': f'walk_{name}_{k}', 'w': fw, 'h': fh, 'ax': p0['ax'] + s.get('padLeft', 0), 'ms': fr['ms'], 'below': s.get('padBottom', 0)})  # below: 足の裏より下の行（影）
     meta[name] = frames

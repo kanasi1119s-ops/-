@@ -15,6 +15,7 @@
 # 書き出す物: assets/editor/<名前>.rig.json（エディタの手順）、assets/editor/<名前>.rigsim.json（手順どおりに作ったときの絵。エディタの結果と照らし合わせる）
 import json
 import math
+from collections import Counter
 import os
 import sys
 import numpy as np
@@ -24,6 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ED = os.path.join(HERE, '..', 'assets', 'editor')
 CFGS = json.load(open(os.path.join(HERE, 'walk_joints.json'), encoding='utf8'))
 N = 16
+LEG_MERGE = 24  # 脚のそうじで、同じ色にそろえる色のへだたり
 FRAME_MS = 70
 PADX, PADY = 12, 4
 SHADOW = (30, 22, 16)
@@ -264,6 +266,44 @@ def build(name):
             for y, x in np.argwhere(PM(auto)):
                 best = min(((seg_dist((y, x), j[a], j[b]), s) for s, (a, b) in (('thigh', ('hip', 'knee')), ('shin', ('knee', 'ankle')), ('foot', ('ankle', 'toe')))))
                 seg[(l, best[1])][y, x] = True
+    # 脚のそうじ（写し取ったときの色むら。回すとつぶ・ぎざぎざになる）: 脚ごと（もも・すね・足）に
+    #   1. ほとんど同じ色（RGB のへだたり LEG_MERGE 以下）は、多く使われている方の色にそろえる（色の段がはっきりして、回してもふちがつながる）
+    #   2. 脚のおもな色（8割をしめる色）のどれからも遠い色のドット（白いにじみ・灰色のつぶ）は、まわりのおもな色でいちばん多い色に
+    #   エディタでは、部品に分ける前に「えんぴつ」で描きなおす
+    rgbs = {sm['sym']: tuple(int(sm['color'][i:i + 2], 16) for i in (1, 3, 5)) for sm in o['symbols']}
+    cdist = lambda a, b: sum((p_ - q_) ** 2 for p_, q_ in zip(rgbs[a], rgbs[b])) ** 0.5
+    clean = {}
+    if C.get('legClean', True):
+        for l in ('near', 'far'):
+            legm = seg[(l, 'thigh')] | seg[(l, 'shin')] | seg[(l, 'foot')]
+            pts = [tuple(q) for q in np.argwhere(legm)]
+            if not pts:
+                continue
+            cnt = Counter(grid[y][x] for y, x in pts)
+            reps, mp = [], {}
+            for k, _ in cnt.most_common():
+                near = [r for r in reps if cdist(k, r) <= LEG_MERGE]
+                mp[k] = min(near, key=lambda r: cdist(k, r)) if near else k
+                if not near:
+                    reps.append(k)
+            for y, x in pts:
+                if mp[grid[y][x]] != grid[y][x]:
+                    clean[(y, x)] = grid[y][x] = mp[grid[y][x]]
+            cnt = Counter(grid[y][x] for y, x in pts)
+            main, acc = set(), 0
+            for k, v in cnt.most_common():
+                if acc >= 0.8 * len(pts):
+                    break
+                main.add(k); acc += v
+            for y, x in pts:
+                c = grid[y][x]
+                if c in main or min(cdist(c, m) for m in main) <= 35:
+                    continue
+                nb = Counter(grid[y + dy][x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+                             if (dy or dx) and legm[y + dy, x + dx] and grid[y + dy][x + dx] in main)
+                if nb:
+                    clean[(y, x)] = grid[y][x] = nb.most_common(1)[0][0]
+    clean = [[int(y), int(x), ch] for (y, x), ch in sorted(clean.items())]
     G = np.array(grid)
     # 胴の手直し: 腕の下に隠れていた胴を、胴のふちの色で2ドット（腕を振っても胴が欠けない）
     torso_fill = []
@@ -512,7 +552,7 @@ def build(name):
                     + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],
                     'layers': [{'name': 'からだ', 'visible': True, 'opacity': 1}], 'frames': [{'dur': FRAME_MS}],
                     'cels': [[[''.join(r) for r in orig_grid]]], 'layer': 0, 'frame': 0},
-           'erase': [[y + PADY, x + PADX] for y, x in C.get('erase', [])],
+           'erase': [[y + PADY, x + PADX] for y, x in C.get('erase', [])], 'clean': clean,
            'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor,
            'drawn': drawn, 'torsoFill': torso_fill,  # drawn: エディタで「えんぴつ」で描き足すドット（レイヤーごと。最初のコマ）
            'plan': plan_frames}
