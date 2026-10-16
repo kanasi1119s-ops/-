@@ -300,7 +300,7 @@ def recolor_outfit(rgb, masks, src, ref):
 
 # 頭巾をそろえる: ポーズ集で頭巾をかぶっているポーズとかぶっていないポーズが混ざっている人は、
 # かぶっているポーズ（src）の頭巾を、かぶっていないポーズ（dst）の髪と入れかえる（顔の位置で合わせる。顔はそのまま）
-HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7]}}
+HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7], 'hooded': [2, 4, 5]}}
 
 
 def _skin(rgba):
@@ -325,6 +325,41 @@ def _head_cover(rgba):
     cover = np.isin(lab, list(top)) & cand
     ys, xs = np.nonzero(skin[:chin + 1])
     return cover, chin, (int(ys.min()), int(xs.min()))
+
+
+def crisp_hood(rgba):
+    """頭巾をくっきりさせる: 縮小でぼけた頭巾のふちの線を暗い線に、内側を白（と薄い影の1段）にそろえる。
+    髪（灰色のかたまり）はそのまま。形（透明かどうか）は変えない"""
+    out = np.array(rgba, copy=True)
+    cover, chin, _ = _head_cover(out)
+    skin = _skin(out)
+    alpha = out[..., 3] > 0
+    lum = out[..., :3].astype(int) @ np.array([299, 587, 114]) // 1000
+    # 線の色: 頭の中でいちばん暗い色
+    ys, xs = np.nonzero(cover)
+    dark_i = np.argmin(lum[ys, xs]); line = out[ys[dark_i], xs[dark_i], :3].copy()
+    white_px = out[cover & (lum >= 200)][:, :3]
+    white = white_px.max(0) if len(white_px) else np.array([236, 238, 242])
+    shade = np.clip(white.astype(int) - 22, 0, 255).astype(np.uint8)
+    W = cover & (lum >= 170)
+    for _ in range(2):  # 白のとなりの明るめの灰色（線とまざった色）は白に
+        pad = np.pad(W, 1)
+        nb = pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]
+        W |= cover & nb & (lum >= 135)
+    H_, W_ = alpha.shape
+    pa = np.pad(alpha, 1); ps = np.pad(skin, 1)
+    edge_out = cover & ~(pa[:-2, 1:-1] & pa[2:, 1:-1] & pa[1:-1, :-2] & pa[1:-1, 2:])  # 透明に接する
+    edge_face = cover & (ps[:-2, 1:-1] | ps[2:, 1:-1] | ps[1:-1, :-2] | ps[1:-1, 2:])  # 顔に接する
+    inner = W & ~edge_out & ~edge_face
+    out[inner & (lum >= 200), :3] = white
+    out[inner & (lum < 200), :3] = shade
+    out[(edge_out | edge_face) & (W | (lum < 120)), :3] = line
+    hair = cover & ~W & ~edge_out & ~edge_face  # 頭巾からのぞく髪: 灰色1色と線の2段に
+    if hair.any():
+        grey = np.median(out[hair & (lum >= 120)][:, :3], 0).astype(np.uint8) if (hair & (lum >= 120)).any() else shade
+        out[hair & (lum >= 120), :3] = grey
+        out[hair & (lum < 120), :3] = line
+    return out
 
 
 def transplant_hood(dst, src):
@@ -426,7 +461,10 @@ def extract_poses(name):
         Image.fromarray(rgba).save(os.path.join(OUT, f'pose_{name}_{i}.png'))
         feet = np.nonzero(alpha[-4:].any(0))[0]  # 足元の中心
         poses.append({'w': int(alpha.shape[1]), 'h': int(alpha.shape[0]), 'ax': int(round(feet.mean()))})
-    if name in HOOD:  # 頭巾をそろえる（顔の位置で合わせて、髪と入れかえる）
+    if name in HOOD:  # 頭巾をそろえる（頭巾をくっきりさせてから、顔の位置で合わせて髪と入れかえる）
+        for i in HOOD[name]['hooded']:
+            fp = os.path.join(OUT, f'pose_{name}_{i}.png')
+            Image.fromarray(crisp_hood(np.asarray(Image.open(fp).convert('RGBA')))).save(fp)
         src = np.asarray(Image.open(os.path.join(OUT, f'pose_{name}_{HOOD[name]["src"]}.png')).convert('RGBA'))
         for i in HOOD[name]['dst']:
             fp = os.path.join(OUT, f'pose_{name}_{i}.png')
