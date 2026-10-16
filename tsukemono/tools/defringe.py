@@ -4,12 +4,26 @@
 （明るさが DARK 以上低い）のもの = 輪郭線の外にはみ出した背景のにじみ、を透明にする。
 白い靴下・白いすそのように、外側が透明でも反対側が白いまま続く所は残す。
 足元（下から FEET の割合）は、靴下・足首を消さないようにさわらない。
+頭（あごより上。髪・頭巾・帽子）もさわらない: 白い髪のハイライトや頭巾のふちは輪郭線の外に出ているのが本来の絵なので、にじみと見分けがつかない。
 """
 import numpy as np
 
 LIGHT = 175
 DARK = 55
 FEET = 0.1
+
+
+def chin_row(rgba):
+    """あごの行（上から35%の中で、肌色が3ドット以上ある最後の行）。肌色がない絵（宇宙人など）は高さの25%"""
+    a = rgba[..., :3].astype(np.float32) / 255
+    mx, mn = a.max(-1), a.min(-1)
+    r, g = a[..., 0], a[..., 1]
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    hue = np.where(mx == r, (g - a[..., 2]) / np.maximum(mx - mn, 1e-6) * 60, 999)  # 赤が最大のときだけ（肌色は 12〜40°）
+    skin = (rgba[..., 3] > 0) & (hue > 12) & (hue < 40) & (sat > 0.25) & (mx > 0.55)
+    H = rgba.shape[0]
+    rows = [y for y in range(int(H * 0.35)) if skin[y].sum() >= 3]
+    return max(rows) if rows else int(H * 0.25)
 
 
 def defringe(rgba, passes=2):
@@ -26,6 +40,7 @@ def defringe(rgba, passes=2):
         ys = np.nonzero(al.any(1))[0]
         if len(ys):
             cand[int(ys.max() - (ys.max() - ys.min() + 1) * FEET) + 1:] = False
+        cand[:chin_row(a) + 1] = False  # 頭はさわらない
         out = np.zeros_like(cand)
         for y, x in zip(*np.nonzero(cand)):
             for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)):
