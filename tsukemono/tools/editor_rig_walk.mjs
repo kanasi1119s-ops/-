@@ -86,8 +86,13 @@ for (const name of names) {
     await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2); await page.mouse.move(b.x, b.y);
     await page.mouse.up();
   }
+  // 取り残される元の絵のドットを、消しゴムで消す
+  const body = rig.orig.cels[0][0].map((r) => [...r]);
+  if (rig.erase?.length) {
+    await cel(0, 0); await key('Escape'); await tool('eraser'); await measure();
+    for (const [y, x] of rig.erase) { await stroke(y, x, x); body[y][x] = '.'; }
+  }
   // 2. 部品に分ける（からだを複製 → 部品でない所を消しゴムで消す）。上の部品から作ると、下から LAYERS の順に並ぶ
-  const body = rig.orig.cels[0][0];
   const parts = rig.layers.filter((nm) => nm !== '影');
   const nearFromFar = { '手前の足': '奥の足', '手前のすね': '奥のすね', '手前のもも': '奥のもも' };
   for (const nm of [...parts].reverse()) {

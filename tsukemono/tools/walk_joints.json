@@ -206,7 +206,7 @@
    [
     37,
     47,
-    2,
+    3,
     6
    ],
    [
@@ -226,78 +226,78 @@
   "bagDraw": [
    [
     39,
-    2,
-    "...OOOOOOOkO."
+    3,
+    "..OOOOOOOkO."
    ],
    [
     40,
-    2,
-    "..OfgggggghmO"
+    3,
+    ".OfgggggghmO"
    ],
    [
     41,
-    2,
-    ".OfgiihhggghO"
+    3,
+    "OfgiihhggghO"
    ],
    [
     42,
-    2,
-    ".OfgihgggggfO"
+    3,
+    "OfgihgggggfO"
    ],
    [
     43,
-    2,
-    ".OfngngngngfO"
+    3,
+    "OfngngngngfO"
    ],
    [
     44,
-    2,
-    ".OeffjkkjffeO"
+    3,
+    "OeffjkkjffeO"
    ],
    [
     45,
-    2,
-    "0OeeekmmkeeeO"
+    3,
+    "OeeekmmkeeeO"
    ],
    [
     46,
-    2,
-    "0fgggkOOkgggf"
+    3,
+    "OgggkOOkgggf"
    ],
    [
     47,
-    2,
-    "hfgggjkkjgggf"
+    3,
+    "Ogggjkkjgggf"
    ],
    [
     48,
-    2,
-    "hfghggggggfef"
+    3,
+    "Oghggggggfef"
    ],
    [
     49,
-    2,
-    "hfghggggggfee"
+    3,
+    "Oghggggggfee"
    ],
    [
     50,
-    2,
-    "hfggggggggfee"
+    3,
+    "OggggggggfeO"
    ],
    [
     51,
-    2,
-    "OffggggggffeO"
+    3,
+    "OfggggggffeO"
    ],
    [
     52,
-    2,
-    ".OeffffffffO."
+    3,
+    "OeffffffffO."
    ],
    [
     53,
-    2,
-    "..OOOOOOOOO.."
+    3,
+    ".OOOOOOOOO.."
    ]
   ],
   "legRoot": 3,
@@ -339,6 +339,16 @@
     "#b8946c",
     "ステッチ"
    ]
-  }
+  },
+  "erase": [
+   [
+    45,
+    2
+   ],
+   [
+    46,
+    2
+   ]
+  ]
  }
 }

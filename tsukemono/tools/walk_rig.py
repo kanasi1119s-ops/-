@@ -161,6 +161,9 @@ def build(name):
     for y, r in enumerate(rows0):
         for x, ch in enumerate(r):
             grid[y + PADY][x + PADX] = ch
+    orig_grid = [row[:] for row in grid]  # エディタで開く元の絵（消す所は、エディタで消しゴムで消す）
+    for y, x in C.get('erase', []):  # 人ごとの手直し: 部品を動かすと取り残される、元の絵のドット（元の絵の座標）
+        grid[y + PADY][x + PADX] = '.'
     al = np.array([[ch != '.' for ch in row] for row in grid])
 
     def J(pt):  # 元の絵の座標 → 余白つきの座標
@@ -344,7 +347,8 @@ def build(name):
                     'symbols': o['symbols'] + [{'sym': k, 'label': v[1], 'color': v[0]} for k, v in C.get('extraColors', {}).items()]
                     + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],
                     'layers': [{'name': 'からだ', 'visible': True, 'opacity': 1}], 'frames': [{'dur': FRAME_MS}],
-                    'cels': [[[''.join(r) for r in grid]]], 'layer': 0, 'frame': 0},
+                    'cels': [[[''.join(r) for r in orig_grid]]], 'layer': 0, 'frame': 0},
+           'erase': [[y + PADY, x + PADX] for y, x in C.get('erase', [])],
            'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor,
            'drawn': drawn, 'torsoFill': torso_fill,  # drawn: エディタで「えんぴつ」で描き足すドット（レイヤーごと。最初のコマ）
            'plan': plan_frames}
