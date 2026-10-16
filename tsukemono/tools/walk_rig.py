@@ -178,8 +178,9 @@ def build(name):
     # 部品の範囲
     item = np.zeros((H, W), bool)
     if C.get('keepRects'):  # 四角の中を全部持ち物に。ただし keepExclude の色（となりの服の色など）は外す
-        ex = set(C.get('keepExclude', ''))
-        for y0, x0, y1, x1 in C['keepRects']:
+        for rect in C['keepRects']:  # [上, 左, 下, 右] か [上, 左, 下, 右, 外す色]（外す色を書かなければ keepExclude）
+            y0, x0, y1, x1 = rect[:4]
+            ex = set(rect[4] if len(rect) > 4 else C.get('keepExclude', ''))
             for y in range(y0, y1 + 1):
                 for x in range(x0, x1 + 1):
                     ch = grid[y + PADY][x + PADX]
