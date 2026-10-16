@@ -353,6 +353,7 @@ for (const name of names) {
   dataUrlToFile(await page.$eval('#outBox img', (i) => i.src), path.join(DOCS, `${name}.gif`));
   await modalAction('閉じる');
   fs.writeFileSync(path.join(ED, `${name}.json`), JSON.stringify(proj));
+  Object.assign(meta, fs.existsSync(sheetsFile) ? JSON.parse(fs.readFileSync(sheetsFile, 'utf8')) : {}); // ほかの書き出しと同時に動いても消さない
   meta[name] = { sheet: `${name}.sheet.png`, frameWidth: sj.frameWidth, frameHeight: sj.frameHeight, padBottom: H - 1 - rig.ground, padLeft: rig.padLeft,
     frames: sj.frames.map((fr) => ({ x: fr.x, ms: fr.duration })) };
   fs.writeFileSync(sheetsFile, JSON.stringify(meta, null, 1));
