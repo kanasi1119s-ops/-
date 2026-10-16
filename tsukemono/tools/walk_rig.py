@@ -32,7 +32,7 @@ SEG = ('foot', 'shin', 'thigh')
 JNAME = {'thigh': '股関節', 'shin': '膝', 'foot': '足首'}
 LNAME = {('far', 'foot'): '奥の足', ('far', 'shin'): '奥のすね', ('far', 'thigh'): '奥のもも',
          ('near', 'foot'): '手前の足', ('near', 'shin'): '手前のすね', ('near', 'thigh'): '手前のもも'}
-LAYERS = ['影', '奥の腕', '奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも', '胴', 'すそ', 'カバン', '手前の腕', 'かご']
+LAYERS = ['影', '奥の腕', 'すその裏', '奥の足', '奥のすね', '奥のもも', '手前の足', '手前のすね', '手前のもも', '胴', 'すそ', 'すそ後', 'すそ前', 'カバン', '手前の腕', 'かご']
 
 
 def jsround(v):  # JavaScript の Math.round と同じ（.5 は上へ）
@@ -223,6 +223,47 @@ def build(name):
                     best = (d, l, s)
         seg[(best[1], best[2])][y, x] = True
     torso = al & ~item & ~farA & ~nearA & ~legzone & ~bag & ~hem
+    # 部品の表（assets/editor/<名前>.parts.txt）があれば、それで1ドットずつ決める（四角での切り分けより優先）
+    #   T 胴 / A 手前の腕 / R 奥の腕 / K かご / G カバン（ひもや前側も） / S すそ / N 手前の脚 / F 奥の脚
+    #   1 2 3 = 手前のもも・すね・足、4 5 6 = 奥のもも・すね・足（脚の中の分け目を決めたいとき）/ . = 消す
+    pfile = os.path.join(ED, f'{name}.parts.txt')
+    if os.environ.get('DUMP_PARTS') and not os.path.exists(pfile):  # 下書き: いまの四角での切り分けを表にする（このあと1ドットずつ直す）
+        code = [['.'] * W0 for _ in range(H0)]
+        for ch, m in (('T', torso), ('A', nearA), ('R', farA), ('K', item), ('G', bag), ('S', hem),
+                      ('N', seg[('near', 'thigh')] | seg[('near', 'shin')] | seg[('near', 'foot')]),
+                      ('F', seg[('far', 'thigh')] | seg[('far', 'shin')] | seg[('far', 'foot')])):
+            for y, x in np.argwhere(m):
+                if PADY <= y < H0 + PADY and PADX <= x < W0 + PADX:
+                    code[y - PADY][x - PADX] = ch
+        with open(pfile, 'w', encoding='utf8') as fh:
+            fh.write('\n'.join(''.join(r) for r in code) + '\n')
+    use_parts = os.path.exists(pfile)
+    if use_parts:
+        P = [ln.ljust(W0, '.')[:W0] for ln in open(pfile, encoding='utf8').read().splitlines()[:H0]]
+        P += ['.' * W0] * (H0 - len(P))
+        for y in range(H0):
+            for x in range(W0):
+                if P[y][x] == '.' and grid[y + PADY][x + PADX] != '.':
+                    grid[y + PADY][x + PADX] = '.'
+                    C.setdefault('erase', []).append([y, x])
+        al = np.array([[ch != '.' for ch in row] for row in grid])
+
+        def PM(chars):
+            m = np.zeros((H, W), bool)
+            for y in range(H0):
+                for x in range(W0):
+                    if P[y][x] in chars:
+                        m[y + PADY, x + PADX] = True
+            return m & al
+        item, nearA, farA, bag, hem, torso = PM('K'), PM('A'), PM('R'), PM('G'), PM('S'), PM('T')
+        seg = {(l, s): np.zeros((H, W), bool) for l in ('near', 'far') for s in SEG}
+        for l, auto, digs in (('near', 'N', '123'), ('far', 'F', '456')):
+            for s, dg in zip(('thigh', 'shin', 'foot'), digs):
+                seg[(l, s)] |= PM(dg)
+            j = joints[l]
+            for y, x in np.argwhere(PM(auto)):
+                best = min(((seg_dist((y, x), j[a], j[b]), s) for s, (a, b) in (('thigh', ('hip', 'knee')), ('shin', ('knee', 'ankle')), ('foot', ('ankle', 'toe')))))
+                seg[(l, best[1])][y, x] = True
     G = np.array(grid)
     # 胴の手直し: 腕の下に隠れていた胴を、胴のふちの色で2ドット（腕を振っても胴が欠けない）
     torso_fill = []
@@ -241,11 +282,11 @@ def build(name):
             for x in rng:
                 if arm[y, x]:
                     torso_fill.append([int(y), int(x), fc or str(G[y, e])])
+    leg_from = C.get('legFrom', {}).get('near')  # 'far' なら、手前の脚は奥の脚のレイヤーを複製して作る
     masks = {'奥の腕': farA, '胴': torso, 'すそ': hem, 'カバン': bag, '手前の腕': nearA, 'かご': item}
     for (l, s), nm in LNAME.items():
-        if l == 'far' or C.get('legFrom', {}).get('near') != 'far':
+        if l == 'far' or leg_from != 'far':
             masks[nm] = seg[(l, s)]
-    leg_from = C.get('legFrom', {}).get('near')  # 'far' なら、手前の脚は奥の脚のレイヤーを複製して作る
     # 元の絵の角度・長さ
     meas = {}
     for l in ('near', 'far'):
@@ -277,6 +318,36 @@ def build(name):
                     drawn.setdefault(nm, []).append([y + PADY, x + PADX + i, ch])
     draws = {'カバン': C.get('bagDraw', []), '胴': C.get('torsoDraw', [])}
     drawn = {}
+
+    def nearest_seg(l, y, x):
+        j = joints[l]
+        return min((seg_dist((y, x), j[a], j[b]), s) for s, (a, b) in (('thigh', ('hip', 'knee')), ('shin', ('knee', 'ankle')), ('foot', ('ankle', 'toe'))))[1]
+
+    def interp(pts, y):
+        pts = sorted(pts)
+        if y <= pts[0][0]:
+            return pts[0][1]
+        for (ya, xa), (yb, xb) in zip(pts, pts[1:]):
+            if ya <= y <= yb:
+                return xa + (xb - xa) * (y - ya) / max(1, yb - ya)
+        return pts[-1][1]
+    # かごや腕の後ろに隠れていた脚を描き足す（hideFill）: 左右のふちの線（元の絵の座標の点の並び）のあいだを、
+    # 隠れていた所（元の絵でかご・手前の腕・カバンだった所）だけ塗る。ふちは edge、内側は body（right があれば右のふちの色）
+    behind = item | nearA | bag
+    for hf in C.get('hideFill', []):
+        l = hf.get('leg', 'near')
+        ya = max(hf['left'][0][0], hf['right'][0][0]); yb = min(hf['left'][-1][0], hf['right'][-1][0])
+        for y in range(ya, yb + 1):
+            xl = jsround(interp(hf['left'], y)); xr = jsround(interp(hf['right'], y))
+            for x in range(xl, xr + 1):
+                Y, X = y + PADY, x + PADX
+                if any(seg[(l, s_)][Y, X] for s_ in SEG) or not behind[Y, X]:
+                    continue
+                ch = hf['edge'] if x == xl else hf.get('edgeR', hf['edge']) if x == xr else hf['body']
+                sg = nearest_seg(l, Y, X)
+                seg[(l, sg)][Y, X] = True
+                base[LNAME[(l, sg)]][Y][X] = ch
+                drawn.setdefault(LNAME[(l, sg)], []).append([Y, X, ch])
     # 脚の付け根: もも の上の行の並びを、上着のすその下へ legRoot 行ぶん写す（脚を回しても付け根にすき間が出ない）
     root = []
     # （スカートの人は もも が見えないので、見えているいちばん上の部品＝すね を、スカートの中へのばす）
@@ -296,9 +367,9 @@ def build(name):
     # 塗るのは、元の絵で持ち物か腕だった所だけ（体の輪郭の外には描かない）。ふちは edge の色、内側は body の色
     hidden = item | nearA
     for fb in C.get('fillBehind', []):
-        nm = fb['layer']; (ya, xa), (yb, xb) = fb['left']
+        nm = fb['layer']
         for y in range(fb['rows'][0], fb['rows'][1] + 1):
-            xl = round(xa + (xb - xa) * (y - ya) / max(1, yb - ya))
+            xl = round(interp(fb['left'], y))
             row = base[nm][y + PADY]
             vis = [x for x in range(xl + PADX, W) if row[x] != '.']
             xr = vis[0] if vis else xl + PADX + fb.get('width', 6)
@@ -318,6 +389,41 @@ def build(name):
     if leg_from == 'far':
         for s in SEG:
             base[LNAME[('near', s)]] = [[recolor.get(ch, ch) for ch in row] for row in base[LNAME[('far', s)]]]
+
+    # 関節のふた: 膝・足首で、上の部品のドット（関節から jointCap マス以内）を下の部品にも描いておく（曲げても関節が欠けない）
+    capR = C.get('jointCap', 2)
+    for l in (('far',) if leg_from == 'far' else ('near', 'far')):
+        for up, lo, jn in (('thigh', 'shin', 'knee'), ('shin', 'foot', 'ankle')):
+            jy, jx = (int(round(v)) for v in joints[l][jn])
+            U, Lo = base[LNAME[(l, up)]], base[LNAME[(l, lo)]]
+            for y in range(max(0, jy - capR), min(H, jy + capR + 1)):
+                for x in range(max(0, jx - capR - 1), min(W, jx + capR + 2)):
+                    if U[y][x] != '.' and Lo[y][x] == '.' and math.hypot(y - jy, (x - jx) * 0.8) <= capR + 0.01:
+                        Lo[y][x] = U[y][x]
+                        drawn.setdefault(LNAME[(l, lo)], []).append([y, x, U[y][x]])
+                        if leg_from == 'far':
+                            drawn.setdefault(LNAME[('near', lo)], []).append([y, x, recolor.get(U[y][x], U[y][x])])
+                            base[LNAME[('near', lo)]][y][x] = recolor.get(U[y][x], U[y][x])
+    # スカート: すそを前と後ろに分け（まん中の3列は両方に）、それぞれ前の脚・後ろの脚に合わせて腰を軸に回す。
+    # 前後が開いた所は、すその裏（内側の暗い色。脚の後ろ）が見える
+    sk = C.get('skirt')
+    if sk:
+        sx = sk['split'] + PADX
+        cols = np.arange(W)[None, :]
+        masks.pop('すそ')
+        bs = base.pop('すそ')
+        hm = np.array([[ch != '.' for ch in row] for row in bs])  # 描き足した所（かごの後ろ）も含める
+        dr = drawn.pop('すそ', [])
+        for nm, m in (('すそ前', hm & (cols >= sx - 1)), ('すそ後', hm & (cols <= sx + 1))):
+            masks[nm] = m
+            base[nm] = [[bs[y][x] if m[y, x] else '.' for x in range(W)] for y in range(H)]
+            drawn[nm] = [[y, x, ch] for y, x, ch in dr if m[y, x]]
+        masks['すその裏'] = hm
+        base['すその裏'] = [[sk['inner'] if hm[y, x] else '.' for x in range(W)] for y in range(H)]
+        drawn['すその裏'] = [[int(y), int(x), sk['inner']] for y, x in np.argwhere(hm)]
+        base['すその裏'] = [['.'] * W for _ in range(H)]  # 裏はエディタで描く（元の絵にない色の層）
+        for y, x, ch in drawn['すその裏']:
+            base['すその裏'][y][x] = ch
 
     def leg_ops(l, q, bob):
         """脚の3つの部品の操作。q: th（もも）・sh（すね）・ft（足）の角度。回す軸は元の絵の関節、行き先は動かした関節"""
@@ -380,6 +486,13 @@ def build(name):
         ops['胴'] = {'deg': 0, 'dy': bob, 'dx': 0}
         ops['すそ'] = {'deg': 0, 'dy': bob, 'dx': int(round(C.get('hemSway', 1) * math.sin(4 * math.pi * f / N)))}  # 一歩ごとに左右へ
         ops['カバン'] = {'deg': 0, 'dy': bob, 'dx': 0}
+        if sk:
+            pv = J(sk['pivot']); gn = sk.get('gain', 0.5)
+            front = gn * (max(q['near']['th'], q['far']['th']) - max(meas['near']['th'], meas['far']['th']))
+            back = gn * (min(q['near']['th'], q['far']['th']) - min(meas['near']['th'], meas['far']['th']))
+            ops['すそ前'] = {'deg': round(-front, 1), 'pr': pv[0], 'pc': pv[1], 'dy': bob, 'dx': 0, 'joint': '腰'}
+            ops['すそ後'] = {'deg': round(-back, 1), 'pr': pv[0], 'pc': pv[1], 'dy': bob, 'dx': 0, 'joint': '腰'}
+            ops['すその裏'] = {'deg': 0, 'dy': bob, 'dx': 0}
         plan_frames.append({'t': [round(T['near'], 3), round(T['far'], 3)], 'bob': bob, 'ops': ops})
     # 手順どおりに作ったときの絵（エディタの結果と照らし合わせる）
     sim = []
@@ -393,7 +506,7 @@ def build(name):
         sim.append(cel)
     shadow_sym = next(ch for ch in '!#$%&*+-=?@^~' if ch not in {s['sym'] for s in o['symbols']} | set(C.get('extraColors', {})))
     rig = {'name': name, 'w': W, 'h': H, 'padLeft': PADX, 'padTop': PADY, 'ground': ground, 'frames': N, 'frameMs': FRAME_MS,
-           'layers': [nm for nm in LAYERS if nm == '影' or any(ch != '.' for row in base[nm] for ch in row)], 'shadow': {'sym': shadow_sym, 'color': '#%02x%02x%02x' % SHADOW, 'opacity': SHADOW_OPACITY},
+           'layers': [nm for nm in LAYERS if nm == '影' or (nm in base and any(ch != '.' for row in base[nm] for ch in row))], 'shadow': {'sym': shadow_sym, 'color': '#%02x%02x%02x' % SHADOW, 'opacity': SHADOW_OPACITY},
            'orig': {'format': 'sunshine-pixel', 'version': 2, 'width': W, 'height': H,
                     'symbols': o['symbols'] + [{'sym': k, 'label': v[1], 'color': v[0]} for k, v in C.get('extraColors', {}).items()]
                     + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],

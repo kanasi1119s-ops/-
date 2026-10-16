@@ -244,6 +244,15 @@ for (const name of names) {
     }
     return res.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
   };
+  // すき間の色: まわり8マスでいちばん多い色（肌と服の境なら、多い方の色。となりの1マスだけで決めない）
+  const major = (g, y, x) => {
+    const n = {};
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const v = g[y + dy]?.[x + dx];
+      if ((dy || dx) && v && v !== '.') n[v] = (n[v] || 0) + (dy && dx ? 1 : 2);
+    }
+    return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '.';
+  };
   const fixes = [];
   for (let f = 0; f < F; f++) {
     const g = sym2(f), fx = [];
@@ -252,8 +261,7 @@ for (const name of names) {
       const add = [];
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
         if (g[y][x] !== '.') continue;
-        if (g[y][x - 1] !== '.' && g[y][x + 1] !== '.') add.push([y, x, g[y][x - 1]]);
-        else if (g[y - 1][x] !== '.' && g[y + 1][x] !== '.') add.push([y, x, g[y - 1][x]]);
+        if ((g[y][x - 1] !== '.' && g[y][x + 1] !== '.') || (g[y - 1][x] !== '.' && g[y + 1][x] !== '.')) add.push([y, x, major(g, y, x)]);
       }
       for (const [y, x, s] of add) { g[y][x] = s; fx.push([y, x, s]); }
       if (!add.length) break;
@@ -261,8 +269,7 @@ for (const name of names) {
     // 外とつながっていない小さな透明のかたまり（2×2 など）も、まわりの色で埋める（埋めると新しいすき間ができることがあるので、もう一回り）
     const enc = enclosed(g);
     for (const [y, x] of enc) {
-      const nb = [[0, -1], [-1, 0], [0, 1], [1, 0]].map(([dy, dx]) => g[y + dy][x + dx]).filter((s) => s !== '.');
-      const s = nb[0] ?? g[y][x - 1];
+      const s = major(g, y, x);
       g[y][x] = s; fx.push([y, x, s]);
     }
     if (!enc.length) break;
