@@ -298,6 +298,53 @@ def recolor_outfit(rgb, masks, src, ref):
     return np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)
 
 
+# 頭巾をそろえる: ポーズ集で頭巾をかぶっているポーズとかぶっていないポーズが混ざっている人は、
+# かぶっているポーズ（src）の頭巾を、かぶっていないポーズ（dst）の髪と入れかえる（顔の位置で合わせる。顔はそのまま）
+HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7]}}
+
+
+def _skin(rgba):
+    a = rgba[..., :3].astype(np.float32) / 255
+    mx, mn = a.max(-1), a.min(-1)
+    r, g = a[..., 0], a[..., 1]
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    hue = np.where(mx == r, (g - a[..., 2]) / np.maximum(mx - mn, 1e-6) * 60, 999)
+    return (rgba[..., 3] > 0) & (hue > 12) & (hue < 40) & (sat > 0.25) & (mx > 0.55)
+
+
+def _head_cover(rgba):
+    """頭の、肌でないドット（髪・頭巾とそのふちの線）: あごより上で、頭のてっぺんにつながっているかたまり。あごの行と、顔の位置も返す"""
+    skin = _skin(rgba)
+    H = rgba.shape[0]
+    rows = [y for y in range(int(H * 0.35)) if skin[y].sum() >= 3]
+    chin = max(rows) if rows else int(H * 0.25)
+    cand = (rgba[..., 3] > 0) & ~skin
+    cand[chin + 1:] = False
+    n, lab = cv2.connectedComponents(cand.astype(np.uint8), connectivity=8)
+    top = {lab[y, x] for y in range(min(3, H)) for x in range(rgba.shape[1]) if cand[y, x]}
+    cover = np.isin(lab, list(top)) & cand
+    ys, xs = np.nonzero(skin[:chin + 1])
+    return cover, chin, (int(ys.min()), int(xs.min()))
+
+
+def transplant_hood(dst, src):
+    """src の頭巾を dst の髪と入れかえた絵を返す（上にはみ出す分は行を足す）"""
+    cover_s, chin_s, face_s = _head_cover(src)
+    cover_d, chin_d, face_d = _head_cover(dst)
+    dy, dx = face_d[0] - face_s[0], face_d[1] - face_s[1]
+    sy, sx = np.nonzero(cover_s)
+    pad = max(0, -(sy.min() + dy))
+    out = np.pad(dst, ((pad, 0), (0, 0), (0, 0)))
+    cover_d = np.pad(cover_d, ((pad, 0), (0, 0)))
+    out[cover_d] = 0  # 髪を消す
+    skin_d = _skin(out)
+    for y, x in zip(sy, sx):
+        ty, tx = y + dy + pad, x + dx
+        if 0 <= ty < out.shape[0] and 0 <= tx < out.shape[1] and not skin_d[ty, tx]:
+            out[ty, tx] = src[y, x]
+    return out
+
+
 def extract_poses(name):
     a = np.asarray(Image.open(os.path.join(ROOT, f'assets/reference/pose_{name}.jpg')).convert('RGB')).astype(int)
     h0, w0, _ = a.shape
@@ -379,6 +426,15 @@ def extract_poses(name):
         Image.fromarray(rgba).save(os.path.join(OUT, f'pose_{name}_{i}.png'))
         feet = np.nonzero(alpha[-4:].any(0))[0]  # 足元の中心
         poses.append({'w': int(alpha.shape[1]), 'h': int(alpha.shape[0]), 'ax': int(round(feet.mean()))})
+    if name in HOOD:  # 頭巾をそろえる（顔の位置で合わせて、髪と入れかえる）
+        src = np.asarray(Image.open(os.path.join(OUT, f'pose_{name}_{HOOD[name]["src"]}.png')).convert('RGBA'))
+        for i in HOOD[name]['dst']:
+            fp = os.path.join(OUT, f'pose_{name}_{i}.png')
+            out = transplant_hood(np.asarray(Image.open(fp).convert('RGBA')), src)
+            q = np.asarray(Image.fromarray(out[..., :3]).quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+            out = np.dstack([q, out[..., 3]]).astype(np.uint8)  # 頭巾の色が足されたぶん、40色にそろえ直す
+            Image.fromarray(out).save(fp)
+            poses[i]['h'] = int(out.shape[0])
     return poses
 
 
