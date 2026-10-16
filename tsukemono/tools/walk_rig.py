@@ -234,10 +234,13 @@ def build(name):
             if not len(xs) or not len(t):
                 continue
             e = t.min() if d < 0 else t.max()
-            rng = range(e - 1, max(e - 3, xs.min() - 1), -1) if d < 0 else range(e + 1, min(e + 3, xs.max() + 1))
+            side = 'near' if d < 0 else 'far'
+            wd = C.get('torsoFillWidth', {}).get(side, 2)  # 何ドット描くか
+            fc = C.get('torsoFillColor', {}).get(side)  # 色（ないときは胴のふちの色）。ふちが明るい服は暗い色にする
+            rng = range(e - 1, max(e - 1 - wd, xs.min() - 1), -1) if d < 0 else range(e + 1, min(e + 1 + wd, xs.max() + 1))
             for x in rng:
                 if arm[y, x]:
-                    torso_fill.append([int(y), int(x), str(G[y, e])])
+                    torso_fill.append([int(y), int(x), fc or str(G[y, e])])
     masks = {'奥の腕': farA, '胴': torso, 'すそ': hem, 'カバン': bag, '手前の腕': nearA, 'かご': item}
     for (l, s), nm in LNAME.items():
         if l == 'far' or C.get('legFrom', {}).get('near') != 'far':
