@@ -322,8 +322,8 @@ def build(name):
         js, ms = joints[src], meas[src]
         dh = J(C.get('drawHip', {}).get(l, C['joints'][l]['hip']))
         hip = (dh[0] + bob, dh[1])
-        knee = (hip[0] + meas[l]['L1'] * math.cos(math.radians(q['th'])), hip[1] + meas[l]['L1'] * math.sin(math.radians(q['th'])))
-        ank = (knee[0] + meas[l]['L2'] * math.cos(math.radians(q['sh'])), knee[1] + meas[l]['L2'] * math.sin(math.radians(q['sh'])))
+        knee = (hip[0] + ms['L1'] * math.cos(math.radians(q['th'])), hip[1] + ms['L1'] * math.sin(math.radians(q['th'])))
+        ank = (knee[0] + ms['L2'] * math.cos(math.radians(q['sh'])), knee[1] + ms['L2'] * math.sin(math.radians(q['sh'])))
         ops = {}
         for s, piv, dst, a in (('thigh', js['hip'], hip, q['th'] - ms['th']), ('shin', js['knee'], knee, q['sh'] - ms['sh']),
                                ('foot', js['ankle'], ank, q['ft'])):
