@@ -23,7 +23,7 @@ for name, s in sheets.items():
     for k, fr in enumerate(s['frames']):
         im = sheet.crop((fr['x'], 0, fr['x'] + fw, fh))
         im.save(os.path.join(IMG, f'walk_{name}_{k}.png'))
-        frames.append({'img': f'walk_{name}_{k}', 'w': fw, 'h': fh, 'ax': p0['ax'], 'ms': fr['ms'], 'below': s.get('padBottom', 0)})  # below: 足の裏より下の行（影）
+        frames.append({'img': f'walk_{name}_{k}', 'w': fw, 'h': fh, 'ax': p0['ax'] + s.get('padLeft', 0), 'ms': fr['ms'], 'below': s.get('padBottom', 0)})  # below: 足の裏より下の行（影）
     meta[name] = frames
 with open(os.path.join(HERE, '..', 'assets', 'walk.js'), 'w', encoding='utf8') as f:
     f.write('// tools/walk_import.py が作る（手で書きかえない）。ドット絵エディタで作った歩くアニメ（8コマ。元の絵の脚・すそを動かし、足もとに影）。\n')
