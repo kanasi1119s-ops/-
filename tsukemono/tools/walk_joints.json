@@ -225,71 +225,82 @@
   },
   "bagDraw": [
    [
+    39,
+    2,
+    "...OOOOOOO0O."
+   ],
+   [
     40,
     2,
-    "..OOOOOOOOOO."
+    "..OIEEEEEEI0O"
    ],
    [
     41,
     2,
-    ".OIIIIIIIIIIO"
+    ".OIEFFIIIIEIO"
    ],
    [
     42,
     2,
-    ".OIEEEEEEEEIO"
+    ".OEIFIIIIIIEO"
    ],
    [
     43,
     2,
-    ".OIEaaaaaaEIO"
+    ".OEIIIIIIIIEO"
    ],
    [
     44,
     2,
-    ".OIEaaaaaaEIO"
+    ".OIEDIDIDIEIO"
    ],
    [
     45,
     2,
-    ".OOOOODDOOOOO"
+    "0OJIIEDDEIIJO"
    ],
    [
     46,
     2,
-    ".OaaaaDDaaaaO"
+    "0JaaaO66OaaaJ"
    ],
    [
     47,
     2,
-    ".OaaaaaaaaaaO"
+    "FJaaaODDOaaaJ"
    ],
    [
     48,
     2,
-    ".OaaaaaaaaaaO"
+    "FJaFaaaaaaaJJ"
    ],
    [
     49,
     2,
-    ".OJaaaaaaaaJO"
+    "FJaFaaaaaaaJT"
    ],
    [
     50,
     2,
-    ".OJJaaaaaaJJO"
+    "FJaaaaaaaaaJT"
    ],
    [
     51,
     2,
-    ".OJJJJJJJJJJO"
+    "OJJaaaaaaaJJO"
    ],
    [
     52,
     2,
-    "..OOOOOOOOOO."
+    ".OTJJJJJJJTO."
+   ],
+   [
+    53,
+    2,
+    "..OOOOOOOOO.."
    ]
   ],
-  "legRoot": 3
+  "legRoot": 3,
+  "bagRedraw": true
  }
 }

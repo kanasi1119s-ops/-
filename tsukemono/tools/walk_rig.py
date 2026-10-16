@@ -237,10 +237,12 @@ def build(name):
         base['胴'][y][x] = ch
     recolor = C.get('recolorNear', {})  # 奥の脚から写した手前の脚で、脚と脚の間の明るいふちの色を、脚の色に置きかえる
     # 描き足し（人ごとの手直し。元の絵の座標で [行, 左の列, 色の並び]。'.' は描かない）
-    def draw_into(nm, items):
+    def draw_into(nm, items, over=False):
         for y, x, cs in items:
             for i, ch in enumerate(cs):
-                if ch != '.' and base[nm][y + PADY][x + PADX + i] == '.':  # 元の絵のドットはそのまま（空いている所だけ描く）
+                cur = base[nm][y + PADY][x + PADX + i]
+                # ふつうは元の絵のドットはそのまま（空いている所だけ描く）。over なら描いた形に合わせて描き直す
+                if ch != '.' and (cur == '.' or (over and cur != ch)):
                     base[nm][y + PADY][x + PADX + i] = ch
                     drawn.setdefault(nm, []).append([y + PADY, x + PADX + i, ch])
     draws = {'カバン': C.get('bagDraw', []), '胴': C.get('torsoDraw', [])}
@@ -257,7 +259,7 @@ def build(name):
             for x in xs:
                 root.append((LNAME[(l, 'thigh')], int(y0 - k), int(x), base[LNAME[(l, 'thigh')]][y0][x]))
     for nm, items in draws.items():
-        draw_into(nm, items)
+        draw_into(nm, items, over=(nm == 'カバン' and C.get('bagRedraw', False)))
     for nm, y, x, ch in root:
         if base[nm][y][x] == '.':
             base[nm][y][x] = ch
