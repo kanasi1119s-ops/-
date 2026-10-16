@@ -112,6 +112,17 @@ for (const name of names) {
   }
   await cel(0, 0);
   await page.click('#layerDel'); // からだ
+  // 奥の脚から写した手前の脚: 脚と脚の間の明るいふちの色を、脚の色に（主色を副色に置きかえる。左クリック＝主色、右クリック＝副色）
+  for (const nm of ['手前の足', '手前のすね', '手前のもも']) {
+    if (!rig.recolorNear || !Object.keys(rig.recolorNear).length) break;
+    await cel(rig.layers.indexOf(nm) - 1, 0); // まだ影がないので1つ下
+    await key('Escape');
+    for (const [from, to] of Object.entries(rig.recolorNear)) {
+      await pickColor(from);
+      await page.locator('#swatches button.sw', { hasText: new RegExp(`^${to}$`) }).first().click({ button: 'right' });
+      await key('Shift+KeyR');
+    }
+  }
   // 3. 胴の手直し（腕の下に隠れていた胴）
   const torsoL = parts.indexOf('胴');
   if (rig.torsoFill.length) {

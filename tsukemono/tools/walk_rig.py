@@ -208,9 +208,10 @@ def build(name):
     base = {nm: [[(G[y, x] if masks[nm][y, x] else '.') for x in range(W)] for y in range(H)] for nm in masks}
     for y, x, ch in torso_fill:
         base['胴'][y][x] = ch
+    recolor = C.get('recolorNear', {})  # 奥の脚から写した手前の脚で、脚と脚の間の明るいふちの色を、脚の色に置きかえる
     if leg_from == 'far':
         for s in SEG:
-            base[LNAME[('near', s)]] = [row[:] for row in base[LNAME[('far', s)]]]
+            base[LNAME[('near', s)]] = [[recolor.get(ch, ch) for ch in row] for row in base[LNAME[('far', s)]]]
 
     def leg_ops(l, q, bob):
         """脚の3つの部品の操作。q: th（もも）・sh（すね）・ft（足）の角度。回す軸は元の絵の関節、行き先は動かした関節"""
@@ -284,7 +285,7 @@ def build(name):
                     'symbols': o['symbols'] + [{'sym': shadow_sym, 'label': '影', 'color': '#%02x%02x%02x' % SHADOW}],
                     'layers': [{'name': 'からだ', 'visible': True, 'opacity': 1}], 'frames': [{'dur': FRAME_MS}],
                     'cels': [[[''.join(r) for r in grid]]], 'layer': 0, 'frame': 0},
-           'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'torsoFill': torso_fill,
+           'parts': {nm: runs(m) for nm, m in masks.items()}, 'legFrom': leg_from, 'recolorNear': recolor, 'torsoFill': torso_fill,
            'plan': plan_frames}
     with open(os.path.join(ED, f'{name}.rig.json'), 'w', encoding='utf8') as fh:
         json.dump(rig, fh, ensure_ascii=False)
