@@ -1,6 +1,6 @@
 // 動きの定義（2〜4コマのコマ送り。拡大縮小はしない）。
 //
-// POSE_ANIMS … ポーズ集の絵を差し替えるコマ。{ ms, pose: 絵の番号, dy: 上下のずれ, props: 持ち物 }
+// POSE_ANIMS … ポーズ集の絵を差し替えるコマ。{ ms, pose: 絵の番号, up: 腰から上の上下のずれ（-1 で呼吸の上がり、+2 でひざを曲げて沈む。足は地面についたまま）, dy: 絵全体の上下のずれ（ふつう使わない）, props: 持ち物 }
 // PERSON_ANIMS … 1枚の絵をずらして作るコマ（子ども）。
 //   up: 腰より上を (dx,dy) / head: 頭だけ / legs: [左脚dx, 右脚dx] / props: 持ち物
 
@@ -36,42 +36,42 @@
 // 悪魔:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 import { WALK as WALK_FRAMES } from './walk.js';
 
-const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, props: [], ...o });
+const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, up: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
 
 export const POSE_ANIMS = {
   keeper: {
-    idle: { loop: true, frames: [p(900, 0), p(900, 0, { dy: -2 })] },
-    greet: { loop: false, frames: [p(250, 1, { dy: -2 }), p(500, 1)] },
-    take: { loop: false, frames: [p(350, 2), p(350, 2, { dy: 2 }), p(400, 3)] },
+    idle: { loop: true, frames: [p(900, 0), p(900, 0, { up: -1 })] },
+    greet: { loop: false, frames: [p(250, 1, { up: -1 }), p(500, 1)] },
+    take: { loop: false, frames: [p(350, 2), p(350, 2, { up: 2 }), p(400, 3)] },
     salt: { loop: true, frames: [
-      p(170, 2, { props: [SALT('salt_a', 0)] }), p(170, 2, { dy: 2, props: [SALT('salt_b', 4)] }),
-      p(170, 2, { props: [SALT('salt_c', 8)] }), p(170, 2, { dy: 2 }),
+      p(170, 2, { props: [SALT('salt_a', 0)] }), p(170, 2, { up: 2, props: [SALT('salt_b', 4)] }),
+      p(170, 2, { props: [SALT('salt_c', 8)] }), p(170, 2, { up: 2 }),
     ] },
     give: { loop: false, frames: [p(300, 4), p(500, 5), p(550, 6)] },
   },
   woman: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 4), p(800, 4, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 4), p(800, 4, { up: -1 })] },
     look: { loop: true, frames: [p(600, 5), p(500, 4)] },
-    buy: { loop: false, frames: [p(400, 6), p(700, 6, { dy: -2 })] },
+    buy: { loop: false, frames: [p(400, 6), p(700, 6, { up: -1 })] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
-    talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -2 })] },
+    talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { up: -1 })] },
   },
   granny: {
     walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
     walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
-    idle: { loop: true, frames: [p(800, 2), p(800, 2, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 2), p(800, 2, { up: -1 })] },
     look: { loop: true, frames: [p(600, 6), p(600, 5)] },
-    buy: { loop: false, frames: [p(400, 7), p(700, 7, { dy: -2 })] },
+    buy: { loop: false, frames: [p(400, 7), p(700, 7, { up: -1 })] },
     talk: { loop: true, frames: [p(300, 3), p(300, 4)] },
     talk_basket: { loop: true, frames: [p(300, 3), p(300, 4)] },
   },
   granny2: {
     walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
     walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
-    idle: { loop: true, frames: [p(800, 4), p(800, 4, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 4), p(800, 4, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 4)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 3), p(300, 2)] },
@@ -80,7 +80,7 @@ export const POSE_ANIMS = {
   oldman: {
     walk: { loop: true, frames: [p(190, 0), p(190, 1)] },
     walk_basket: { loop: true, frames: [p(190, 0), p(190, 1)] },
-    idle: { loop: true, frames: [p(800, 2), p(800, 2, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 2), p(800, 2, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 2)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -89,7 +89,7 @@ export const POSE_ANIMS = {
   boy: {
     walk: { loop: true, frames: [p(160, 0), p(160, 1)] },
     walk_basket: { loop: true, frames: [p(160, 0), p(160, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -98,7 +98,7 @@ export const POSE_ANIMS = {
   girl: {
     walk: { loop: true, frames: [p(160, 0), p(160, 1)] },
     walk_basket: { loop: true, frames: [p(160, 0), p(160, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -107,7 +107,7 @@ export const POSE_ANIMS = {
   student: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -116,7 +116,7 @@ export const POSE_ANIMS = {
   volley: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -125,7 +125,7 @@ export const POSE_ANIMS = {
   demon: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -134,7 +134,7 @@ export const POSE_ANIMS = {
   centaur: {
     walk: { loop: true, frames: [p(150, 0), p(150, 1)] },
     walk_basket: { loop: true, frames: [p(150, 0), p(150, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -143,7 +143,7 @@ export const POSE_ANIMS = {
   alien: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -152,7 +152,7 @@ export const POSE_ANIMS = {
   knight: {
     walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
     walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -161,7 +161,7 @@ export const POSE_ANIMS = {
   hiker: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -170,7 +170,7 @@ export const POSE_ANIMS = {
   parasol: {
     walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
     walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -179,7 +179,7 @@ export const POSE_ANIMS = {
   beach: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -188,7 +188,7 @@ export const POSE_ANIMS = {
   samurai: {
     walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
     walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -197,7 +197,7 @@ export const POSE_ANIMS = {
   karate: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -206,7 +206,7 @@ export const POSE_ANIMS = {
   racer: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -215,7 +215,7 @@ export const POSE_ANIMS = {
   soccer: {
     walk: { loop: true, frames: [p(160, 0), p(160, 1)] },
     walk_basket: { loop: true, frames: [p(160, 0), p(160, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -224,7 +224,7 @@ export const POSE_ANIMS = {
   gakuran: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -233,7 +233,7 @@ export const POSE_ANIMS = {
   blazer: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -242,7 +242,7 @@ export const POSE_ANIMS = {
   yankee: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -251,7 +251,7 @@ export const POSE_ANIMS = {
   shades: {
     walk: { loop: true, frames: [p(180, 0), p(180, 1)] },
     walk_basket: { loop: true, frames: [p(180, 0), p(180, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -260,7 +260,7 @@ export const POSE_ANIMS = {
   suit: {
     walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
     walk_basket: { loop: true, frames: [p(200, 0), p(200, 1)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
     look: { loop: true, frames: [p(700, 5), p(500, 3)] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
@@ -269,17 +269,17 @@ export const POSE_ANIMS = {
   angler: {
     walk: { loop: true, frames: [p(190, 1), p(190, 4)] },
     walk_basket: { loop: true, frames: [p(190, 1), p(190, 4)] },
-    idle: { loop: true, frames: [p(800, 3), p(800, 3, { dy: -2 })] },
-    look: { loop: true, frames: [p(700, 5), p(500, 5, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 3), p(800, 3, { up: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 5, { up: -1 })] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
-    talk: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -2 })] },
-    talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { dy: -2 })] },
+    talk: { loop: true, frames: [p(300, 3), p(300, 3, { up: -1 })] },
+    talk_basket: { loop: true, frames: [p(300, 3), p(300, 3, { up: -1 })] },
   },
   witch: {
     walk: { loop: true, frames: [p(190, 0), p(190, 1)] },
     walk_basket: { loop: true, frames: [p(190, 0), p(190, 1)] },
-    idle: { loop: true, frames: [p(800, 5), p(800, 5, { dy: -2 })] },
-    look: { loop: true, frames: [p(700, 5), p(500, 5, { dy: -2 })] },
+    idle: { loop: true, frames: [p(800, 5), p(800, 5, { up: -1 })] },
+    look: { loop: true, frames: [p(700, 5), p(500, 5, { up: -1 })] },
     buy: { loop: false, frames: [p(500, 6), p(600, 7)] },
     talk: { loop: true, frames: [p(300, 2), p(300, 3)] },
     talk_basket: { loop: true, frames: [p(300, 2), p(300, 3)] },

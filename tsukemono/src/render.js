@@ -239,10 +239,18 @@ export class SceneRenderer {
     const pose = f.walk != null ? WALK[a.look.body][f.walk] : body.poses[f.pose]; // 歩くコマは描き直した絵
     const img = this.personImage(pose.img, a.look, outfit, flip);
     const ax = flip ? pose.w - 1 - pose.ax : pose.ax;
-    const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + (pose.below ?? 0) + f.dy); // below: 足の裏より下にある影の行
-    this.ctx.drawImage(img, X, Y);
-    this.drawProps(f.props, body, X, Y, pose.w, flip);
-    return { y: Y, cx: X + pose.w / 2 };
+    const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + (pose.below ?? 0) + (f.dy ?? 0)); // below: 足の裏より下にある影の行
+    const up = f.up ?? 0; // 腰から上だけ上下にずらす（呼吸・ひざの曲げ伸ばし。足は地面についたまま）
+    if (!up) {
+      this.ctx.drawImage(img, X, Y);
+    } else {
+      const waist = pose.waist ?? Math.round(pose.h * 0.58);
+      this.ctx.drawImage(img, 0, waist, pose.w, pose.h - waist, X, Y + waist, pose.w, pose.h - waist); // 腰から下はそのまま
+      if (up < 0) this.ctx.drawImage(img, 0, waist - 1, pose.w, 1, X, Y + waist + up, pose.w, -up); // 上がった分は腰の行をのばして埋める
+      this.ctx.drawImage(img, 0, 0, pose.w, waist, X, Y + up, pose.w, waist); // 腰から上（下がるときは脚の上にかぶさる＝ひざを曲げた分）
+    }
+    this.drawProps(f.props, body, X, Y, pose.w, flip, 0, up);
+    return { y: Y + Math.min(0, up), cx: X + pose.w / 2 };
   }
 
   /** 1枚の絵を、頭・胴・左右の脚に分けて少しずつずらして描く。 */
