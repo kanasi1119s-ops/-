@@ -184,7 +184,7 @@ if VOTE:
     bg = bg.copy()
 else:
     bg_rgb = Image.open(BG_SRC).convert('RGB').resize((W, H), Image.BOX)
-    bg = np.asarray(bg_rgb.quantize(colors=BG_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB')).copy()
+    bg = np.asarray(bg_rgb.quantize(colors=BG_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')).copy()  # 背景はメディアンカット（MAXCOVERAGE だと店内の暗がりが赤黒くなる）
 
 # ---------------------------------------------------------------- 吊るし物（揺らすので背景から抜く）
 DARK = np.array([37, 25, 32])
