@@ -27,7 +27,7 @@ BG_SRC = os.path.join(ROOT, 'assets/reference/shop_background.jpg')
 OUT = os.path.join(ROOT, 'assets/img')
 SC = 2  # 画面の大きさの倍率（384×216 を 1 として。2 なら 768×432。下の座標はすべて 384×216 で書き、使うときに SC 倍する）
 W, H = 384 * SC, 216 * SC
-VOTE = os.environ.get('TRACE_VOTE', '1') != '0'  # 1: 多数決で縮める / 0: 面積の平均で縮めて減色
+VOTE = os.environ.get('TRACE_VOTE', '0') == '1'  # 0: 面積の平均で縮めて減色（なめらか、既定） / 1: 多数決で縮める（ドットが立つ）
 
 src = cv2.imread(SRC)
 S = src.shape[1] / W
@@ -167,7 +167,7 @@ def save_sprite(name, mask):
     full = src[fy0:fy1, fx0:fx1, ::-1].copy()  # cv2 は BGR
     fm = FULL_MASKS[name][fy0:fy1, fx0:fx1]
     own, _ = vote_downscale(full, fm if fm.any() else None, ax1 - ax0, ay1 - ay0, 24)
-    rgba[..., :3] = despeckle(own, mask[ay0:ay1, ax0:ax1])
+    rgba[..., :3] = own  # ぽつんとしたドットもそのまま残す（元の絵に近づけるため、勝手にならさない）
     rgba[..., 3] = mask[ay0:ay1, ax0:ax1] * 255
     Image.fromarray(rgba).save(os.path.join(OUT, f'{"char_" if name != "basket" else ""}{name}.png'))
     return (int(ax0), int(ay0), int(ax1 - ax0), int(ay1 - ay0))
@@ -177,7 +177,7 @@ os.makedirs(OUT, exist_ok=True)
 placed = {n: save_sprite(n, m) for n, m in masks.items()}
 
 # ---------------------------------------------------------------- 背景（人のいない絵から）
-BG_COLORS = 192
+BG_COLORS = 240
 if VOTE:
     bg, _ = vote_downscale(np.asarray(Image.open(BG_SRC).convert('RGB')), None, W, H, BG_COLORS, dark_weight=1.0)  # 元の絵の画素から色を決め、多数決で縮める
     bg = bg.copy()
@@ -578,7 +578,6 @@ def extract_poses(name):
             cs = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
             q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
         alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        q = despeckle(q, alpha)
         if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
             q, alpha = hood_from_reference(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
