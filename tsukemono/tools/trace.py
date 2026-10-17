@@ -37,6 +37,54 @@ PAL = np.array(pal_img.getpalette()[:128 * 3]).reshape(-1, 3)
 base = np.asarray(pal_img.convert('RGB')).copy()
 
 
+def vote_downscale(full, mask, tw, th, colors, dark_weight=1.6, seed=0):
+    """元の絵（縮める前）を多数決で縮める。色は元の絵の画素から先に colors 色に決め（縮めてから決めると、線と地の混ざった色ばかりになる）、
+    縮めた1マスごとに面積のいちばん多い色をとる。暗い色（線）は dark_weight 倍に数えて、細い輪郭線が消えにくくする。
+    full: 元の絵 (H×W×3)。mask: 使う画素（None なら全部）。返り値: (th×tw×3, パレット)"""
+    H, W = full.shape[:2]
+    msk = np.ones((H, W), bool) if mask is None else mask.astype(bool)
+    px = full[msk]
+    rs = np.random.RandomState(seed)
+    samp = px[rs.choice(len(px), min(len(px), 200000), replace=False)]
+    pal_img = Image.fromarray(samp.reshape(1, -1, 3).astype(np.uint8)).quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    pal = np.array(pal_img.getpalette()[:colors * 3]).reshape(-1, 3)
+    pal = pal[:max(1, len({tuple(c) for c in pal}))] if False else pal
+    flat = full.reshape(-1, 3).astype(np.int32)
+    lab = np.empty(len(flat), np.int32)
+    for i in range(0, len(flat), 100000):
+        d = ((flat[i:i + 100000, None, :] - pal[None, :, :]) ** 2).sum(-1)
+        lab[i:i + 100000] = d.argmin(1)
+    lab = lab.reshape(H, W)
+    lum = pal @ np.array([0.299, 0.587, 0.114])
+    wgt = np.where(lum < 80, dark_weight, 1.0)
+    mf = msk.astype(np.float32)
+    cov = np.zeros((len(pal), th, tw), np.float32)
+    for k in range(len(pal)):
+        sel = (lab == k) & msk
+        if not sel.any():
+            continue
+        cov[k] = cv2.resize(sel.astype(np.float32), (tw, th), interpolation=cv2.INTER_AREA) * wgt[k]
+    small = pal[cov.argmax(0)].astype(np.uint8)
+    return small, pal
+
+
+def despeckle(rgb, alpha):
+    """ぽつんと1ドットだけ違う色（まわりの不透明な4近傍に同じ色がなく、3つ以上が同じ色）を、その色にそろえる。"""
+    out = rgb.copy()
+    H, W = alpha.shape
+    for y in range(H):
+        for x in range(W):
+            if not alpha[y, x]:
+                continue
+            nb = [tuple(rgb[y + dy, x + dx]) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= y + dy < H and 0 <= x + dx < W and alpha[y + dy, x + dx]]
+            me = tuple(rgb[y, x])
+            if len(nb) >= 3 and me not in nb:
+                c, n = max(((c, nb.count(c)) for c in set(nb)), key=lambda t: t[1])
+                if n >= 3:
+                    out[y, x] = c
+    return out
+
+
 def snap(arr):
     """色をパレットに寄せる（補修した部分もドット絵の色に戻す）。"""
     flat = arr.reshape(-1, 3).astype(int)
@@ -114,8 +162,8 @@ os.makedirs(OUT, exist_ok=True)
 placed = {n: save_sprite(n, m) for n, m in masks.items()}
 
 # ---------------------------------------------------------------- 背景（人のいない絵から）
-bg_rgb = Image.open(BG_SRC).convert('RGB').resize((W, H), Image.BOX)
-bg = np.asarray(bg_rgb.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')).copy()
+bg, _ = vote_downscale(np.asarray(Image.open(BG_SRC).convert('RGB')), None, W, H, 128)  # 元の絵の画素から128色に決め、多数決で縮める
+bg = bg.copy()
 
 # ---------------------------------------------------------------- 吊るし物（揺らすので背景から抜く）
 DARK = np.array([37, 25, 32])
@@ -489,14 +537,14 @@ def extract_poses(name):
             m[(closed > 0) & ~sh] = 1
         m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(np.float32)
         tw, th = max(1, round((x1 - x0) * scale)), max(1, round((y1 - y0) * scale))
-        rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
         ms = cv2.resize(m, (tw, th), interpolation=cv2.INTER_AREA)
-        cs = cv2.resize(rgbf, (tw, th), interpolation=cv2.INTER_AREA) / np.maximum(ms[..., None], 1e-6)
         alpha = ms > 0.5
         ys, xs = np.nonzero(alpha)
-        cs, alpha = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1], alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        img = Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8))
-        q = np.asarray(img.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+        # 色は元の絵の画素から40色に決めて、1マスごとに多数決で縮める（平均すると線と地が混ざってぼける）
+        small, _ = vote_downscale(a[y0:y1, x0:x1].astype(np.uint8), m > 0, tw, th, 40)
+        q = small[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy()
+        alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        q = despeckle(q, alpha)
         if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
             q, alpha = hood_from_reference(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
