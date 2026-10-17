@@ -12,7 +12,8 @@ export const PALETTE = {
 };
 
 export const SPRITES = {};
-const def = (name, rows, pal) => { SPRITES[name] = { rows, pal }; };
+// scale: 描くときの倍率。1文字=1ドットで 384×216 の大きさに描いた小物は 2（既定）、768×432 の大きさで描いた小物は 1
+const def = (name, rows, pal, scale) => { SPRITES[name] = { rows, pal, scale }; };
 
 def('pickle_piece', ['.gg', 'ggg', '.dg']);
 def('plate', ['wwwww', '.www.']);
@@ -20,24 +21,30 @@ def('salt_a', ['w....', '...w.', '.w...']);
 def('salt_b', ['..w..', 'w...w', '....w']);
 def('salt_c', ['.w..w', '..w..', 'w....']);
 // 傘（雨・雪の日）。u = 傘の色
-def('umbrella', [
-  '.........uuuuuuuu.........',
-  '.....uuuuuuuuuuuuuuuu.....',
-  '...uuuuuuuuuuuuuuuuuuuu...',
-  '.uuuuuuuuuuuuuuuuuuuuuuuu.',
-  'uUuuuUuuuuUuuuuUuuuuUuuuuU',
-  '.............k............',
-  '.............k............',
-  '.............k............',
-]);
-def('umbrella_snow', ['.........wwwwwwww.........', '.....wwwwwwwwwwwwwwww.....']);
+{ // 傘: 768×432 の大きさで計算して描く（半円のかさ・8つの骨の先・柄）。u = 傘の色、U = 骨の影
+  const W = 52, R = 26, H = 10;
+  const dome = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => {
+    const dx = (x + 0.5 - R) / R, dy = (H - 0.5 - y) / H; // だ円（横 R・縦 H）
+    const r2 = dx * dx + dy * dy;
+    if (r2 > 1) return '.';
+    if (y === H - 1) return (x % 6 === 2 || x % 6 === 3) ? 'U' : 'u'; // ふちの骨の先
+    if (y === 0 || r2 > 0.86) return 'U'; // 外まわりの陰
+    return 'u';
+  }).join(''));
+  const stick = Array.from({ length: 6 }, () => '.'.repeat(R - 1) + 'kk' + '.'.repeat(W - R - 1));
+  def('umbrella', [...dome, ...stick], undefined, 1);
+  def('umbrella_snow', dome.slice(0, 4).map((row) => row.replace(/[uU]/g, 'w')), undefined, 1);
+}
 // 太陽・月（丸を計算で描く）
 {
   const disc = (n, test) => Array.from({ length: n }, (_, y) => Array.from({ length: n }, (_, x) => test(x, y) || '.').join(''));
-  def('sun', disc(16, (x, y) => { const d = (x - 7.5) ** 2 + (y - 7.5) ** 2; return d < 36 ? (d < 24 ? 'f' : 'y') : null; }));
-  def('moon', disc(12, (x, y) => ((x - 5.5) ** 2 + (y - 5.5) ** 2 < 30 && (x - 8) ** 2 + (y - 4.5) ** 2 > 22 ? 'f' : null)));
+  def('sun', disc(32, (x, y) => { const d = (x - 15.5) ** 2 + (y - 15.5) ** 2; return d < 144 ? (d < 96 ? 'f' : 'y') : null; }), undefined, 1);
+  def('moon', disc(24, (x, y) => ((x - 11.5) ** 2 + (y - 11.5) ** 2 < 120 && (x - 16) ** 2 + (y - 9) ** 2 > 88 ? 'f' : null)), undefined, 1);
 }
-def('puddle', ['...nnnnnnnn...', '.nnnnnnnnnnnn.', '...nnnnnnnn...'], { n: '#7d97ad' });
+{ // 水たまり（だ円 28×6）
+  const W = 28, H = 6;
+  def('puddle', Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (((x + 0.5 - W / 2) / (W / 2)) ** 2 + ((y + 0.5 - H / 2) / (H / 2)) ** 2 <= 1 ? 'n' : '.')).join('')), { n: '#7d97ad' }, 1);
+}
 
 export function validateSprites() {
   const errors = [];

@@ -76,7 +76,7 @@ export function getSprite(name, { pal, flip = false } = {}) {
   const key = `${name}|${flip ? 1 : 0}|${pal ? Object.entries(pal).sort().join(',') : ''}`;
   let c = spriteCache.get(key);
   if (c) return c;
-  const h = def.rows.length, w = def.rows[0].length, k = SPRITE_SCALE;
+  const h = def.rows.length, w = def.rows[0].length, k = def.scale ?? SPRITE_SCALE;
   c = makeCanvas(w * k, h * k);
   const ctx = c.getContext('2d');
   def.rows.forEach((row, y) => {
