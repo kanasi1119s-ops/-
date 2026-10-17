@@ -49,11 +49,12 @@ npm run build      # テストプレイ用に1つのHTMLにまとめる → dist
 | 4. 経営 | 季節の仕入れ値・旬・置き場所・評判・投資（冷蔵庫・室・樽）・常連客 | `src/game.js` `tests/business.test.js` `tests/regulars.test.js` |
 | 5. 種類の拡張 | 大根・野沢菜・なす、たくあん・野沢菜漬、調味と相性、図鑑 | `src/config.js` `src/model.js` `tests/varieties.test.js` |
 | 3. 最小版の画面 | 仕込み→熟成→販売が1周。ドット絵と動き | `index.html` `src/main.js` `src/render.js` `src/world.js` |
-| 絵のトレース | 参考画像をドット絵（384×216・128色）に起こす | `tools/trace.py` → `assets/img/` `assets/trace.js` |
+| 絵のトレース | 参考画像をドット絵（768×432・背景192色・人物48色）に起こす | `tools/trace.py` → `assets/img/` `assets/trace.js` |
 
 - 係数・基準値は **`src/config.js` の1か所**。出典のある値は【出典】、ないものは【仮置き】とコメント。
 - 絵と動きの定義は `assets/`（`img/` トレースした絵、`scene.js` 配置、`characters.js` 人物と色違い、`animations.js` コマ送り、`themes.js` 季節・時間・天気、`sprites.js` 小物）。
-- ズーム・拡大縮小はしない。canvas は 384×216 を **整数倍** で表示（ぼかさない）。画面より狭いスマホだけは幅に合わせて縮める（ぼかさないが、ドットの大きさが少し不ぞろいになる）。
+- ズーム・拡大縮小はしない。canvas は 768×432 を **整数倍** で表示（ぼかさない）。画面より狭いスマホだけは幅に合わせて縮める（ぼかさないが、ドットの大きさが少し不ぞろいになる）。
+- ドットの細かさは 768×432（`tools/trace.py` の `SC = 2`。はじめは 384×216 だった）。参考画像は 1024×572 なので、背景は 1.33 分の 1、人物は約 1.6 分の 1 に縮めるだけで、目や眼鏡、看板の字、樽のたがが元の絵どおりに残る。座標を書いた定数は 384×216 の値を `SC` 倍して使う（trace.py・barrel_tops.py）か、2倍した値を直接書いてある（scene.js・render.js・main.js・characters.js・animations.js・world.js・walk_joints.json・walk_prep.py）。文字で描いた小物（傘・太陽・月・水たまり）は `SPRITE_SCALE = 2` で2倍にして描く。
 
 ## 絵（参考画像のトレース）
 

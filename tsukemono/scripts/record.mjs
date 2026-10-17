@@ -51,8 +51,8 @@ try {
     window.__spawnNext = () => {
       const name = window.__parade.shift();
       if (!name) return;
-      const a = w.spawn('customer', { body: name, umbrella: '#c63d2f' }, 420, 213, 'walk');
-      w.walkTo(a, -40).then(() => w.remove(a));
+      const a = w.spawn('customer', { body: name, umbrella: '#c63d2f' }, 820, 426, 'walk');
+      w.walkTo(a, -80).then(() => w.remove(a));
     };
   });
   for (let i = 0; i < 25; i++) { await page.evaluate(() => window.__spawnNext()); await run(1400); }
@@ -66,6 +66,6 @@ try {
   server.kill();
 }
 fs.mkdirSync(path.dirname(out), { recursive: true });
-execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(tmp, 'f%05d.png'), '-vf', 'scale=iw*3:ih*3:flags=neighbor', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', out]);
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(tmp, 'f%05d.png'), '-vf', 'scale=iw*2:ih*2:flags=neighbor', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', out]);
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('動画:', out);

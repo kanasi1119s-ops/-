@@ -19,10 +19,10 @@ export const SCENE = {
   labelY: 398,
   // 吊るし物。panels = 別々に揺れる区切り（画像内のx範囲）
   hanging: [
-    { img: 'hang_noren', ...pos('noren'), panels: [[0, 40], [40, 75], [75, 107], [107, 130], [130, 151], [151, 181], [181, 195]], ms: [1000, 1200, 900, 1300, 1100, 950, 1150] },
-    { img: 'hang_daikon', ...pos('daikon'), panels: [[0, 17], [17, 31], [31, 48]], ms: [800, 1000, 1150] },
-    { img: 'hang_chili_l', ...pos('chili_l'), panels: [[0, 12], [12, 25]], ms: [900, 1250] },
-    { img: 'hang_chili_r', ...pos('chili_r'), panels: [[0, 17]], ms: [1050] },
+    { img: 'hang_noren', ...pos('noren'), panels: [[0, 80], [80, 150], [150, 214], [214, 260], [260, 302], [302, 362], [362, 390]], ms: [1000, 1200, 900, 1300, 1100, 950, 1150] },
+    { img: 'hang_daikon', ...pos('daikon'), panels: [[0, 34], [34, 62], [62, 96]], ms: [800, 1000, 1150] },
+    { img: 'hang_chili_l', ...pos('chili_l'), panels: [[0, 24], [24, 50]], ms: [900, 1250] },
+    { img: 'hang_chili_r', ...pos('chili_r'), panels: [[0, 34]], ms: [1050] },
   ],
   // 浮いている雲（速さはバラバラ）
   clouds: TRACE.clouds.map(([x, y], i) => ({ img: `cloud_${i}`, x0: x, y, speed: [9, 4.8][i] ?? 6 })),

@@ -173,79 +173,154 @@
   "itemMaxRow": 123,
   "bagDraw": [
    [
-    39,
-    3,
-    "..OOOOOOOkO."
+    78,
+    6,
+    "....VVVVVVVVVVVVVVssVV.."
    ],
    [
-    40,
-    3,
-    ".OfgggggghmO"
+    79,
+    6,
+    "....VVVVVVVVVVVVVVssVV.."
    ],
    [
-    41,
-    3,
-    "OfgiihhggghO"
+    80,
+    6,
+    "..VVnnooooooooooooppttVV"
    ],
    [
-    42,
-    3,
-    "OfgihgggggfO"
+    81,
+    6,
+    "..VVnnooooooooooooppttVV"
    ],
    [
-    43,
-    3,
-    "OfngngngngfO"
+    82,
+    6,
+    "VVnnooqqqqppppooooooppVV"
    ],
    [
-    44,
-    3,
-    "OeffjkkjffeO"
+    83,
+    6,
+    "VVnnooqqqqppppooooooppVV"
    ],
    [
-    45,
-    3,
-    "OeeekmmkeeeO"
+    84,
+    6,
+    "VVnnooqqppoooooooooonnVV"
    ],
    [
-    46,
-    3,
-    "OgggkOOkgggf"
+    85,
+    6,
+    "VVnnooqqppoooooooooonnVV"
    ],
    [
-    47,
-    3,
-    "Ogggjkkjgggf"
+    86,
+    6,
+    "VVnnuuoouuoouuoouuoonnVV"
    ],
    [
-    48,
-    3,
-    "Oghggggggfef"
+    87,
+    6,
+    "VVnnuuoouuoouuoouuoonnVV"
    ],
    [
-    49,
-    3,
-    "Oghggggggfee"
+    88,
+    6,
+    "VVmmnnnnrrssssrrnnnnmmVV"
    ],
    [
-    50,
-    3,
-    "OggggggggfeO"
+    89,
+    6,
+    "VVmmnnnnrrssssrrnnnnmmVV"
    ],
    [
-    51,
-    3,
-    "OfggggggffeO"
+    90,
+    6,
+    "VVmmmmmmssttttssmmmmmmVV"
    ],
    [
-    52,
-    3,
-    "OeffffffffO."
+    91,
+    6,
+    "VVmmmmmmssttttssmmmmmmVV"
    ],
    [
-    53,
-    3,
-    ".OOOOOOOOO.."
+    92,
+    6,
+    "VVoooooossVVVVssoooooonn"
+   ],
+   [
+    93,
+    6,
+    "VVoooooossVVVVssoooooonn"
+   ],
+   [
+    94,
+    6,
+    "VVoooooorrssssrroooooonn"
+   ],
+   [
+    95,
+    6,
+    "VVoooooorrssssrroooooonn"
+   ],
+   [
+    96,
+    6,
+    "VVooppoooooooooooonnmmnn"
+   ],
+   [
+    97,
+    6,
+    "VVooppoooooooooooonnmmnn"
+   ],
+   [
+    98,
+    6,
+    "VVooppoooooooooooonnmmmm"
+   ],
+   [
+    99,
+    6,
+    "VVooppoooooooooooonnmmmm"
+   ],
+   [
+    100,
+    6,
+    "VVoooooooooooooooonnmmVV"
+   ],
+   [
+    101,
+    6,
+    "VVoooooooooooooooonnmmVV"
+   ],
+   [
+    102,
+    6,
+    "VVnnoooooooooooonnnnmmVV"
+   ],
+   [
+    103,
+    6,
+    "VVnnoooooooooooonnnnmmVV"
+   ],
+   [
+    104,
+    6,
+    "VVmmnnnnnnnnnnnnnnnnVV.."
+   ],
+   [
+    105,
+    6,
+    "VVmmnnnnnnnnnnnnnnnnVV.."
+   ],
+   [
+    106,
+    6,
+    "..VVVVVVVVVVVVVVVVVV...."
+   ],
+   [
+    107,
+    6,
+    "..VVVVVVVVVVVVVVVVVV...."
    ]
   ],
   "legRoot": 6,
