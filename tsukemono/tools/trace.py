@@ -443,9 +443,13 @@ def hood_from_reference(q, alpha, sub, m, tw, th, crop):
             elif L == 2:
                 out[y, x, :3] = c_line; out[y, x, 3] = 255
             elif L == 3:
-                out[y, x, :3] = c_white if light_lum[y, x] >= 218 else c_shade; out[y, x, 3] = 255
+                if not skin_now[y, x]:  # 顔の上には塗らない
+                    out[y, x, :3] = c_white if light_lum[y, x] >= 218 else c_shade; out[y, x, 3] = 255
             else:
-                out[y, x, :3] = c_grey; out[y, x, 3] = 255
+                # 髪の灰色: いま灰色っぽい（彩度の低い）マスだけ。顔の影や目のまわりの肌は塗らない
+                px = out[y, x, :3].astype(int)
+                if not alpha[y, x] or (not skin_now[y, x] and px.max() - px.min() < 0.22 * max(px.max(), 1)):
+                    out[y, x, :3] = c_grey; out[y, x, 3] = 255
     return out[..., :3], out[..., 3] > 0
 
 
@@ -548,6 +552,43 @@ def bridge_feet(m, rgb, top, gap):
     return out
 
 
+def outline_pass(q, alpha, sub, m, tw, th, crop, soften=0.3):
+    """輪郭線の手順: (1) 元の絵の線（暗い画素）がある縁のマスを、線の色で先に濃く入れる（線が細くて縮小で消える頭の欠けを防ぐ）。
+    (2) 中は面積の平均のまま。 (3) 最後に縁のマスの色を、内側のとなりの色に soften だけ寄せて薄め、周りになじませる。
+    q, alpha: 縮めたあとの絵。sub: 元の絵の切り抜き（RGB int）。m: 人物のマスク（元の大きさ）。crop: 縮めた絵の切り取り位置"""
+    f = sub.astype(np.float32)
+    lum = f @ np.array([0.299, 0.587, 0.114], np.float32)
+    fig = m > 0
+    dark = fig & (lum < 110)
+    (ya, yb, xa, xb) = crop
+    def small(a):
+        return cv2.resize(a.astype(np.float32), (tw, th), interpolation=cv2.INTER_AREA)[ya:yb, xa:xb]
+    cov = small(fig)
+    dcov = small(dark)
+    dcol = np.stack([small(dark * f[..., c]) for c in range(3)], -1) / np.maximum(dcov, 1e-6)[..., None]
+    out = q.copy()
+    al = alpha.copy()
+    # (1) 線のあるマスを起こす: 透明だが人物が2割以上入っていて、線が1割以上あるマス
+    rescue = ~al & (cov > 0.2) & (dcov > 0.1)
+    al |= rescue
+    H, W = al.shape
+    pad = np.pad(al, 1)
+    edge = al & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])  # 4近傍に透明があるマス
+    line = (edge & (dcov > 0.08)) | rescue
+    out[line] = np.clip(dcol[line], 0, 255).astype(np.uint8)
+    # (3) 縁を薄める: 内側（縁でない不透明）のとなりの平均色に寄せる
+    inner = al & ~edge
+    res = out.copy()
+    ys, xs = np.nonzero(line)
+    for y, x in zip(ys, xs):
+        nb = [out[y + dy, x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+              if (dy or dx) and 0 <= y + dy < H and 0 <= x + dx < W and inner[y + dy, x + dx]]
+        if nb:
+            mean = np.mean(np.array(nb, np.float32), 0)
+            res[y, x] = np.clip(out[y, x] * (1 - soften) + mean * soften, 0, 255).astype(np.uint8)
+    return res, al
+
+
 def extract_poses(name):
     a = np.asarray(Image.open(os.path.join(ROOT, f'assets/reference/pose_{name}.jpg')).convert('RGB')).astype(int)
     h0, w0, _ = a.shape
@@ -624,6 +665,8 @@ def extract_poses(name):
             cs = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
             q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
         alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        if not VOTE:  # 輪郭線を先に濃く入れ、中を塗ってから縁を薄める
+            q, alpha = outline_pass(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
             q, alpha = hood_from_reference(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
