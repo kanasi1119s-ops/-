@@ -422,6 +422,8 @@ def hood_from_reference(q, alpha, sub, m, tw, th, crop):
         return cv2.resize(mask.astype(np.float32), (tw, th), interpolation=cv2.INTER_AREA)[ya:yb, xa:xb]
     cov = np.stack([small(~fig), small(skin), small(dark), small(light), small(mid)])  # 背景・肌・線・白・灰
     lab = cov.argmax(0)
+    # 外周の細い線（元の絵で2〜3画素の幅）は、縮めると背景と半々になって消えやすい。人物が2割以上・線が2割以上のマスは線にする
+    lab[(cov[0] < 0.8) & (cov[2] >= 0.2) & ((lab == 0) | (lab == 3))] = 2
     light_lum = small(light * lum) / np.maximum(small(light), 1e-6)
     # 色: 元の絵のその種類の色（中央値）
     col = lambda mask, d: np.median(sub[mask], 0).astype(np.uint8) if mask.any() else np.array(d, np.uint8)
@@ -553,7 +555,11 @@ def bridge_feet(m, rgb, top, gap):
     return out
 
 
-def outline_pass(q, alpha, sub, m, tw, th, crop, soften=0.3):
+LINE_BLEND = np.array([132, 112, 96], np.float32)  # 線を薄めるときに寄せる色（店先の地面・木の壁の暗めの中間色）
+LINE_GAP = 45  # 薄めた線が、内側のとなりより最低これだけ暗い（明るさ 0-255）
+
+
+def outline_pass(q, alpha, sub, m, tw, th, crop, soften=0.25):
     """輪郭線の手順: (1) 元の絵の線（暗い画素）がある縁のマスを、線の色で先に濃く入れる（線が細くて縮小で消える頭の欠けを防ぐ）。
     (2) 中は面積の平均のまま。 (3) 最後に縁のマスの色を、内側のとなりの色に soften だけ寄せて薄め、周りになじませる。
     q, alpha: 縮めたあとの絵。sub: 元の絵の切り抜き（RGB int）。m: 人物のマスク（元の大きさ）。crop: 縮めた絵の切り取り位置"""
@@ -603,13 +609,22 @@ def outline_pass(q, alpha, sub, m, tw, th, crop, soften=0.3):
             al[y, x] = False
         else:
             out[y, x] = np.clip(mean, 0, 255).astype(np.uint8)
-    # (3) 縁を薄める: 内側（縁でない不透明）のとなりの平均色に寄せる
+    # (3) 縁を薄める: 背景（店先の地面や壁）になじむ暗い中間色 LINE_BLEND に少し寄せる。内側の色には寄せない
+    #     （白い頭巾や白い服だと、内側に寄せると線が白に溶けて消える）。
+    #     ただし薄めたあとも、内側のとなりより必ず暗く（明るさの差 LINE_GAP 以上）残す
     res = out.copy()
     ys, xs = np.nonzero(line & al)
     for y, x in zip(ys, xs):
+        c = out[y, x].astype(np.float32)
+        soft = c * (1 - soften) + LINE_BLEND * soften
         mean = inner_mean(y, x)
         if mean is not None:
-            res[y, x] = np.clip(out[y, x] * (1 - soften) + mean * soften, 0, 255).astype(np.uint8)
+            limit = lum_s(mean) - LINE_GAP
+            if lum_s(c) > limit:  # もともと内側に近い明るさのマス（線と言えない）はさわらない
+                continue
+            if lum_s(soft) > limit:  # 薄めすぎ: 線の明るさを limit まで戻す（色合いは soft のまま）
+                soft = soft * max(0.0, limit) / max(lum_s(soft), 1e-6)
+        res[y, x] = np.clip(soft, 0, 255).astype(np.uint8)
     return res, al
 
 
