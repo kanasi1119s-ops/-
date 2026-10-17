@@ -408,16 +408,35 @@ def build(name):
             if len(chars) < 10:
                 chars = leg_chars('far' if l == 'near' else 'near', ya, yb)
             e_, b_ = auto_colors(chars)
+            # 隠れていた脚は見えている所が持ち物の影で暗いことが多い。反対の脚よりはっきり暗ければ、反対の脚の地の色を使う
+            _, b2 = auto_colors(leg_chars('far' if l == 'near' else 'near', ya, yb))
+            if b_ and b2 and lum_of(b_) < lum_of(b2) - 25:
+                b_ = b2
             if hf.get('edge') == 'auto': hf['edge'] = e_
             if hf.get('body') == 'auto': hf['body'] = b_
             hf.pop('edgeR', None)
+        is_leg = lambda Y_, X_: 0 <= X_ < W and any(seg[(l, s_)][Y_, X_] for s_ in SEG)
         for y in range(ya, yb + 1):
             xl = jsround(interp(hf['left'], y)); xr = jsround(interp(hf['right'], y))
+            # この行の地の色: すぐ横に見えている同じ脚のドットがあれば、その色を続ける（線の色はとばす）。なければ body
+            body_ch = hf['body']
+            for X_ in list(range(xr + PADX + 1, xr + PADX + 9)) + list(range(xl + PADX - 1, xl + PADX - 9, -1)):
+                if is_leg(y + PADY, X_):
+                    ch_ = grid[y + PADY][X_]
+                    if ch_ != '.' and lum_of(ch_) > lum_of(hf['edge']) + 40 and lum_of(ch_) >= lum_of(hf['body']) - 15:
+                        body_ch = ch_
+                        break
             for x in range(xl, xr + 1):
                 Y, X = y + PADY, x + PADX
                 if any(seg[(l, s_)][Y, X] for s_ in SEG) or not behind[Y, X]:
                     continue
-                ch = hf['edge'] if x == xl else hf.get('edgeR', hf['edge']) if x == xr else hf['body']
+                # ふちの線は、外側が同じ脚の見えているドットなら引かない（描き足しと見えている脚のあいだに線が入らないように）
+                if x == xl and not is_leg(Y, X - 1):
+                    ch = hf['edge']
+                elif x == xr and not is_leg(Y, X + 1):
+                    ch = hf.get('edgeR', hf['edge'])
+                else:
+                    ch = body_ch
                 sg = nearest_seg(l, Y, X)
                 seg[(l, sg)][Y, X] = True
                 base[LNAME[(l, sg)]][Y][X] = ch
