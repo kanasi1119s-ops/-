@@ -125,14 +125,14 @@ export class World {
     this.remove(c);
   }
 
-  /** 販売の結果を順に見せる。 */
-  async saleScene(visitors, season, onTalk) {
+  /** 販売の結果を順に見せる。gaps = 客ごとの、前の客からの間（ms）。なければ 2.6 秒おき */
+  async saleScene(visitors, season, onTalk, gaps = null) {
     this.busy++;
     try {
       const jobs = [];
-      for (const v of visitors) {
+      for (const [i, v] of visitors.entries()) {
+        if (i > 0) await this.wait(gaps?.[i] ?? 2600); // 次の客は少し遅れて来る
         jobs.push(this.serve(v, { onTalk, season }));
-        await this.wait(2600); // 次の客は少し遅れて来る
       }
       await Promise.all(jobs);
     } finally { this.busy--; }

@@ -14,7 +14,8 @@ test('案内: 空き樽→仕込み、熟成中→時間を進める、食べ頃
   assert.match(nextStep(g), /食べ頃。味見して/);
   g.weather = 'sunny';
   g.sell(0);
-  assert.match(nextStep(g), /1回。時間を進めよう/);
+  assert.match(nextStep(g), /次の時間帯/);
+  assert.match(nextStep(g, { display: 0 }), /お客はもう来た/);
   g.advance(2); // 夜
   assert.match(nextStep(g), /夜は閉店/);
   g.advance(4 * 8 + 1); // ずっと先の朝

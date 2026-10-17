@@ -38,7 +38,7 @@ try {
   check('タイトルが出る', await page.isVisible('#title'));
   await page.click('[data-title="new"]');
   check('はじめると店先になる', !(await page.isVisible('#title')));
-  await page.evaluate(() => { window.__game.world.speed = 8; });
+  await page.evaluate(() => { window.__game.world.speed = 8; window.__game.ui.paused = true; }); // 確認のあいだ時間は止めておく
   const G = (f) => page.evaluate(f);
 
   // 仕込み（コマンド → 窓 → 仕込む）
@@ -46,15 +46,23 @@ try {
   await page.click('[data-cmd="brew"]');
   check('仕込みの窓が開く', await page.isVisible('#modal'));
   await page.click('[data-veg="kyuri"]');
+  await page.click('[data-countset="12"]');
   await page.click('[data-act="brew"]'); await idle();
   const brewed = await G(() => window.__game.game.barrels[0]);
   check('仕込める', !!brewed && (await G(() => window.__game.game.money)) < money0 && !(await page.isVisible('#modal')));
+  check('個数を選んで仕込める', brewed?.portions === 12);
 
   // 次へ（4回で翌朝。夜明けに一日のまとめ）
   for (let i = 0; i < 4; i++) { await page.click('[data-cmd="next"]'); await idle(); }
   check('一日のまとめが出る', (await page.textContent('#winTitle')).includes('店じまい'));
   await page.click('[data-act="dayClose"]');
   check('翌朝になる', (await G(() => [window.__game.game.day(), window.__game.game.timeOfDay()].join())) === '2,morning');
+
+  // 時間制: 止めるのをやめると、時間帯が自動で進む
+  await G(() => { const g = window.__game; g.game.cfg.calendar.realSeconds.morning = 1; g.ui.paused = false; });
+  await page.waitForFunction(() => window.__game.game.timeOfDay() === 'noon', null, { timeout: 8000 }).catch(() => {});
+  check('時間が自動で進む', (await G(() => window.__game.game.timeOfDay())) === 'noon');
+  await G(() => { const g = window.__game; g.ui.paused = true; g.game.cfg.calendar.realSeconds.morning = 40; });
 
   // 樽の札 → 味見は同じ時点で1回まで
   await page.click('[data-chip="0"]');
@@ -70,7 +78,8 @@ try {
     await page.click('#winBody [data-act="sellSlot"]'); await idle();
     sold = (await G(() => window.__game.ui.log.length)) > 0;
   }
-  check('店を開けて売れる', sold);
+  check('店先に出すと売れる', sold);
+  check('出した樽は次の時間帯も店先に出たまま', (await G(() => window.__game.ui.display)) === 0 || (await G(() => window.__game.game.barrels[0] === null)));
   await page.click('[data-cmd="book"]');
   check('帳面に記録が出る', (await page.textContent('#winBody')).includes('満足'));
   await page.click('[data-tab="book"]');

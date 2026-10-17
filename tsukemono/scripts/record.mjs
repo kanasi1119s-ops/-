@@ -58,7 +58,8 @@ try {
   for (let i = 0; i < 25; i++) { await page.evaluate(() => window.__spawnNext()); await run(1400); }
   await run(7000);
   // 2. 店を開けて売る
-  await page.evaluate(() => { const g = window.__game; g.game.advance(5); g.game.weather = 'sunny'; g.renderAll(); g.doSell(0); });
+  // 時間制: 録画のあいだ時計は止め、客の間隔は速さ×4のとき（約10秒の中に散らす）
+  await page.evaluate(() => { const g = window.__game; g.ui.paused = true; g.settings.timeScale = 4; g.game.advance(5); g.game.weather = 'sunny'; g.renderAll(); g.doSell(0); });
   await run(26000);
 } finally {
   await browser.close();

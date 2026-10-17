@@ -30,13 +30,13 @@ const store = {
 };
 const saved = store.get(SAVE_KEY);
 const hasSave = !!(saved && game.restore(saved.game));
-const settings = { bgm: 0.6, se: 0.8, practice: true, speed: 1, ...(store.get(SET_KEY) ?? {}) };
+const settings = { bgm: 0.6, se: 0.8, practice: true, speed: 1, timeScale: 1, ...(store.get(SET_KEY) ?? {}) };
 sound.setVolumes(settings.bgm, settings.se);
 
 const newToday = () => ({ day: game.day(), revenue: 0, sold: 0, visitors: 0, cost: 0, repStart: game.reputation, joined: 0, found: 0 });
 const ui = {
   slot: 0,
-  recipe: { pickle: 'asazuke', veg: 'kyuri', saltPct: 2.5, place: 'doma', additives: [] },
+  recipe: { pickle: 'asazuke', veg: 'kyuri', saltPct: 2.5, place: 'doma', additives: [], count: game.standardCount('asazuke') },
   override: { manual: false, season: 'spring', time: 'morning', weather: 'sunny' },
   busy: false,
   started: false,
@@ -46,8 +46,12 @@ const ui = {
   win: null, // 開いている窓 { kind, ... }
   message: '',
   confirm: null, // 二度押しで確かめる操作の名前
+  // 時間制: 今の時間帯の進み（0〜1）。窓を開いている間と、場面（仕込みなど）の間は止まる
+  clock: { phase: hasSave && Number.isFinite(saved.clock?.phase) ? Math.min(0.999, Math.max(0, saved.clock.phase)) : 0 },
+  paused: false,
+  display: hasSave && Number.isInteger(saved.display) ? saved.display : null, // 店先に出している樽（店が開いている時間帯に、お客が来るたびに売れる）
 };
-function save() { store.set(SAVE_KEY, { game: game.snapshot(), log: ui.log, today: ui.today }); }
+function save() { store.set(SAVE_KEY, { game: game.snapshot(), log: ui.log, today: ui.today, clock: ui.clock, display: ui.display }); }
 function saveSettings() { store.set(SET_KEY, settings); }
 
 // ------------------------------------------------------------ 店先の画面
@@ -119,7 +123,7 @@ function say(text, who = null) {
   let n = 0;
   const draw = () => {
     const done = n >= full.length;
-    const hint = done && ui.started && !ui.busy ? nextStep(game) : '';
+    const hint = done && ui.started && !ui.busy ? nextStep(game, { display: ui.display }) : '';
     el.innerHTML = `${head}${esc(full.slice(0, n).join(''))}${hint ? `<br><span class="hint">▶ ${esc(hint)}</span>` : ''}`;
   };
   finishTyping = () => { clearInterval(typer); n = full.length; draw(); };
@@ -135,6 +139,8 @@ function renderHud() {
   $('hud').innerHTML = `
     <span class="day"><span class="season">${s.name}</span>　${kanjiNum(game.day())}日目</span>
     <span class="tw"><b>${TIME_ICON[game.timeOfDay()]}</b><b>${WEATHER_ICON[game.weather]}</b>${game.ambientTemp()}℃</span>
+    <span class="clock" title="この時間帯の進み"><i id="clockFill" style="width:${Math.round(ui.clock.phase * 100)}%"></i></span>
+    <button class="pause" data-cmd="pause" aria-label="${ui.paused ? '時間を進める' : '時間を止める'}" title="${ui.paused ? '時間を進める' : '時間を止める'}">${ui.paused ? '▶' : '❚❚'}<span class="lbl">${ui.paused ? '止めている' : '時間が進んでいる'}</span></button>
     <span class="grow"></span>
     <span><span class="k">評判</span>${stars(game.reputation)}</span>
     <span class="money">${Math.round(ui.shownMoney).toLocaleString('ja-JP')}<small>円</small></span>`;
@@ -175,14 +181,14 @@ function renderCommands() {
   const cmd = (id, label, sub, dot = '') => `<button class="cmd" data-cmd="${id}" ${dis}>${label}${sub ? `<small>${sub}</small>` : ''}${dot ? `<span class="dot">${dot}</span>` : ''}</button>`;
   $('commands').innerHTML = [
     cmd('brew', '仕込む', '樽に漬ける', empty ? '空' : ''),
-    cmd('sell', '売る', game.isOpen() ? (game.lastSaleTick === game.tick ? '今は済み' : '店を開ける') : '夜は閉店', anyRipe && canSellNow() ? '◎' : ''),
+    cmd('sell', '売る', ui.display != null && game.barrels[ui.display] ? `樽${ui.display + 1}を出し中` : '店先に出す', anyRipe && (ui.display == null || !game.barrels[ui.display]) ? '◎' : ''),
     cmd('barrels', '樽', '味見など', anyCare ? '!' : ''),
     cmd('nuka', 'ぬか床', 'かき混ぜる', nukaTodo ? '!' : ''),
     cmd('shop', '店', '投資・常連'),
     cmd('book', '帳面', '記録・図鑑'),
     cmd('rest', '休む', '日を進める'),
     cmd('settings', '設定', '音・遊び方'),
-    `<button class="cmd next" data-cmd="next" ${dis}>次へ ▶<small>${nextT}</small></button>`,
+    `<button class="cmd next" data-cmd="next" ${dis}>とばす ▶<small>${nextT}</small></button>`,
   ].join('');
 }
 
@@ -226,7 +232,8 @@ WINS.barrel = ({ slot }) => {
   const tasteBox = b.tastedTaste
     ? `<div class="panel"><div>味見の結果 <span class="stage-tag ${b.tastedTaste.stage}">${b.tastedTaste.stageLabel}</span> <span class="hint">${tasted ? '（今）' : `（${trim((game.tick - b.tastedTick) / C.calendar.ticksPerDay, 1)}日前）`}</span></div>${bars(b.tastedTaste)}${b.tastedTaste.filmVisible ? '<div class="warn">白い膜のにおいがする。手入れすると良くなる。</div>' : ''}</div>`
     : '<div class="hint">「味見」で今の味がわかります（同じ樽は時間が進むまで1回）。</div>';
-  const sellNote = !game.isOpen() ? '夜は閉店' : game.lastSaleTick === game.tick ? 'この時間はもう店を開けた' : '';
+  const onDisplay = ui.display === slot;
+  const sellNote = onDisplay ? (game.isOpen() ? 'いま店先に出している。お客が来るたびに売れる' : '店先に出している。朝になると店が開く') : !game.isOpen() ? '夜は閉店。出しておけば朝に店が開く' : game.lastSaleTick === game.tick ? 'この時間帯のお客はもう来た。出しておけば次の時間帯から売れる' : '';
   const disc = ui.confirm === `discard${slot}`;
   return {
     title: `樽${slot + 1}　${barrelName(b)}`,
@@ -240,10 +247,10 @@ WINS.barrel = ({ slot }) => {
       <button class="btn" data-act="taste" data-slot="${slot}" ${tasted ? 'disabled' : ''}>${tasted ? '味見した' : '味見'}</button>
       ${p.film && !p.usesNukaBed ? `<button class="btn" data-act="care" data-slot="${slot}" ${cared || fv < 0.05 ? 'disabled' : ''}>${cared ? '手入れした' : '手入れ（膜を取る）'}</button>` : ''}
       ${p.usesNukaBed ? '<button class="btn" data-act="openNuka">ぬか床を見る</button>' : ''}
-      <button class="btn main" data-act="sellSlot" data-slot="${slot}" ${sellNote ? 'disabled' : ''}>店を開けて売る</button>
+      ${onDisplay ? `<button class="btn" data-act="hideSlot" data-slot="${slot}">店先から下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${slot}">店先に出す</button>`}
       <button class="btn ghost" data-act="discard" data-slot="${slot}">${disc ? '本当に捨てる' : '捨てる'}</button>
     </div>
-    ${sellNote ? `<div class="hint">${sellNote}。「次へ」で時間を進めよう。</div>` : ''}`,
+    ${sellNote ? `<div class="hint">${sellNote}。</div>` : ''}`,
   };
 };
 
@@ -263,6 +270,8 @@ const effRecipe = () => {
   return C.pickles[r.pickle].usesNukaBed ? { ...r, saltPct: game.nuka.salt } : r;
 };
 const brewCostOf = (r) => game.brewCost({ ...r, saltPct: C.pickles[r.pickle].usesNukaBed ? 0 : r.saltPct });
+const CAP = () => C.sales.barrelCapacity;
+const clampCount = (n) => Math.min(CAP(), Math.max(1, Math.round(Number.isFinite(n) ? n : 1)));
 const affKnown = (pickle, id) => Object.keys(game.book).some((k) => { const [pk, , ...ad] = k.split(':'); return pk === pickle && ad.includes(id); });
 const affMark = (pickle, id) => (!affKnown(pickle, id) ? '？' : { good: '◎', bad: '✕', neutral: '△' }[affinityOf(pickle, id, C)]);
 const SALT_DEFAULT = { asazuke: 2.5, takuan: 5 };
@@ -294,23 +303,25 @@ WINS.brew = () => {
         : `<div class="salt"><button class="stepper" data-salt="-0.5" aria-label="塩を減らす">－</button><input id="salt" type="range" min="1" max="15" step="0.5" value="${r.saltPct}" aria-label="塩分"><button class="stepper" data-salt="0.5" aria-label="塩を増やす">＋</button><output id="saltV">${trim(r.saltPct, 1)}%</output></div>`}</div>
     <div class="sec"><h3>調味（${C.additiveMax}つまで）　<span class="hint">◎合う △ふつう ✕合わない ？まだわからない</span></h3><div class="tiles">${adds}</div></div>
     <div class="sec"><h3>置き場所　<span class="hint">外は今 ${game.ambientTemp()}℃</span></h3><div class="tiles">${places}</div></div>
+    <div class="sec"><h3>個数　<span class="hint">標準 ${game.standardCount(r.pickle)}個 ・ 1樽に最大 ${CAP()}個。多く仕込むほど材料代が増え、売れ残ると酸っぱくなる</span></h3>
+      <div class="count"><button class="stepper" data-count="-6" aria-label="6個減らす">−6</button><button class="stepper" data-count="-1" aria-label="1個減らす">－</button><input id="count" type="number" inputmode="numeric" min="1" max="${CAP()}" step="1" value="${r.count}" aria-label="個数"><span class="unit">個</span><button class="stepper" data-count="1" aria-label="1個増やす">＋</button><button class="stepper" data-count="6" aria-label="6個増やす">＋6</button>
+      <span class="presets">${[6, 12, 18, 24].filter((n) => n <= CAP()).map((n) => `<button class="tile${r.count === n ? ' on' : ''}" data-countset="${n}">${n}</button>`).join('')}</span></div></div>
     ${predict}
-    <div class="row end"><span class="hint">所持金 ${yen(game.money)}</span><button class="btn main" data-act="brew" ${cost > game.money ? 'disabled' : ''}>樽${ui.slot + 1}に仕込む（${yen(cost)}）</button></div>`,
+    <div class="row end"><span class="hint">所持金 ${yen(game.money)}</span><button class="btn main" data-act="brew" ${cost > game.money ? 'disabled' : ''}>樽${ui.slot + 1}に${r.count}個仕込む（${yen(cost)}）</button></div>`,
   };
 };
 
 // 売る
 WINS.sell = () => {
-  if (!game.isOpen()) return { title: '売る', body: '<p>夜は閉店です。「次へ」で朝にしよう。</p>' };
-  if (game.lastSaleTick === game.tick) return { title: '売る', body: '<p>この時間帯はもう店を開けました。「次へ」で時間を進めよう。</p>' };
   const filled = game.barrels.map((b, i) => (b ? i : null)).filter((i) => i != null);
   if (!filled.length) return { title: '売る', body: '<p>売れる樽がありません。まず「仕込む」。</p>' };
+  const now = !game.isOpen() ? '夜は閉店。出しておけば朝に店が開く。' : game.lastSaleTick === game.tick ? 'この時間帯のお客はもう来た。出しておけば次の時間帯から売れる。' : '出すとすぐ店が開き、この時間帯のお客が順に来る。';
   return {
-    title: '店を開ける',
-    body: `<div class="hint">どの樽を店先に出す？（1つの時間帯に1回。来る客は天気と評判しだい）</div>
+    title: '店先に出す',
+    body: `<div class="hint">店先に出した樽は、店が開いている朝・昼・夕に、お客が来るたびに売れる（来る客は天気と評判しだい。時間帯ごとに入れ替わる）。${now}</div>
     <div class="list">${filled.map((i) => {
-      const b = game.barrels[i], t = game.tasteOf(i);
-      return `<button class="item${t.stage === 'ripe' ? ' ok' : ''}" data-act="sellSlot" data-slot="${i}"><span class="grow">樽${i + 1}　${barrelName(b)}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個 ・ 定価 ${yen(C.pickles[b.pickle].price)}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span></button>`;
+      const b = game.barrels[i], t = game.tasteOf(i), on = ui.display === i;
+      return `<div class="item${t.stage === 'ripe' ? ' ok' : ''}${on ? ' on' : ''}"><span class="grow">樽${i + 1}　${barrelName(b)}${on ? ' <span class="ukon">出し中</span>' : ''}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個 ・ 定価 ${yen(C.pickles[b.pickle].price)}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span>${on ? `<button class="btn" data-act="hideSlot" data-slot="${i}">下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${i}">店先に出す</button>`}</div>`;
     }).join('')}</div>`,
   };
 };
@@ -379,7 +390,7 @@ WINS.book = ({ tab = 'log' }) => {
 // 休む（日をとばす）
 WINS.rest = () => ({
   title: '休む',
-  body: `<p>時間をまとめて進めます。漬物は寝ているあいだも漬かり続けます（膜やぬか床の手入れはできません）。</p>
+  body: `<p>時間をまとめて進めます。漬物は寝ているあいだも漬かり続けます（店は閉めたまま。膜やぬか床の手入れはできません）。</p>
   <div class="row"><button class="btn" data-rest="1">翌朝まで</button><button class="btn" data-rest="3">3日</button><button class="btn" data-rest="7">7日</button><button class="btn" data-rest="14">14日</button></div>`,
 });
 
@@ -412,6 +423,7 @@ WINS.settings = () => {
       <label class="bar" style="grid-template-columns:5em 1fr 3em">効果音<input id="vSe" type="range" min="0" max="1" step="0.05" value="${settings.se}"><span>${Math.round(settings.se * 100)}</span></label></div>
     <div class="sec"><h3>遊び方</h3>
       <label class="row"><input type="checkbox" id="practice" ${settings.practice ? 'checked' : ''}> 練習モード（仕込む前に食べ頃と味の見立てを出す）</label>
+      <label class="row">時間の速さ <select id="timeScale">${[0.5, 1, 2, 4].map((s) => `<option value="${s}" ${settings.timeScale === s ? 'selected' : ''}>×${s}</option>`).join('')}</select><span class="hint">×1で1日 約${Math.round(Object.values(C.calendar.realSeconds).reduce((a, b) => a + b, 0) / 60 * 10) / 10}分。窓を開いている間は止まる。帳場の ❚❚ でも止められる</span></label>
       <label class="row">お客の歩く速さ <select id="speed">${[1, 2, 4].map((s) => `<option value="${s}" ${settings.speed === s ? 'selected' : ''}>×${s}</option>`).join('')}</select></label>
       <div class="row"><button class="btn" data-act="help">遊び方を見る</button><button class="btn ghost" data-act="toTitle">タイトルへ</button></div></div>
     <div class="sec"><h3>確認用</h3>
@@ -427,8 +439,8 @@ WINS.help = () => ({
   title: '遊び方',
   body: `<ol style="margin:0;padding-left:1.4em;display:grid;gap:8px">
     <li><b class="ukon">仕込む</b>: 樽に、漬物・野菜・塩・調味・置き場所を決めて漬ける。旬の野菜は安くて質が良い。</li>
-    <li><b class="ukon">次へ</b>: 朝→昼→夕→夜と時間が進み、漬物が漬かる。店先の樽の札が <b>◎</b> になったら食べ頃。</li>
-    <li><b class="ukon">売る</b>: 店を開けると、お客が来て、気に入れば買ってくれる。1つの時間帯に1回。夜は閉店。</li>
+    <li><b class="ukon">時間</b>: 朝→昼→夕→夜と自動で進み、漬物が漬かる（帳場の帯が時間帯の進み。❚❚ で止まる。「とばす」で次の時間帯へ、「休む」で日をまとめて進める）。店先の樽の札が <b>◎</b> になったら食べ頃。</li>
+    <li><b class="ukon">売る</b>: 樽を店先に出しておくと、店が開いている朝・昼・夕にお客が来て、気に入れば買ってくれる。お客は時間帯ごとに入れ替わる。夜は閉店。</li>
     <li><b class="ukon">樽</b>: 味見で今の味がわかる。白い膜（札が <b>!</b>）は「手入れ」で取る。</li>
     <li><b class="ukon">ぬか床</b>: 毎日かき混ぜると育ち、ぬか漬けがおいしくなる。</li>
     <li><b class="ukon">店</b>: お金がたまったら、冷蔵庫・室・樽を買う。評判と常連もここで見る。</li>
@@ -471,9 +483,32 @@ async function advance(ticks, { summary = true } = {}) {
     if (ticks > 1) await world.wait(120);
   }
   ui.busy = false;
+  ui.clock.phase = 0;
   const tod = game.timeOfDay();
   say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[tod]}。${{ morning: '朝は仕込みどき。', noon: 'お昼どき、お客が多い。', evening: '夕方。もうひと売り。', night: '夜は閉店。翌朝まで休もう。' }[tod]}`);
   renderAll();
+  tryOpenShop();
+}
+
+// ------------------------------------------------------------ 時間制
+// 時間帯は実時間で進む（config.calendar.realSeconds ÷ 設定の速さ）。窓を開いている間・場面の間・一時停止中は止まる。
+// 進みきったら「とばす」と同じく次の時間帯へ（夜明けには店じまいの窓）。
+const clockRunning = () => ui.started && !ui.paused && !ui.win && !ui.busy;
+function tickClock(dtMs) {
+  if (!clockRunning()) return;
+  const secs = C.calendar.realSeconds[game.timeOfDay()] ?? 40;
+  ui.clock.phase += (dtMs / 1000) * settings.timeScale / secs;
+  const fill = $('clockFill');
+  if (fill) fill.style.width = `${Math.min(100, ui.clock.phase * 100)}%`;
+  if (ui.clock.phase >= 1) { ui.clock.phase = 0; advance(1); }
+}
+/** 店先に出している樽があれば、この時間帯の店を開ける（1つの時間帯に1回。夜は開かない）。 */
+function tryOpenShop() {
+  const d = ui.display;
+  if (d == null) return;
+  if (!game.barrels[d]) { ui.display = null; renderCommands(); return; }
+  if (!game.isOpen() || game.lastSaleTick === game.tick) return;
+  startSale(d);
 }
 
 async function doBrew() {
@@ -492,25 +527,40 @@ async function doBrew() {
   ui.busy = false; renderAll();
 }
 
-async function doSell(slot) {
+/** 樽を店先に出す。店が開いていてまだこの時間帯の客が来ていなければ、すぐ店を開ける。 */
+function doSell(slot) {
+  if (!game.barrels[slot]) { sound.se('error'); say('その樽は空です。'); return; }
+  ui.display = slot;
+  closeWin();
+  if (game.isOpen() && game.lastSaleTick !== game.tick) { startSale(slot); return; }
+  sound.se('select');
+  say(game.isOpen() ? `樽${slot + 1}を店先に出した。この時間帯のお客はもう来たので、次の時間帯から売れる。` : `樽${slot + 1}を店先に出した。朝になったら店が開く。`, '店主');
+  renderAll();
+}
+function hideSlot(slot) {
+  if (ui.display !== slot) return;
+  ui.display = null;
+  sound.se('select');
+  say(`樽${slot + 1}を店先から下げた。`, '店主');
+  renderAll();
+}
+/** この時間帯の客を引いて、時間帯のあいだに散らして来させる（結果は先に確定。見た目だけ時間をかける）。 */
+async function startSale(slot) {
   const res = game.sell(slot);
   if (!res.ok) { sound.se('error'); say(res.error); return; }
-  closeWin();
-  ui.busy = true; renderAll();
   ui.today.visitors += res.visitors.length;
   if (!res.visitors.length) {
-    say(game.weather === 'sunny' ? '店を開けたが、誰も来なかった…' : `${C.weatherName[game.weather]}の日は客足が遠のく…誰も来なかった。`);
-    ui.busy = false; renderAll(); return;
+    say(game.weather === 'sunny' ? '店を開けたが、この時間帯は誰も来なかった…' : `${C.weatherName[game.weather]}の日は客足が遠のく…誰も来なかった。`);
+    renderAll(); return;
   }
-  say(`店を開けた。${res.visitors.length}人のお客が来た。`);
-  const lane = SCENE.lane;
-  await world.saleScene(res.visitors, res.season, (v) => {
-    if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 140, 'bad'); return; }
-    if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`+${yen(v.price)}`, lane.standX, 140); renderHud(); }
-    else if (!v.soldOut) floatText('買わない…', lane.standX, 140, 'bad');
-    if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 120, 'good'), 500); }
-  });
-  ui.shownMoney = game.money;
+  sound.se('open');
+  say(`店を開けた。${C.timeName[res.time]}のうちに${res.visitors.length}人来そうだ。`);
+  // 客は時間帯の残りに散らして来る（最初の1人は少し早く）。速さの設定で短くなる
+  const secs = (C.calendar.realSeconds[game.timeOfDay()] ?? 40) / settings.timeScale;
+  const remain = Math.max(8, secs * (1 - ui.clock.phase)) * 1000;
+  const span = remain * 0.7, n = res.visitors.length;
+  const gaps = res.visitors.map((_, i) => (i === 0 ? 800 + Math.random() * 1500 : Math.max(2600, (span / n) * (0.6 + Math.random() * 0.8))));
+  // 記録は先に書く（お客が歩いている間に帳面を開いても見える）
   ui.today.revenue += res.revenue; ui.today.sold += res.sold;
   ui.today.joined += res.visitors.filter((v) => v.regular?.joined).length;
   const repNote = (() => { const d = Math.round(res.reputation.after) - Math.round(res.reputation.before); return d ? ` ・ 評判 ${d > 0 ? '+' : ''}${d}` : ''; })();
@@ -520,17 +570,26 @@ async function doSell(slot) {
     revenue: res.revenue, batch: res.batch.closed ? res.batch : null,
   });
   ui.log.length = Math.min(ui.log.length, 12);
-  ui.busy = false;
+  if (res.discovery?.isNew) ui.today.found++;
+  if (res.batch.closed) ui.display = null; // 売り切れ・傷みで空になった
+  renderCommands(); save();
+  const lane = SCENE.lane;
+  await world.saleScene(res.visitors, res.season, (v) => {
+    if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 140, 'bad'); return; }
+    if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`+${yen(v.price)}`, lane.standX, 140); renderHud(); }
+    else if (!v.soldOut) floatText('買わない…', lane.standX, 140, 'bad');
+    if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 120, 'good'), 500); }
+  }, gaps);
+  ui.shownMoney = game.money;
   let msg = res.spoiled ? '傷んだ樽を出してしまった…樽は空になった。評判が下がった。'
-    : `売上 ${yen(res.revenue)}（${res.sold}個）。${res.batch.closed ? `樽が空になった。この樽の収支 ${res.batch.profit >= 0 ? '+' : ''}${yen(res.batch.profit)}。` : ''}`;
+    : `${C.timeName[res.time]}の売上 ${yen(res.revenue)}（${res.sold}個）。${res.batch.closed ? `樽が空になった。この樽の収支 ${res.batch.profit >= 0 ? '+' : ''}${yen(res.batch.profit)}。` : ''}`;
   if (res.discovery?.isNew) {
-    ui.today.found++;
     msg = `図鑑に新しい組み合わせが載った！ ${msg}`;
     sound.se('found');
     floatText('図鑑に登録！', 192, 60, 'good');
   }
   if (res.spoiled) sound.se('bad');
-  say(msg, '店主');
+  if (!ui.win) say(msg, '店主');
   renderAll();
 }
 
@@ -557,6 +616,7 @@ document.addEventListener('click', (e) => {
   if (!t) return;
   sound.unlock();
   const d = t.dataset;
+  if (d.cmd === 'pause') { ui.paused = !ui.paused; sound.se('click'); renderHud(); return; }
   if (d.cmd) {
     sound.se('click');
     if (ui.busy) return;
@@ -570,7 +630,9 @@ document.addEventListener('click', (e) => {
   if (d.chip != null) { sound.se('select'); ui.slot = +d.chip; openWin('barrel', { slot: +d.chip }); return; }
   if (d.goto != null) { sound.se('select'); ui.slot = +d.goto; ui.win = { kind: 'barrel', slot: +d.goto }; ui.confirm = null; renderWin(); $('modal').hidden = false; renderChips(); return; }
   if (d.tab) { sound.se('select'); ui.win.tab = d.tab; renderWin(); return; }
-  if (d.pickle) { sound.se('select'); ui.recipe.pickle = d.pickle; ui.recipe.saltPct = SALT_DEFAULT[d.pickle] ?? 3; clampRecipe(); renderWin(); return; }
+  if (d.pickle) { sound.se('select'); ui.recipe.pickle = d.pickle; ui.recipe.saltPct = SALT_DEFAULT[d.pickle] ?? 3; ui.recipe.count = game.standardCount(d.pickle); clampRecipe(); renderWin(); return; }
+  if (d.count) { sound.se('select'); ui.recipe.count = clampCount((ui.recipe.count ?? 1) + +d.count); renderWin(); return; }
+  if (d.countset) { sound.se('select'); ui.recipe.count = clampCount(+d.countset); renderWin(); return; }
   if (d.veg) { sound.se('select'); ui.recipe.veg = d.veg; renderWin(); return; }
   if (d.add) { sound.se('select'); const a = ui.recipe.additives; ui.recipe.additives = a.includes(d.add) ? a.filter((x) => x !== d.add) : [...a, d.add].slice(0, C.additiveMax); renderWin(); return; }
   if (d.place) { sound.se('select'); ui.recipe.place = d.place; renderWin(); return; }
@@ -585,6 +647,7 @@ document.addEventListener('click', (e) => {
   if (act === 'openBrew') { ui.slot = slot; clampRecipe(); openWin('brew'); return; }
   if (act === 'openNuka') { openWin('nuka'); return; }
   if (act === 'sellSlot') { doSell(slot); return; }
+  if (act === 'hideSlot') { hideSlot(slot); return; }
   if (act === 'taste') { const r = game.tasteTest(slot); sound.se('taste'); if (r?.ok === false) say(r.error); renderWin(); renderChips(); return; }
   if (act === 'care') { const r = game.care(slot); if (!r.ok) { say(r.error); return; } sound.se('care'); say(`樽${slot + 1}の白い膜を取った。`, '店主'); world.careScene(); renderAll(); return; }
   if (act === 'discard') {
@@ -593,7 +656,7 @@ document.addEventListener('click', (e) => {
   }
   if (act === 'stir') { const r = game.stirNuka(); if (!r.ok) { say(r.error); return; } sound.se('stir'); say('ぬか床をかき混ぜた。いい香りだ。', '店主'); world.careScene(); renderAll(); return; }
   if (act === 'saltNuka') { const r = game.saltNuka(); say(r.ok ? 'ぬか床に塩を足した。酸味が和らいだ。' : r.error); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
-  if (act === 'dayClose') { closeWin(); say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目の朝。今日も店を開けよう。`); return; }
+  if (act === 'dayClose') { closeWin(); say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目の朝。今日も店を開けよう。`); tryOpenShop(); return; }
   if (act === 'help') { openWin('help'); return; }
   if (act === 'ambient') { closeWin(); if (!world.busy) world.ambientVisit(view().season); return; }
   if (act === 'toTitle') { closeWin(); showTitle(); return; }
@@ -606,6 +669,8 @@ document.addEventListener('click', (e) => {
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (t.id === 'salt') { ui.recipe.saltPct = +t.value; renderWin(); $('salt')?.focus(); return; }
+  if (t.id === 'count') { if (t.value === '') return; ui.recipe.count = clampCount(+t.value); renderWin(); const el = $('count'); el?.focus(); el?.select?.(); return; }
+  if (t.id === 'timeScale') { settings.timeScale = +t.value; saveSettings(); renderWin(); return; }
   if (t.id === 'vBgm' || t.id === 'vSe') { settings[t.id === 'vBgm' ? 'bgm' : 'se'] = +t.value; sound.setVolumes(settings.bgm, settings.se); t.nextElementSibling.textContent = Math.round(+t.value * 100); saveSettings(); return; }
   if (t.id === 'practice') { settings.practice = t.checked; saveSettings(); return; }
   if (t.id === 'speed') { settings.speed = +t.value; world.speed = settings.speed; saveSettings(); return; }
@@ -666,17 +731,25 @@ $('title').addEventListener('click', (e) => {
   } else {
     say(`おかえりなさい。${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[game.timeOfDay()]}から。`, '店主');
   }
+  tryOpenShop();
 });
 
 // ------------------------------------------------------------ 大きさと描画ループ
+const SIDE_W = 300; // 横並びのときの右の帯（帳場・会話・コマンド）の幅
 function fit() {
-  const availW = document.body.clientWidth - 32 - 16; // 左右の余白と枠
-  const availH = window.innerHeight - 300; // 帳場・会話窓・コマンドのぶん
-  let s = Math.min(availW / SCENE.w, Math.max(1, availH / SCENE.h));
-  s = s >= 1 ? Math.max(1, Math.floor(s)) : availW / SCENE.w; // ふだんは整数倍（ぼかさない）。狭いスマホは幅に合わせる
+  const bw = document.body.clientWidth - 32, ih = window.innerHeight;
+  // 縦積み（帳場・店先・会話窓・コマンドの順）: 店先の高さは、ほかのぶんを引いた残り
+  const stacked = Math.min((bw - 16) / SCENE.w, Math.max(1, (ih - 300) / SCENE.h));
+  // 横並び（店先を左に、帳場・会話・コマンドを右の帯に）: 店先は画面いっぱいまで大きくできる
+  const wideS = Math.min((bw - 16 - SIDE_W - 16) / SCENE.w, (ih - 52) / SCENE.h);
+  // PC では、店先が大きくなる方を選ぶ（同じなら横並び）。整数倍で描く（ぼかさない）。狭いスマホは幅に合わせる
+  const wide = bw >= 1000 && Math.floor(wideS) >= Math.max(2, Math.floor(stacked));
+  let s = wide ? wideS : stacked;
+  s = s >= 1 ? Math.max(1, Math.floor(s)) : (bw - 16) / SCENE.w;
   const w = Math.floor(SCENE.w * s), h = Math.floor(SCENE.h * s);
   canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
-  $('app').style.width = `${w + 12}px`;
+  $('app').classList.toggle('wide', wide);
+  $('app').style.width = wide ? `${w + 12 + 16 + SIDE_W}px` : `${w + 12}px`;
   $('stageWrap').style.width = `${w + 12}px`; // 枠（6px×2）込み。container-type のため幅を決めておく
 }
 window.addEventListener('resize', fit);
@@ -705,6 +778,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - last); last = now;
   world.update(dt);
+  tickClock(dt);
   renderer.draw(view(), now);
   renderBubbles();
   requestAnimationFrame(frame);
@@ -720,4 +794,4 @@ renderAll();
 showTitle();
 say('');
 requestAnimationFrame(frame);
-window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, renderAll, openWin, closeWin }; // 動作確認用（scripts/e2e.js）
+window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin }; // 動作確認用（scripts/e2e.js）

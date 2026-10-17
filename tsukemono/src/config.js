@@ -249,7 +249,8 @@ export const CONFIG = {
   // 客の満足度・売上
   // ---------------------------------------------------------------
   sales: {
-    portionsPerBatch: 6, // 【仮置き】1樽で売れる個数
+    portionsPerBatch: 6, // 【仮置き】1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値）
+    barrelCapacity: 24, // 【仮置き】1樽に仕込める最大の個数（たくあんの標準18個より少し多い）
     satScale: 1.7, // 【仮置き】好みとのズレ(重み付き平均)×この値を100から引く
     stageFactor: { raw: 1, ripe: 1, over: 0.92, sour: 0.7 }, // 【仮置き】過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる）
     likeBonus: 8, // 【仮置き】好きな種類の漬物なら満足度+8
@@ -274,6 +275,8 @@ export const CONFIG = {
     // 時間帯の意味づけ（仮置き）: 朝=仕込み / 昼=熟成（日を進める） / 夕=販売 / 夜=締め
     // 実際には、どの時間帯でも仕込み・販売はできる（夜は閉店）。
     storeOpen: { morning: true, noon: true, evening: true, night: false },
+    // 時間制: 各時間帯が実時間で何秒つづくか（設定の速さで割る）。夜は短い 【仮置き】
+    realSeconds: { morning: 40, noon: 40, evening: 40, night: 10 },
   },
   season: {
     spring: { name: '春', ambientTemp: 15, prefShift: {} },

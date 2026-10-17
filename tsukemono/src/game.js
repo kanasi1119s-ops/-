@@ -77,8 +77,15 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   /** 今の季節の品質（食感に掛ける）。旬は高い。 */
   g.vegQuality = (veg) => { const [lo, hi] = cfg.market.qualityRange; return Math.min(hi, Math.max(lo, 2 - seasonFactor(veg))); };
   g.inSeason = (veg) => seasonFactor(veg) < 1;
-  g.brewCost = ({ veg, saltPct, additives = [] }) => g.vegCost(veg) + Math.round(saltPct * cfg.sales.saltCostPerPct)
-    + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
+  /** 標準の個数（漬物ごと。個数を選ばなければこの数で、仕入れ値はこの数ぶん）。 */
+  g.standardCount = (pickle) => cfg.pickles[pickle]?.portions ?? cfg.sales.portionsPerBatch;
+  /** 仕込みの費用（円）。count を選ぶと、野菜と塩の代金は標準の個数に対する比で増減する（調味は樽ごとに1回）。 */
+  g.brewCost = ({ veg, saltPct, additives = [], count, pickle }) => {
+    const base = g.vegCost(veg) + Math.round(saltPct * cfg.sales.saltCostPerPct);
+    const std = g.standardCount(pickle);
+    const scaled = count && count !== std ? Math.round((base * count) / std / 10) * 10 : base;
+    return scaled + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
+  };
 
   // ---- 置き場所 ----
   /** 置き場所の温度（℃）。 */
@@ -104,8 +111,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return { ok: true, cost };
   };
 
-  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [] }) => {
+  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count }) => {
     additives = [...new Set(additives)];
+    count = count ?? g.standardCount(pickle);
+    if (!Number.isInteger(count) || count < 1 || count > cfg.sales.barrelCapacity) return { ok: false, error: `個数は1〜${cfg.sales.barrelCapacity}個です` };
     if (additives.length > cfg.additiveMax) return { ok: false, error: `調味は${cfg.additiveMax}つまでです` };
     if (additives.some((a) => !cfg.additives[a])) return { ok: false, error: 'その調味はありません' };
     if (place != null) {
@@ -119,12 +128,12 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
     if (g.barrels[slot]) return { ok: false, error: '樽が空いていません' };
     if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
-    const cost = g.brewCost({ veg, saltPct: p.usesNukaBed ? 0 : saltPct, additives });
+    const cost = g.brewCost({ veg, saltPct: p.usesNukaBed ? 0 : saltPct, additives, count, pickle });
     if (cost > g.money) return { ok: false, error: 'お金が足りません' };
     g.money -= cost;
     g.stats.cost += cost;
     if (p.usesNukaBed) g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality: g.vegQuality(veg), startTick: g.tick, portions: p.portions ?? cfg.sales.portionsPerBatch, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality: g.vegQuality(veg), startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 

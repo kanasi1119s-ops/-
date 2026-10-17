@@ -1,8 +1,8 @@
 // 「次にやること」の案内（画面なし。ゲームの状態を読むだけ）。
 import { fermentRate } from './model.js';
 
-/** 今の状態から、次にやると良いことを1行で返す。 */
-export function nextStep(g) {
+/** 今の状態から、次にやると良いことを1行で返す。ui.display = 店先に出している樽（画面の状態。なければ null）。 */
+export function nextStep(g, ui = {}) {
   const cfg = g.cfg;
   const items = g.barrels.map((b, i) => (b ? { i, b, t: g.tasteOf(i) } : null)).filter(Boolean);
   const ready = items.filter((x) => x.t.stage === 'ripe');
@@ -12,10 +12,11 @@ export function nextStep(g) {
   const cheapest = Math.min(...Object.keys(cfg.vegetables).map((veg) => g.brewCost({ veg, saltPct: 2 })));
   const empty = g.barrels.findIndex((b) => !b);
 
-  if (!g.isOpen() && (ready.length || late.length)) return '夜は閉店。時間を進めて朝にしよう。';
-  if (g.isOpen() && !soldNow && late.length) return `${late.map(n).join('・')}は酸っぱくなりかけ。早めに売るか、捨てて仕込み直そう。`;
-  if (g.isOpen() && !soldNow && ready.length) return `${ready.map(n).join('・')}が食べ頃。味見して「販売する」。`;
-  if (soldNow && (ready.length || late.length)) return '同じ時間帯に店を開けられるのは1回。時間を進めよう。';
+  const shown = ui.display != null && g.barrels[ui.display];
+  if (!g.isOpen() && (ready.length || late.length)) return shown ? '夜は閉店。朝になれば店先の樽で店が開く（「とばす」で朝へ）。' : '夜は閉店。食べ頃の樽を「店先に出す」と、朝から売れる。';
+  if (g.isOpen() && !soldNow && late.length) return `${late.map(n).join('・')}は酸っぱくなりかけ。早めに店先に出すか、捨てて仕込み直そう。`;
+  if (g.isOpen() && !soldNow && ready.length) return `${ready.map(n).join('・')}が食べ頃。味見して「店先に出す」。`;
+  if (soldNow && (ready.length || late.length)) return shown ? 'この時間帯のお客はもう来た。次の時間帯を待とう（「とばす」で先へ）。' : '食べ頃の樽を「店先に出す」と、次の時間帯からお客に売れる。';
   const filmy = items.filter((x) => !cfg.pickles[x.b.pickle].usesNukaBed && x.t.filmVisible && x.b.lastCareTick !== g.tick);
   if (filmy.length) return `${filmy.map(n).join('・')}に白い膜が出ている。「手入れ」で取ろう。`;
   const usesBed = items.some((x) => cfg.pickles[x.b.pickle].usesNukaBed) || g.nuka.maturity > 0;
@@ -38,7 +39,7 @@ export function nextStep(g) {
       return { x, left };
     }).sort((a, b) => a.left - b.left)[0];
     const d = soon.left < 1 ? '1日もかからず' : `あと約${Math.ceil(soon.left)}日で`;
-    return `${n(soon.x)}は${d}食べ頃。時間を進めよう。`;
+    return `${n(soon.x)}は${d}食べ頃。待とう（急ぐなら「休む」）。`;
   }
-  return '時間を進めよう。';
+  return '時間が進むのを待とう（「とばす」で先へ）。';
 }
