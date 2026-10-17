@@ -10,7 +10,7 @@ import { TRACE } from './trace.js';
 const posesOf = (name) => TRACE.poses[name].map((p, i) => ({ ...p, img: `pose_${name}_${i}` }));
 
 export const BODIES = {
-  keeper: { kind: 'poses', faces: 'right', poses: posesOf('keeper'), hand: [26, 50] },
+  keeper: { kind: 'poses', faces: 'right', poses: posesOf('keeper'), hand: [52, 100] },
   woman: { kind: 'poses', faces: 'right', poses: posesOf('woman') },
   granny: { kind: 'poses', faces: 'right', poses: posesOf('granny') },
   granny2: { kind: 'poses', faces: 'right', poses: posesOf('granny2') },
@@ -37,9 +37,9 @@ export const BODIES = {
   centaur: { kind: 'poses', faces: 'right', poses: posesOf('centaur') },
   witch: { kind: 'poses', faces: 'right', poses: posesOf('witch') },
   demon: { kind: 'poses', faces: 'right', poses: posesOf('demon') },
-  kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 38, legX: 9, headY: 16, hand: [-4, 22] },
-  kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 38, legX: 10, headY: 15, hand: [-4, 22] },
-  kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 38, legX: 11, headY: 15, hand: [-4, 22] },
+  kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 76, legX: 18, headY: 32, hand: [-8, 44] },
+  kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 76, legX: 20, headY: 30, hand: [-8, 44] },
+  kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 76, legX: 22, headY: 30, hand: [-8, 44] },
 };
 
 // 色の差し替え（同じ絵から色違いの人を作る）。rules は上から順に、当てはまった最初のものを使う。
@@ -47,9 +47,9 @@ export const BODIES = {
 export const RECOLORS = {
   // おじいさんの絵の色違い（上着を藍、ズボンを濃く、髪を黒く）
   genOutfit: [
-    { when: { rows: [0, 20], hue: [0.0, 0.2], light: [0, 0.55], sat: [0, 0.35] }, to: { mix: ['#2a2420', 0.7] } },
-    { when: { rows: [16, 50], hue: [0.2, 0.5], sat: [0.1, 1] }, to: { mix: ['#34507a', 0.75] } },
-    { when: { rows: [40, 80], hue: [0.05, 0.16], sat: [0.15, 1], light: [0.3, 0.75] }, to: { mix: ['#4a4a55', 0.7] } },
+    { when: { rows: [0, 40], hue: [0.0, 0.2], light: [0, 0.55], sat: [0, 0.35] }, to: { mix: ['#2a2420', 0.7] } },
+    { when: { rows: [32, 100], hue: [0.2, 0.5], sat: [0.1, 1] }, to: { mix: ['#34507a', 0.75] } },
+    { when: { rows: [80, 160], hue: [0.05, 0.16], sat: [0.15, 1], light: [0.3, 0.75] }, to: { mix: ['#4a4a55', 0.7] } },
   ],
 };
 

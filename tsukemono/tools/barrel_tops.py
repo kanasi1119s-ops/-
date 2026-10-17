@@ -16,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 IMG = os.path.join(HERE, '..', 'assets', 'img')
 OUT = os.path.join(HERE, '..', 'assets', 'editor', 'barrels')
 
+SC = 2  # 画面の倍率（tools/trace.py の SC と同じ。下の座標と野菜の形は 384×216 で書き、SC 倍して使う）
 # 樽の口の内側（背景の絵の座標。中心・横半径・縦半径）
 MOUTHS = [
     {'cx': 113.5, 'cy': 168.7, 'rx': 16.0, 'ry': 4.9},
@@ -72,6 +73,11 @@ SPRITES = {
         ['.mmmmm.x', 'mNIiMMxX', 'mMNMMMmx', '.mmmmm..'],
     ],
 }
+
+
+MOUTHS = [{k: v * SC for k, v in m.items()} for m in MOUTHS]
+# 野菜の形は SC 倍に拡大（1ドット→SC×SC）
+SPRITES = {k: [[''.join(ch * SC for ch in row) for row in spr for _ in range(SC)] for spr in v] for k, v in SPRITES.items()}
 
 
 def mouth_mask(i):
@@ -137,7 +143,7 @@ def interior(mask, seed, wet):
             edge = abs(x - cx) / rx
             if t < 0.45:  # 奥の内側の板
                 col = PAL['b'] if t < 0.12 else PAL['w'] if t < 0.3 else PAL['W']  # いちばん上はふちの影
-                if x % 4 == 1 and t >= 0.12:
+                if x % (4 * SC) == 1 and t >= 0.12:
                     col = PAL['v']  # 板の継ぎ目
             else:  # 底
                 col = PAL['w'] if t < 0.65 else PAL['b']
@@ -153,7 +159,7 @@ def interior(mask, seed, wet):
                     if rng.random() < 0.15:
                         img[y, x] = (*PAL['Q'], 255)
         yy = int(top + (bot - top) * 0.68)
-        for x in range(int(cx) - 4, int(cx)):
+        for x in range(int(cx) - 4 * SC, int(cx)):
             if mask[yy, x]:
                 img[yy, x] = (*PAL['z'], 255)  # 漬け汁の照り
     return img
@@ -167,17 +173,17 @@ def filled(mask, kind, seed):
     top, bot = ys.min(), ys.max()
     # 中身は奥のふちの影（上の2行）より下に詰める。手前ほど後から置く
     clip = mask.copy()
-    clip[:top + 2] = False
+    clip[:top + 2 * SC] = False
     sprites = SPRITES[kind]
     y = top + 1
     row = 0
     while y <= bot:
-        x = -rng.randint(1, 5) - (2 if row % 2 else 0)
+        x = -rng.randint(1, 5) * SC - (2 * SC if row % 2 else 0)
         while x < w:
             spr = rng.choice(sprites)
             put(img, spr, x, y + rng.choice((0, 0, 1)) - 1, rng.random() < 0.35, clip)
             x += len(spr[0]) - 1 + rng.choice((0, 0, 1))
-        y += 2
+        y += 2 * SC
         row += 1
     # 漬け汁が手前のふちぎわにのぞく（つやの点）
     for x in range(w):
@@ -230,7 +236,7 @@ def main():
             for i in range(3):
                 d = designs[f'slot{i}_{kinds[i]}']
                 c.alpha_composite(Image.open(os.path.join(OUT, f'slot{i}_{kinds[i]}.design.png')), (d['x'], d['y']))
-            rows.append(c.crop((90, 148, 255, 182)))
+            rows.append(c.crop((90 * SC, 148 * SC, 255 * SC, 182 * SC)))
         out = Image.new('RGBA', (rows[0].width, rows[0].height * 3))
         for k, r in enumerate(rows):
             out.paste(r, (0, k * r.height))

@@ -24,7 +24,7 @@ TRACE = json.loads(trace[trace.index('{'):trace.rindex('}') + 1])
 SKIP = {'keeper', 'centaur'}  # 店主は歩かない。ケンタウロスは脚が4本
 SYMS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 FRAME_MS = 110
-PAD = 1  # 体が1ドット浮くぶん、上に余白
+PAD = 2  # 体が浮くぶん、上に余白（768×432: 2ドット）
 # 人ごとの手直し: stride=歩幅の倍率、lift=足を上げる高さの倍率、hip=腰の高さ（行）
 # 人ごとの指定（元の絵を方眼で見て決めた）:
 #   cut   … この行から下を脚として描き直す（ズボンは股のあたり、スカート・着物はすそ）
@@ -32,31 +32,31 @@ PAD = 1  # 体が1ドット浮くぶん、上に余白
 #   skirt … すそから下だけ脚が見える人（腰はすその中に隠れる）
 #   stride / lift … 歩幅・足の上げ方の倍率（長いすその人は小さく）
 SPEC = {
-    'woman': {'cut': 66, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
-    'granny': {'cut': 64, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
-    'granny2': {'cut': 64, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
-    'oldman': {'cut': 47, 'keep': [[44, 0, 67, 12]], 'stride': 0.85},
-    'boy': {'cut': 46, 'keep': [[35, 0, 49, 12]], 'skirt': True, 'color': (205, 140, 100)},  # 脚は肌の色（靴下の白を拾わない）
-    'girl': {'cut': 46, 'keep': [[35, 0, 49, 10]], 'skirt': True},
-    'student': {'cut': 49, 'keep': [[37, 0, 55, 13]], 'skirt': True},
-    'gakuran': {'cut': 46, 'keep': [[37, 0, 56, 13]]},
-    'blazer': {'cut': 51, 'keep': [[41, 0, 58, 13]], 'skirt': True},
-    'yankee': {'cut': 49, 'keep': [[43, 0, 59, 15]]},
-    'suit': {'cut': 48, 'keep': [[46, 0, 63, 14]]},
-    'shades': {'cut': 47, 'keep': [[43, 0, 59, 16]]},
-    'volley': {'cut': 46, 'keep': [[42, 0, 57, 13]], 'skirt': True},
-    'soccer': {'cut': 47, 'keep': [[42, 0, 56, 12]], 'skirt': True},
-    'racer': {'cut': 46, 'keep': [[43, 0, 58, 14]], 'skirt': True},
-    'karate': {'cut': 45, 'keep': [[43, 0, 58, 13]]},
-    'samurai': {'cut': 64, 'keep': [[41, 0, 58, 14]], 'skirt': True, 'stride': 0.6, 'lift': 0.4},
-    'beach': {'cut': 44, 'keep': [[41, 0, 57, 13]], 'skirt': True},
-    'parasol': {'cut': 70, 'keep': [[47, 4, 73, 18]], 'skirt': True, 'stride': 0.5, 'lift': 0.3},
-    'angler': {'cut': 52, 'keep': [[48, 5, 67, 22]]},
-    'hiker': {'cut': 50, 'keep': [[44, 0, 59, 13]]},
-    'knight': {'cut': 52, 'keep': [[47, 0, 61, 14]], 'skirt': True},
-    'alien': {'cut': 47, 'keep': [[39, 0, 56, 12]]},
-    'witch': {'cut': 66, 'keep': [[40, 0, 66, 32]], 'skirt': True, 'stride': 0.55, 'lift': 0.35},
-    'demon': {'cut': 56, 'keep': [[47, 0, 61, 14]], 'skirt': True},
+    'woman': {'cut': 132, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'granny': {'cut': 128, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'granny2': {'cut': 128, 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'oldman': {'cut': 94, 'keep': [[88, 0, 134, 24]], 'stride': 0.85},
+    'boy': {'cut': 92, 'keep': [[70, 0, 98, 24]], 'skirt': True, 'color': (205, 140, 100)},  # 脚は肌の色（靴下の白を拾わない）
+    'girl': {'cut': 92, 'keep': [[70, 0, 98, 20]], 'skirt': True},
+    'student': {'cut': 98, 'keep': [[74, 0, 110, 26]], 'skirt': True},
+    'gakuran': {'cut': 92, 'keep': [[74, 0, 112, 26]]},
+    'blazer': {'cut': 102, 'keep': [[82, 0, 116, 26]], 'skirt': True},
+    'yankee': {'cut': 98, 'keep': [[86, 0, 118, 30]]},
+    'suit': {'cut': 96, 'keep': [[92, 0, 126, 28]]},
+    'shades': {'cut': 94, 'keep': [[86, 0, 118, 32]]},
+    'volley': {'cut': 92, 'keep': [[84, 0, 114, 26]], 'skirt': True},
+    'soccer': {'cut': 94, 'keep': [[84, 0, 112, 24]], 'skirt': True},
+    'racer': {'cut': 92, 'keep': [[86, 0, 116, 28]], 'skirt': True},
+    'karate': {'cut': 90, 'keep': [[86, 0, 116, 26]]},
+    'samurai': {'cut': 128, 'keep': [[82, 0, 116, 28]], 'skirt': True, 'stride': 0.6, 'lift': 0.4},
+    'beach': {'cut': 88, 'keep': [[82, 0, 114, 26]], 'skirt': True},
+    'parasol': {'cut': 140, 'keep': [[94, 8, 146, 36]], 'skirt': True, 'stride': 0.5, 'lift': 0.3},
+    'angler': {'cut': 104, 'keep': [[96, 10, 134, 44]]},
+    'hiker': {'cut': 100, 'keep': [[88, 0, 118, 26]]},
+    'knight': {'cut': 104, 'keep': [[94, 0, 122, 28]], 'skirt': True},
+    'alien': {'cut': 94, 'keep': [[78, 0, 112, 24]]},
+    'witch': {'cut': 132, 'keep': [[80, 0, 132, 64]], 'skirt': True, 'stride': 0.55, 'lift': 0.35},
+    'demon': {'cut': 112, 'keep': [[94, 0, 122, 28]], 'skirt': True},
 }
 
 
@@ -88,7 +88,7 @@ def drop_specks(a):
                         if 0 <= ny < h and 0 <= nx < w and a[ny, nx, 3] and not seen[ny, nx]:
                             seen[ny, nx] = True
                             stack.append((ny, nx))
-                if len(comp) < 3:
+                if len(comp) < 12:  # 768×432: 1倍のときの3ドット相当
                     for cy, cx in comp:
                         a[cy, cx] = 0
     return a

@@ -24,7 +24,7 @@ from walk_touch import TOUCH
 RECT_KEEP = {'witch'}
 
 FRAME_MS = 110
-PAD_T, PAD_B = 1, 2  # 上: 体が沈むぶん（余裕）、下: 影のぶん
+PAD_T, PAD_B = 2, 4  # 上: 体が沈むぶん（余裕）、下: 影のぶん
 SHADOW = (30, 22, 16)
 SHADOW_OPACITY = 0.32
 BOB = [0, 1, 0, 0, 0, 1, 0, 0]          # 体を下げる量（一歩の直後に沈む）
@@ -95,7 +95,7 @@ def main():
         touch = TOUCH.get(name, {})
         cut = touch.get('cut', t['cut']) + PAD_T
         head = int(np.nonzero(al.any(1))[0].min())
-        hip = cut - 2 if not t.get('skirt') else round(sole - 0.47 * (sole - head))  # 腰（脚を振る軸）
+        hip = cut - 4 if not t.get('skirt') else round(sole - 0.47 * (sole - head))  # 腰（脚を振る軸）
         keep = [[k[0] + PAD_T, k[1], k[2] + PAD_T, k[3]] for k in t.get('keep', [])]
         # 持ち物は色とつながりで形どおりに切り分ける（tools/walk_items.py）。魔女はほうきと服が混ざるので四角のまま
         keep = [[k[0] + PAD_T, k[1], k[2] + PAD_T, k[3]] for k in touch['keep']] if 'keep' in touch else keep

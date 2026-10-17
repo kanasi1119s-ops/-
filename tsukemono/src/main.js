@@ -520,7 +520,7 @@ async function doBrew() {
   closeWin();
   sound.se('brew');
   const s = slotPos(slot);
-  floatText(`-${yen(r.cost)}`, s.cx, SCENE.labelY - 30, 'bad');
+  floatText(`-${yen(r.cost)}`, s.cx, SCENE.labelY - 60, 'bad');
   say(`樽${slot + 1}に${barrelName(game.barrels[slot])}を仕込んだ。`, '店主');
   ui.busy = true; renderAll();
   await world.brewScene(slot);
@@ -575,10 +575,10 @@ async function startSale(slot) {
   renderCommands(); save();
   const lane = SCENE.lane;
   await world.saleScene(res.visitors, res.season, (v) => {
-    if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 140, 'bad'); return; }
-    if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`+${yen(v.price)}`, lane.standX, 140); renderHud(); }
-    else if (!v.soldOut) floatText('買わない…', lane.standX, 140, 'bad');
-    if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 120, 'good'), 500); }
+    if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 280, 'bad'); return; }
+    if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`+${yen(v.price)}`, lane.standX, 280); renderHud(); }
+    else if (!v.soldOut) floatText('買わない…', lane.standX, 280, 'bad');
+    if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 240, 'good'), 500); }
   }, gaps);
   ui.shownMoney = game.money;
   let msg = res.spoiled ? '傷んだ樽を出してしまった…樽は空になった。評判が下がった。'
@@ -586,7 +586,7 @@ async function startSale(slot) {
   if (res.discovery?.isNew) {
     msg = `図鑑に新しい組み合わせが載った！ ${msg}`;
     sound.se('found');
-    floatText('図鑑に登録！', 192, 60, 'good');
+    floatText('図鑑に登録！', 384, 120, 'good');
   }
   if (res.spoiled) sound.se('bad');
   if (!ui.win) say(msg, '店主');
@@ -687,8 +687,8 @@ canvas.addEventListener('click', (e) => {
   if (!ui.started || ui.busy) return;
   const r = canvas.getBoundingClientRect();
   const x = ((e.clientX - r.left) / r.width) * SCENE.w, y = ((e.clientY - r.top) / r.height) * SCENE.h;
-  if (y < 140) return;
-  let best = -1, bd = 22;
+  if (y < 280) return;
+  let best = -1, bd = 44;
   game.barrels.forEach((_, i) => { const s = slotPos(i); if (s && Math.abs(s.cx - x) < bd) { bd = Math.abs(s.cx - x); best = i; } });
   if (best >= 0) { sound.unlock(); sound.se('select'); ui.slot = best; openWin('barrel', { slot: best }); }
 });
@@ -766,9 +766,9 @@ function renderBubbles() {
     let el = bubbleEls.get(a);
     if (!el) { el = document.createElement('div'); el.className = 'say'; layer.appendChild(el); bubbleEls.set(a, el); }
     if (el.textContent !== a.bubble) el.textContent = a.bubble;
-    const x = Math.min(SCENE.w - 50, Math.max(50, a.x));
+    const x = Math.min(SCENE.w - 100, Math.max(100, a.x));
     el.style.left = `${(x / SCENE.w) * 100}%`;
-    el.style.top = `${(((a.headTop ?? a.y - 60) - 3) / SCENE.h) * 100}%`;
+    el.style.top = `${(((a.headTop ?? a.y - 120) - 6) / SCENE.h) * 100}%`;
     el.style.setProperty('--tail', `${50 + ((a.x - x) / 2)}%`);
   }
   for (const [a, el] of bubbleEls) if (!live.has(a)) { el.remove(); bubbleEls.delete(a); }

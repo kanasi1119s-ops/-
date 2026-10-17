@@ -25,7 +25,9 @@ ROOT = os.path.join(os.path.dirname(__file__), '..')
 SRC = os.path.join(ROOT, 'assets/reference/shop_reference.jpg')
 BG_SRC = os.path.join(ROOT, 'assets/reference/shop_background.jpg')
 OUT = os.path.join(ROOT, 'assets/img')
-W, H = 384, 216
+SC = 2  # 画面の大きさの倍率（384×216 を 1 として。2 なら 768×432。下の座標はすべて 384×216 で書き、使うときに SC 倍する）
+W, H = 384 * SC, 216 * SC
+VOTE = os.environ.get('TRACE_VOTE', '1') != '0'  # 1: 多数決で縮める / 0: 面積の平均で縮めて減色
 
 src = cv2.imread(SRC)
 S = src.shape[1] / W
@@ -110,6 +112,15 @@ FORCE = {
 }
 
 
+def _sc(v):
+    return tuple(int(round(x * SC)) for x in v)
+
+
+BOXES = {k: _sc(v) for k, v in BOXES.items()}
+HINTS = {k: {'fg': [_sc(c) for c in h['fg']], 'bg': [_sc(b) for b in h['bg']]} for k, h in HINTS.items()}
+FORCE = {k: {kk: [_sc(b) for b in vv] for kk, vv in f.items()} for k, f in FORCE.items()}
+
+
 def grabcut(name):
     x0, y0, x1, y1 = BOXES[name]
     m = np.zeros(src.shape[:2], np.uint8)
@@ -139,10 +150,10 @@ FULL_MASKS = {}
 masks = {n: grabcut(n) for n in BOXES}
 # kid3 の後ろの茂みの色を落とす
 x0, y0, x1, y1 = BOXES['kid3']
-for y in range(y0, 175):
+for y in range(y0, 175 * SC):
     for x in range(x0, x1):
         r, g, b = base[y, x].astype(int)
-        if masks['kid3'][y, x] and ((g > r + 10 and g >= b - 30) or (b > r + 40 and x > 360)):
+        if masks['kid3'][y, x] and ((g > r + 10 and g >= b - 30) or (b > r + 40 and x > 360 * SC)):
             masks['kid3'][y, x] = False
 
 
@@ -166,8 +177,13 @@ os.makedirs(OUT, exist_ok=True)
 placed = {n: save_sprite(n, m) for n, m in masks.items()}
 
 # ---------------------------------------------------------------- 背景（人のいない絵から）
-bg, _ = vote_downscale(np.asarray(Image.open(BG_SRC).convert('RGB')), None, W, H, 128)  # 元の絵の画素から128色に決め、多数決で縮める
-bg = bg.copy()
+BG_COLORS = 192
+if VOTE:
+    bg, _ = vote_downscale(np.asarray(Image.open(BG_SRC).convert('RGB')), None, W, H, BG_COLORS, dark_weight=1.0)  # 元の絵の画素から色を決め、多数決で縮める
+    bg = bg.copy()
+else:
+    bg_rgb = Image.open(BG_SRC).convert('RGB').resize((W, H), Image.BOX)
+    bg = np.asarray(bg_rgb.quantize(colors=BG_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')).copy()
 
 # ---------------------------------------------------------------- 吊るし物（揺らすので背景から抜く）
 DARK = np.array([37, 25, 32])
@@ -177,6 +193,7 @@ HANGING = {  # 名前: (x0, y0, x1, y1, 判定)  判定=その画素が吊るし
     'chili_l': (147, 111, 172, 139, lambda r, g, b: r > g + 55),
     'chili_r': (278, 111, 295, 141, lambda r, g, b: r > g + 55),
 }
+HANGING = {k: (*_sc(v[:4]), v[4]) for k, v in HANGING.items()}
 hang_meta = {}
 for name, (x0, y0, x1, y1, test) in HANGING.items():
     sub = bg[y0:y1, x0:x1]
@@ -192,6 +209,7 @@ for name, (x0, y0, x1, y1, test) in HANGING.items():
 
 # ---------------------------------------------------------------- 売り場の樽（3つ）の中身: 空/白菜/きゅうり
 TOPS = {'tomato': (99, 161, 133, 171), 'kyuri': (132, 162, 166, 172), 'hakusai': (212, 163, 249, 173)}
+TOPS = {k: _sc(v) for k, v in TOPS.items()}
 SLOTS = ['tomato', 'kyuri', 'hakusai']  # 樽1〜3 に使う樽
 
 
@@ -251,13 +269,14 @@ sky = np.zeros((H, W), bool)
 stack = [(x, 0) for x in range(W) if is_sky(bg[0, x])]
 while stack:
     x, y = stack.pop()
-    if not (0 <= x < W and 0 <= y < H) or sky[y, x] or y > 120 or not is_sky(bg[y, x]):
+    if not (0 <= x < W and 0 <= y < H) or sky[y, x] or y > 120 * SC or not is_sky(bg[y, x]):
         continue
     sky[y, x] = True
     stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
 
 # 浮いている雲（全体が空に囲まれているもの）を抜き出して流す
 CLOUDS = [(120, 11, 143, 22), (217, 5, 297, 28)]
+CLOUDS = [_sc(c) for c in CLOUDS]
 alpha = np.where(sky, 0, 255).astype(np.uint8)
 cloud_meta = []
 for i, (x0, y0, x1, y1) in enumerate(CLOUDS):
@@ -353,6 +372,9 @@ def recolor_outfit(rgb, masks, src, ref):
 # 頭巾をそろえる: ポーズ集で頭巾をかぶっているポーズとかぶっていないポーズが混ざっている人は、
 # かぶっているポーズ（src）の頭巾を、かぶっていないポーズ（dst）の髪と入れかえる（顔の位置で合わせる。顔はそのまま）
 HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7], 'hooded': [2, 4, 5]}}
+
+
+POSE_COLORS = 48  # 人物1人の色数（記号 0-9A-Za-l。m 以降は人ごとの足し色に使える）
 
 
 def _skin(rgba):
@@ -479,6 +501,9 @@ def transplant_hood(dst, src):
     return out
 
 
+POSE_HEIGHT = {k: v * SC for k, v in POSE_HEIGHT.items()}
+
+
 def extract_poses(name):
     a = np.asarray(Image.open(os.path.join(ROOT, f'assets/reference/pose_{name}.jpg')).convert('RGB')).astype(int)
     h0, w0, _ = a.shape
@@ -544,9 +569,14 @@ def extract_poses(name):
         ms = cv2.resize(m, (tw, th), interpolation=cv2.INTER_AREA)
         alpha = ms > 0.5
         ys, xs = np.nonzero(alpha)
-        # 色は元の絵の画素から40色に決めて、1マスごとに多数決で縮める（平均すると線と地が混ざってぼける）
-        small, _ = vote_downscale(a[y0:y1, x0:x1].astype(np.uint8), m > 0, tw, th, 40)
-        q = small[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy()
+        if VOTE:  # 色は元の絵の画素から決めて、1マスごとに多数決で縮める（平均すると線と地が混ざってぼける）
+            small, _ = vote_downscale(a[y0:y1, x0:x1].astype(np.uint8), m > 0, tw, th, POSE_COLORS, dark_weight=1.0)
+            q = small[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy()
+        else:
+            rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
+            cs = cv2.resize(rgbf, (tw, th), interpolation=cv2.INTER_AREA) / np.maximum(ms[..., None], 1e-6)
+            cs = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+            q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
         alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         q = despeckle(q, alpha)
         if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
@@ -567,8 +597,8 @@ def extract_poses(name):
         for i in HOOD[name]['dst']:
             fp = os.path.join(OUT, f'pose_{name}_{i}.png')
             out = transplant_hood(np.asarray(Image.open(fp).convert('RGBA')), src)
-            q = np.asarray(Image.fromarray(out[..., :3]).quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
-            out = np.dstack([q, out[..., 3]]).astype(np.uint8)  # 頭巾の色が足されたぶん、40色にそろえ直す
+            q = np.asarray(Image.fromarray(out[..., :3]).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+            out = np.dstack([q, out[..., 3]]).astype(np.uint8)  # 頭巾の色が足されたぶん、色数をそろえ直す
             Image.fromarray(out).save(fp)
             poses[i]['h'] = int(out.shape[0])
     return poses

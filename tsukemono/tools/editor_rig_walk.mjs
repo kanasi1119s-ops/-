@@ -260,7 +260,7 @@ for (const name of names) {
           if (g[yy][xx] === '.' && !out[yy][xx] && !seen[yy][xx]) { seen[yy][xx] = true; q.push([yy, xx]); }
         }
       }
-      if (comp.length <= 12) res.push(...comp);
+      if (comp.length <= 48) res.push(...comp);
     }
     return res.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
   };
@@ -379,7 +379,7 @@ for (const name of names) {
       await key('Escape');
       await tool('ellipseFill');
       await pickColor(shadowSym); await measure();
-      await dragRect(y, Math.max(0, Math.min(...xs) - 3), Math.min(H - 1, y + 2), Math.min(W - 1, Math.max(...xs) + 3));
+      await dragRect(y, Math.max(0, Math.min(...xs) - 6), Math.min(H - 1, y + 4), Math.min(W - 1, Math.max(...xs) + 6));
     }
   } else log.push('影の色がパレットにない（影は描いていない）');
   // 10. 確かめる

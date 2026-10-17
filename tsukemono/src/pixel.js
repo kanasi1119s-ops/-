@@ -67,6 +67,7 @@ export function recolor(src, fn, { flip = false } = {}) {
 
 // ---------------------------------------------------------------- 小物（文字で描いたドット絵）
 const spriteCache = new Map();
+export const SPRITE_SCALE = 2; // 小物は 384×216 の大きさで描いてあるので、768×432 の画面では2倍にして描く
 
 /** スプライトを canvas にして返す（キャッシュ）。pal で色を上書き、flip で左右反転。 */
 export function getSprite(name, { pal, flip = false } = {}) {
@@ -75,15 +76,15 @@ export function getSprite(name, { pal, flip = false } = {}) {
   const key = `${name}|${flip ? 1 : 0}|${pal ? Object.entries(pal).sort().join(',') : ''}`;
   let c = spriteCache.get(key);
   if (c) return c;
-  const h = def.rows.length, w = def.rows[0].length;
-  c = makeCanvas(w, h);
+  const h = def.rows.length, w = def.rows[0].length, k = SPRITE_SCALE;
+  c = makeCanvas(w * k, h * k);
   const ctx = c.getContext('2d');
   def.rows.forEach((row, y) => {
     for (let x = 0; x < w; x++) {
       const ch = row[x];
       if (ch === '.') continue;
       ctx.fillStyle = pal?.[ch] ?? def.pal?.[ch] ?? PALETTE[ch];
-      ctx.fillRect(flip ? w - 1 - x : x, y, 1, 1);
+      ctx.fillRect((flip ? w - 1 - x : x) * k, y * k, k, k);
     }
   });
   spriteCache.set(key, c);

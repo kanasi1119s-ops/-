@@ -27,7 +27,7 @@ CFGS = json.load(open(os.path.join(HERE, 'walk_joints.json'), encoding='utf8'))
 N = 16
 LEG_MERGE = 24  # 脚のそうじで、同じ色にそろえる色のへだたり
 FRAME_MS = 70
-PADX, PADY = 12, 4
+PADX, PADY = 24, 8
 SHADOW = (30, 22, 16)
 SHADOW_OPACITY = 0.32
 SEG = ('foot', 'shin', 'thigh')
@@ -316,7 +316,7 @@ def build(name):
                 continue
             e = t.min() if d < 0 else t.max()
             side = 'near' if d < 0 else 'far'
-            wd = C.get('torsoFillWidth', {}).get(side, 2)  # 何ドット描くか
+            wd = C.get('torsoFillWidth', {}).get(side, 4)  # 何ドット描くか
             fc = C.get('torsoFillColor', {}).get(side)  # 色（ないときは胴のふちの色）。ふちが明るい服は暗い色にする
             rng = range(e - 1, max(e - 1 - wd, xs.min() - 1), -1) if d < 0 else range(e + 1, min(e + 1 + wd, xs.max() + 1))
             for x in rng:
@@ -371,12 +371,46 @@ def build(name):
             if ya <= y <= yb:
                 return xa + (xb - xa) * (y - ya) / max(1, yb - ya)
         return pts[-1][1]
+    # 色の自動決め（'auto'）: その部品のドットから、いちばん暗い色＝ふちの線、いちばん多い明るめの色＝地
+    rgb_of = {sm['sym']: tuple(int(sm['color'][i:i + 2], 16) for i in (1, 3, 5)) for sm in o['symbols']}
+    for k_, v_ in C.get('extraColors', {}).items():
+        rgb_of[k_] = tuple(int(v_[0][i:i + 2], 16) for i in (1, 3, 5))
+    lum_of = lambda ch: (rgb_of[ch][0] * 299 + rgb_of[ch][1] * 587 + rgb_of[ch][2] * 114) // 1000 if ch in rgb_of else 128
+
+    def auto_colors(chars):
+        """ドットの記号の並びから (ふちの色, 地の色) を決める。暗い2割は線、残りで多い色が地"""
+        chars = [c_ for c_ in chars if c_ != '.']
+        if not chars:
+            return None, None
+        lums = sorted(lum_of(c_) for c_ in chars)
+        edge = min(chars, key=lum_of)
+        cut_ = lums[max(0, int(len(lums) * 0.25) - 1)]
+        body_cands = [c_ for c_ in chars if lum_of(c_) > cut_] or chars
+        body = Counter(body_cands).most_common(1)[0][0]
+        return edge, body
+
+    def leg_chars(l, ya, yb):
+        out = []
+        for s_ in SEG:
+            m_ = seg[(l, s_)]
+            for Y in range(ya + PADY, yb + PADY + 1):
+                out += [grid[Y][X] for X in np.nonzero(m_[Y])[0]]
+        return out
+
     # かごや腕の後ろに隠れていた脚を描き足す（hideFill）: 左右のふちの線（元の絵の座標の点の並び）のあいだを、
     # 隠れていた所（元の絵でかご・手前の腕・カバンだった所）だけ塗る。ふちは edge、内側は body（right があれば右のふちの色）
     behind = item | nearA | bag
     for hf in C.get('hideFill', []):
         l = hf.get('leg', 'near')
         ya = max(hf['left'][0][0], hf['right'][0][0]); yb = min(hf['left'][-1][0], hf['right'][-1][0])
+        if hf.get('edge') == 'auto' or hf.get('body') == 'auto':
+            chars = leg_chars(l, ya, yb)
+            if len(chars) < 10:
+                chars = leg_chars('far' if l == 'near' else 'near', ya, yb)
+            e_, b_ = auto_colors(chars)
+            if hf.get('edge') == 'auto': hf['edge'] = e_
+            if hf.get('body') == 'auto': hf['body'] = b_
+            hf.pop('edgeR', None)
         for y in range(ya, yb + 1):
             xl = jsround(interp(hf['left'], y)); xr = jsround(interp(hf['right'], y))
             for x in range(xl, xr + 1):
@@ -408,6 +442,11 @@ def build(name):
     hidden = item | nearA
     for fb in C.get('fillBehind', []):
         nm = fb['layer']
+        if fb.get('edge') == 'auto' or fb.get('body') == 'auto':
+            chars = [ch for y in range(fb['rows'][0], fb['rows'][1] + 1) for ch in base[nm][y + PADY]]
+            e_, b_ = auto_colors(chars)
+            if fb.get('edge') == 'auto': fb['edge'] = e_
+            if fb.get('body') == 'auto': fb['body'] = b_
         for y in range(fb['rows'][0], fb['rows'][1] + 1):
             xl = round(interp(fb['left'], y))
             row = base[nm][y + PADY]
@@ -431,7 +470,7 @@ def build(name):
             base[LNAME[('near', s)]] = [[recolor.get(ch, ch) for ch in row] for row in base[LNAME[('far', s)]]]
 
     # 関節のふた: 膝・足首で、上の部品のドット（関節から jointCap マス以内）を下の部品にも描いておく（曲げても関節が欠けない）
-    capR = C.get('jointCap', 2)
+    capR = C.get('jointCap', 4)
     for l in (('far',) if leg_from == 'far' else ('near', 'far')):
         for up, lo, jn in (('thigh', 'shin', 'knee'), ('shin', 'foot', 'ankle')):
             jy, jx = (int(round(v)) for v in joints[l][jn])
@@ -447,6 +486,10 @@ def build(name):
     # スカート: すそを前と後ろに分け（まん中の3列は両方に）、それぞれ前の脚・後ろの脚に合わせて腰を軸に回す。
     # 前後が開いた所は、すその裏（内側の暗い色。脚の後ろ）が見える
     sk = C.get('skirt')
+    if sk and sk.get('inner') == 'auto':  # 裏地: すその地の色を少し暗くした色に、いちばん近い色
+        _, b_ = auto_colors([ch for row in base['すそ'] for ch in row])
+        tgt = tuple(v * 0.72 for v in rgb_of[b_])
+        sk['inner'] = min(rgb_of, key=lambda k_: sum((a - b) ** 2 for a, b in zip(rgb_of[k_], tgt)))
     if sk:
         sx = sk['split'] + PADX
         cols = np.arange(W)[None, :]

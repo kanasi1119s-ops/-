@@ -74,7 +74,7 @@ for (const [name, m] of Object.entries(mouths)) {
   dataUrlToFile(ref, refFile);
   await page.setInputFiles('#refFile', refFile);
   await setRange('#refOpacity', 35);
-  await setRange('#zoom', 24);
+  await setRange('#zoom', 10);
   await setRange('#brushSize', 1);
   await page.waitForTimeout(150);
   let B;

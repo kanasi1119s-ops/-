@@ -14,11 +14,11 @@ const inRange = (v, r) => !r || (v >= r[0] && v <= r[1]);
 /** 背景の画素を分類する（季節の色替え用）。 */
 function kindOf(h, s, l, x, y) {
   const [rx0, ry0, rx1, ry1] = SCENE.roofRect;
-  const inShop = x > 88 && x < 300 && y > 84 && y < 196;
+  const inShop = x > 176 && x < 600 && y > 168 && y < 392;
   if (x >= rx0 && x <= rx1 && y >= ry0 && y <= ry1 && s < 0.25 && l > 0.42) return 'roof';
-  if (!inShop && y > 84 && h > 0.52 && h < 0.64 && s > 0.3) return 'water';
+  if (!inShop && y > 168 && h > 0.52 && h < 0.64 && s > 0.3) return 'water';
   if (!inShop && h > 0.16 && h < 0.52 && s > 0.12) return 'green';
-  if ((y >= 202 || (x < 86 && y >= SCENE.groundY) || (x < 40 && y >= 170)) && h > 0.03 && h < 0.15 && s > 0.15 && l > 0.42 && l < 0.88) return 'ground';
+  if ((y >= 404 || (x < 172 && y >= SCENE.groundY) || (x < 80 && y >= 340)) && h > 0.03 && h < 0.15 && s > 0.15 && l > 0.42 && l < 0.88) return 'ground';
   return null;
 }
 function applyTo(rgb, hsl, to) {
@@ -109,9 +109,9 @@ export class SceneRenderer {
     if (theme.stars) for (let i = 0; i < SCENE.stars; i++) {
       const on = Math.floor((tMs + hash(i) * 3000) / (700 + hash(i + 40) * 900)) % 2 === 0;
       g.fillStyle = on ? '#fff8d8' : '#8890b8';
-      g.fillRect(Math.floor(hash(i + 7) * SCENE.w), Math.floor(hash(i + 70) * 80), 1, 1);
+      g.fillRect(Math.floor(hash(i + 7) * SCENE.w), Math.floor(hash(i + 70) * 160), 1, 1);
     }
-    if (theme.sun) { const [x, y] = SCENE.sunPos[theme.sun]; g.drawImage(getSprite('sun'), x - 8, y - 8); }
+    if (theme.sun) { const [x, y] = SCENE.sunPos[theme.sun]; g.drawImage(getSprite('sun'), x - 16, y - 16); }
     if (theme.moon) g.drawImage(getSprite('moon'), SCENE.moonPos[0], SCENE.moonPos[1]);
     // 流れる雲（画面の右端から出て、左端から戻る）
     for (const c of SCENE.clouds) {
@@ -124,7 +124,7 @@ export class SceneRenderer {
     }
     // 背景（トレースした店先）
     g.drawImage(this.land(theme), 0, 0);
-    if (theme.puddles) for (const [x, y] of [[20, 205], [150, 209], [300, 204], [355, 210], [70, 212]]) g.drawImage(getSprite('puddle'), x, y);
+    if (theme.puddles) for (const [x, y] of [[40, 410], [300, 418], [600, 408], [710, 420], [140, 424]]) g.drawImage(getSprite('puddle'), x, y);
     // 売り場の樽の中身
     view.barrels.forEach((b, i) => {
       const s = SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
@@ -167,20 +167,20 @@ export class SceneRenderer {
   }
 
   label(text, cx, y, selected) {
-    const g = this.ctx, t = getText(text, { px: 10, color: '#f6f1e4' });
-    const w = t.width + 4, x = Math.round(cx - w / 2);
+    const g = this.ctx, t = getText(text, { px: 20, color: '#f6f1e4' });
+    const w = t.width + 8, x = Math.round(cx - w / 2);
     g.fillStyle = selected ? '#c63d2f' : '#2a1c14';
-    g.fillRect(x, y, w, 13);
-    g.drawImage(t, x + 2, y);
+    g.fillRect(x, y, w, 26);
+    g.drawImage(t, x + 4, y);
   }
 
   glow(cx, cy, k) {
     const g = this.ctx;
     g.save();
     g.globalCompositeOperation = 'lighter';
-    for (let r = 6; r <= 42; r += 6) {
-      g.fillStyle = `rgba(255,170,60,${(0.06 * k * (46 - r)) / 46})`;
-      g.fillRect(cx - r, cy - r, r * 2, r * 2 + 10);
+    for (let r = 12; r <= 84; r += 12) {
+      g.fillStyle = `rgba(255,170,60,${(0.06 * k * (92 - r)) / 92})`;
+      g.fillRect(cx - r, cy - r, r * 2, r * 2 + 20);
     }
     g.restore();
   }
@@ -201,17 +201,17 @@ export class SceneRenderer {
     // 足もとの影（歩くコマは絵の中に影がある）
     if (f.walk == null) {
       const pw = body.kind === 'poses' ? body.poses[f.pose].w : getImage(body.img).width;
-      this.groundShadow(a.x, a.y, Math.max(8, Math.round(pw * 0.62)));
+      this.groundShadow(a.x, a.y, Math.max(16, Math.round(pw * 0.62)));
     }
     const top = body.kind === 'poses' ? this.drawPose(a, body, f, flip, outfit) : this.drawShift(a, body, f, flip, outfit);
     // 雨・雪の日の傘
     let headTop = top.y;
     if (a.kind === 'customer' && theme.weather !== 'sunny' && !a.look.ownUmbrella) {
       const u = getSprite('umbrella', { pal: { u: a.look.umbrella, U: mix(a.look.umbrella, '#000000', 0.3) } });
-      const ux = Math.round(top.cx - u.width / 2), uy = top.y - 6;
+      const ux = Math.round(top.cx - u.width / 2), uy = top.y - 12;
       this.ctx.drawImage(u, ux, uy);
       if (theme.weather === 'snow') this.ctx.drawImage(getSprite('umbrella_snow'), ux, uy);
-      headTop -= 6;
+      headTop -= 12;
     }
     a.headTop = headTop;
   }
@@ -230,9 +230,9 @@ export class SceneRenderer {
     const g = this.ctx;
     g.fillStyle = 'rgba(30,22,16,0.32)';
     const x0 = Math.round(cx - w / 2);
-    g.fillRect(x0 + 1, footY - 1, w - 2, 1);
-    g.fillRect(x0, footY, w, 1);
-    g.fillRect(x0 + 2, footY + 1, w - 4, 1);
+    g.fillRect(x0 + 2, footY - 2, w - 4, 2);
+    g.fillRect(x0, footY, w, 2);
+    g.fillRect(x0 + 4, footY + 2, w - 8, 2);
   }
 
   drawPose(a, body, f, flip, outfit) {
@@ -265,40 +265,40 @@ export class SceneRenderer {
     const g = this.ctx, t = tMs / 1000, W = SCENE.w, H = SCENE.h;
     if (theme.rain) {
       g.fillStyle = 'rgba(190,215,240,0.75)';
-      for (let i = 0; i < 110; i++) {
-        const sp = 170 + hash(i) * 60;
-        let x = (hash(i + 3) * (W + 40) - (t * sp) / 5) % (W + 40); if (x < 0) x += W + 40;
+      for (let i = 0; i < 220; i++) {
+        const sp = 340 + hash(i) * 120;
+        let x = (hash(i + 3) * (W + 80) - (t * sp) / 5) % (W + 80); if (x < 0) x += W + 80;
         const y = (hash(i + 9) * H + t * sp) % H;
-        g.fillRect(Math.round(x), Math.round(y), 1, 3);
+        g.fillRect(Math.round(x), Math.round(y), 1, 6);
       }
     }
     if (theme.snow) {
       g.fillStyle = '#ffffff';
-      for (let i = 0; i < 90; i++) {
-        const sp = 18 + hash(i) * 22;
-        let x = (hash(i + 3) * W + Math.sin(t * 0.8 + i) * 6) % W; if (x < 0) x += W;
+      for (let i = 0; i < 180; i++) {
+        const sp = 36 + hash(i) * 44;
+        let x = (hash(i + 3) * W + Math.sin(t * 0.8 + i) * 12) % W; if (x < 0) x += W;
         const y = (hash(i + 9) * H + t * sp) % H;
-        const s = hash(i + 20) < 0.25 ? 2 : 1;
+        const s = hash(i + 20) < 0.25 ? 4 : 2;
         g.fillRect(Math.round(x), Math.round(y), s, s);
       }
     }
     if (theme.particles) {
       const col = theme.particles === 'petal' ? ['#f9c6d4', '#ffe3ea'] : ['#e08a2c', '#b94d22', '#d9b33a'];
-      for (let i = 0; i < 18; i++) {
-        const sp = 10 + hash(i) * 10;
-        const x = (hash(i + 3) * W + t * (6 + hash(i + 5) * 6) + Math.sin(t + i) * 5) % W;
+      for (let i = 0; i < 36; i++) {
+        const sp = 20 + hash(i) * 20;
+        const x = (hash(i + 3) * W + t * (12 + hash(i + 5) * 12) + Math.sin(t + i) * 10) % W;
         const y = (hash(i + 9) * H + t * sp) % H;
         g.fillStyle = col[i % col.length];
-        g.fillRect(Math.round(x), Math.round(y), 2, 1);
+        g.fillRect(Math.round(x), Math.round(y), 4, 2);
       }
     }
   }
 
   bubble(a) {
     const g = this.ctx;
-    const t = getText(a.bubble, { px: 10, color: '#2a1c14' });
-    const w = t.width + 6, h = t.height + 2;
-    let x = Math.round(a.x - w / 2), y = Math.round((a.headTop ?? a.y - 60) - h - 6);
+    const t = getText(a.bubble, { px: 20, color: '#2a1c14' });
+    const w = t.width + 12, h = t.height + 4;
+    let x = Math.round(a.x - w / 2), y = Math.round((a.headTop ?? a.y - 120) - h - 12);
     x = Math.max(2, Math.min(SCENE.w - w - 2, x));
     y = Math.max(2, y);
     g.fillStyle = '#2a1c14'; g.fillRect(x - 1, y - 1, w + 2, h + 2);
