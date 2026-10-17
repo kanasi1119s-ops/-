@@ -371,6 +371,89 @@ def recolor_outfit(rgb, masks, src, ref):
     return np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)
 
 
+# 部分の色をそろえる: ポーズ集は同じ人でもポーズによって服の色がちがう（スカートがピンク、中の着物が赤紫、上着が水色など）。
+# 人ごとに部分を決め、そのポーズの部分の色を、ポーズ0の同じ部分の色に合わせる（色相をずらし、彩度・明るさは比で合わせるので陰影は残る）。
+#   rows: 部分のある高さ（絵の高さに対する割合）/ kind: 'sat' 色のある服、'light' 白っぽい服、'skin' 肌
+#   src: そのポーズで直す色の色相の範囲（度。なければその高さでいちばん多い色）/ poses: 直すポーズ（なければ全部）
+#   ref: ポーズ0で合わせる色の色相の範囲（なければその高さでいちばん多い色）
+ZONES = {
+    'woman': [{'rows': (0.58, 0.93), 'kind': 'sat'}],
+    'granny': [{'rows': (0.2, 0.66), 'kind': 'sat', 'src': (290, 375), 'ref': (190, 280), 'poses': [6, 7]},
+               {'rows': (0.64, 0.92), 'kind': 'sat', 'src': (180, 330), 'ref': (180, 330)},
+               {'rows': (0.0, 0.3), 'kind': 'skin'}],
+    'granny2': [{'rows': (0.18, 0.72), 'kind': 'light', 'poses': [7]},
+                {'rows': (0.0, 0.3), 'kind': 'skin'}],
+}
+
+
+def _zone_mask(rgb, alpha, z, hue_range=None):
+    h, s_, v = _hsv(rgb)
+    H = rgb.shape[0]
+    rows = np.zeros_like(alpha); rows[int(H * z['rows'][0]):int(H * z['rows'][1])] = True
+    skin = _skin(np.dstack([rgb, alpha * 255]).astype(np.uint8))
+    if z['kind'] == 'skin':  # 顔・手の肌
+        n, lab, st, _ = cv2.connectedComponentsWithStats((alpha & rows & skin).astype(np.uint8), 8)
+        return np.isin(lab, [k for k in range(1, n) if st[k, 4] >= 12])
+    if z['kind'] == 'light':
+        cand = alpha & rows & ~skin & (v > 0.6) & (s_ < 0.35)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(cand.astype(np.uint8), 8)
+        return np.isin(lab, [k for k in range(1, n) if st[k, 4] >= 12])
+    cand = alpha & rows & ~skin & (s_ > 0.15) & (v > 0.08) & (v < 0.97)
+    if not cand.any():
+        return cand
+    if hue_range:
+        lo, hi = hue_range
+        hh = np.where(h < lo, h + 360, h)
+        sel = cand & (hh >= lo) & (hh <= hi)
+    else:  # その高さでいちばん多い色相のまわり ±25°
+        hist = np.bincount((h[cand] // 10).astype(int) % 36, minlength=36)
+        hist = hist + np.roll(hist, 1) + np.roll(hist, -1)
+        c = (hist.argmax() + 0.5) * 10
+        dh = np.abs((h - c + 180) % 360 - 180)
+        sel = cand & (dh <= 25)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(sel.astype(np.uint8), 8)
+    if n <= 1:
+        return sel & False
+    big = st[1:, 4].max()
+    return np.isin(lab, [k for k in range(1, n) if st[k, 4] >= max(12, big * 0.25)])
+
+
+def _hsv_stats(rgb, m):
+    h, s_, v = _hsv(rgb)
+    ang = np.deg2rad(h[m])
+    hm = float(np.rad2deg(np.arctan2(np.sin(ang).mean(), np.cos(ang).mean())) % 360)
+    return hm, float(np.median(s_[m])), float(np.median(v[m]))
+
+
+def zone_stats(rgb, alpha, z):
+    m = _zone_mask(rgb, alpha, z, z.get('ref'))
+    if m.sum() < 12:
+        return None
+    cols = np.unique(rgb[m], axis=0)
+    return {'hsv': _hsv_stats(rgb, m), 'cols': cols, 'v': cols.max(1).astype(np.float32) / 255}
+
+
+def zone_recolor(rgb, alpha, z, ref):
+    m = _zone_mask(rgb, alpha, z, z.get('src'))
+    if m.sum() < 12:
+        return rgb
+    h0, s0, v0 = _hsv_stats(rgb, m)
+    h1, s1, v1 = ref['hsv']
+    h, s_, v = _hsv(rgb)
+    if z['kind'] in ('light', 'skin'):  # 白っぽい服・肌: ポーズ0のその部分の色から、明るさ（全体の差を引いたもの）がいちばん近い色を選ぶ（色のむらも消える）
+        out = rgb.copy()
+        vn = v[m] - (v0 - v1)  # v0, v1: そのポーズとポーズ0の、その部分の明るさの中央値
+        j = np.abs(vn[:, None] - ref['v'][None, :]).argmin(1)
+        out[m] = ref['cols'][j]
+        return out
+    out = rgb.astype(np.float32) / 255
+    hn = (h[m] + (h1 - h0)) % 360
+    sn = np.clip(s_[m] * s1 / max(s0, 1e-3), 0, 1)
+    vn = np.clip(v[m] * v1 / max(v0, 1e-3), 0, 1)
+    out[m] = cv2.cvtColor(np.dstack([hn, sn, vn]).astype(np.float32), cv2.COLOR_HSV2RGB).reshape(-1, 3)
+    return np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)
+
+
 # 頭巾をそろえる: ポーズ集で頭巾をかぶっているポーズとかぶっていないポーズが混ざっている人は、
 # かぶっているポーズ（src）の頭巾を、かぶっていないポーズ（dst）の髪と入れかえる（顔の位置で合わせる。顔はそのまま）
 HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7]}}
@@ -439,7 +522,9 @@ def crisp_hood(rgba):
 
 
 def transplant_hood(dst, src):
-    """src の頭巾を dst の髪と入れかえた絵を返す（上にはみ出す分は行を足す）"""
+    """src の頭巾を dst の髪と入れかえた絵を返す（上にはみ出す分は行を足す）。
+    消すのは髪の色（白っぽい・灰色の、彩度の低い明るいドット）だけ。顔の輪郭線など暗い線は、頭巾でおおわれない所は残す。
+    頭巾のドットの色は、dst にもともとある色のうちいちばん近い色にする（色数が増えず、顔の色も変わらない）"""
     cover_s, chin_s, face_s = _head_cover(src)
     cover_d, chin_d, face_d = _head_cover(dst)
     dy, dx = face_d[0] - face_s[0], face_d[1] - face_s[1]
@@ -447,12 +532,71 @@ def transplant_hood(dst, src):
     pad = max(0, -(sy.min() + dy))
     out = np.pad(dst, ((pad, 0), (0, 0), (0, 0)))
     cover_d = np.pad(cover_d, ((pad, 0), (0, 0)))
-    out[cover_d] = 0  # 髪を消す
+    h_, s_, v_ = _hsv(out[..., :3])
+    hair = cover_d & (s_ < 0.3) & (v_ > 0.45)
+    out[hair] = 0  # 髪を消す（暗い線は残す）
     skin_d = _skin(out)
+    pal = np.unique(dst[dst[..., 3] > 0][:, :3], axis=0).astype(np.int32)
     for y, x in zip(sy, sx):
         ty, tx = y + dy + pad, x + dx
         if 0 <= ty < out.shape[0] and 0 <= tx < out.shape[1] and not skin_d[ty, tx]:
-            out[ty, tx] = src[y, x]
+            c = src[y, x, :3].astype(np.int32)
+            out[ty, tx, :3] = pal[((pal - c) ** 2).sum(1).argmin()]
+            out[ty, tx, 3] = 255
+    # 頭巾の外に残った古い髪の暗い線（頭のまわりに浮いたドット）は消す: 頭巾にも肌にもとなり合わない暗いドット
+    hood = np.zeros(out.shape[:2], bool)
+    ty_, tx_ = sy + dy + pad, sx + dx
+    ok = (ty_ >= 0) & (ty_ < out.shape[0]) & (tx_ >= 0) & (tx_ < out.shape[1])
+    hood[ty_[ok], tx_[ok]] = True
+    near = cv2.dilate((hood | _skin(out)).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+    out[cover_d & ~hair & ~hood & ~near] = 0
+    return fill_holes(out, cover_d)
+
+
+def limit_colors(rgb, alpha, n):
+    """色数を n 以下にする: 使われる数のいちばん少ない色を、いちばん近い色にまとめる、をくり返す（よく使う色はそのまま残る）"""
+    px = rgb[alpha]
+    cols, inv, cnt = np.unique(px, axis=0, return_inverse=True, return_counts=True)
+    cols = cols.astype(np.int32); cnt = cnt.astype(np.int64)
+    target = np.arange(len(cols))
+    alive = np.ones(len(cols), bool)
+    while alive.sum() > n:
+        k = np.where(alive)[0][cnt[alive].argmin()]
+        others = np.where(alive & (np.arange(len(cols)) != k))[0]
+        j = others[((cols[others] - cols[k]) ** 2).sum(1).argmin()]
+        alive[k] = False
+        cnt[j] += cnt[k]
+        target[target == k] = j
+    out = rgb.copy()
+    out[alpha] = cols[target[inv.ravel()]].astype(np.uint8)
+    return out
+
+
+def fill_holes(rgba, region):
+    """まわりを囲まれた透明なドットのうち、region（消した髪の所）にかかるもの（頭巾でおおわれなかった顔の所など）を、となりの色で埋める。
+    肌のとなりなら肌の色を優先する。腕と体のあいだのすき間など、もともと背景の穴は埋めない"""
+    out = rgba.copy()
+    tr = (out[..., 3] == 0).astype(np.uint8)
+    n, lab = cv2.connectedComponents(tr, connectivity=4)
+    H, W = tr.shape
+    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])))
+    inside = set(np.unique(lab[region & (tr > 0)]))
+    hole = np.isin(lab, [k for k in range(1, n) if k not in edge and k in inside])
+    while hole.any():
+        skin = _skin(out)
+        filled = False
+        for y, x in zip(*np.nonzero(hole)):
+            nb = [(y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
+                  if 0 <= y + dy < H and 0 <= x + dx < W and out[y + dy, x + dx, 3] > 0 and not hole[y + dy, x + dx]]
+            if not nb:
+                continue
+            sk = [p for p in nb if skin[p]]
+            cols = np.array([out[p][:3] for p in (sk or nb)])
+            vals, cnt = np.unique(cols, axis=0, return_counts=True)
+            out[y, x, :3] = vals[cnt.argmax()]; out[y, x, 3] = 255
+            hole[y, x] = False; filled = True
+        if not filled:
+            break
     return out
 
 
@@ -661,6 +805,14 @@ def extract_poses(name):
                 ref_outfit = st_
             else:
                 q = recolor_outfit(q, masks, st_, ref_outfit)
+        if name in ZONES:  # 決めた部分（スカート・上着など）の色を、ポーズ0の同じ部分の色にそろえる
+            if i == 0:
+                ref_zone = [zone_stats(q, alpha, z) for z in ZONES[name]]
+            else:
+                for z, ref in zip(ZONES[name], ref_zone):
+                    if ref and i in z.get('poses', range(1, 99)):
+                        q = zone_recolor(q, alpha, z, ref)
+        q = limit_colors(q, alpha, POSE_COLORS)  # 色をそろえて増えた色を、人物の色数にまとめる
         rgba = defringe(np.dstack([q, alpha * 255]).astype(np.uint8))[0]  # ふちに残った白いにじみを取る
         Image.fromarray(rgba).save(os.path.join(OUT, f'pose_{name}_{i}.png'))
         feet = np.nonzero(alpha[-4:].any(0))[0]  # 足元の中心
@@ -669,9 +821,7 @@ def extract_poses(name):
         src = np.asarray(Image.open(os.path.join(OUT, f'pose_{name}_{HOOD[name]["src"]}.png')).convert('RGBA'))
         for i in HOOD[name]['dst']:
             fp = os.path.join(OUT, f'pose_{name}_{i}.png')
-            out = transplant_hood(np.asarray(Image.open(fp).convert('RGBA')), src)
-            q = np.asarray(Image.fromarray(out[..., :3]).quantize(colors=POSE_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB'))
-            out = np.dstack([q, out[..., 3]]).astype(np.uint8)  # 頭巾の色が足されたぶん、色数をそろえ直す
+            out = transplant_hood(np.asarray(Image.open(fp).convert('RGBA')), src)  # 色はもともとある色だけなので、色数は増えない
             Image.fromarray(out).save(fp)
             poses[i]['h'] = int(out.shape[0])
     return poses
