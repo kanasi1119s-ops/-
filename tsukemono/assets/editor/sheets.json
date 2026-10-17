@@ -294,8 +294,8 @@
  "granny": {
   "sheet": "granny.sheet.png",
   "frameWidth": 111,
-  "frameHeight": 165,
-  "padBottom": 13,
+  "frameHeight": 164,
+  "padBottom": 12,
   "padLeft": 24,
   "frames": [
    {
