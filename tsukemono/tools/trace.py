@@ -665,8 +665,9 @@ def extract_poses(name):
             cs = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
             q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
         alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        if not VOTE:  # 輪郭線を先に濃く入れ、中を塗ってから縁を薄める
+        if not VOTE:  # 輪郭線を先に濃く入れ、中を塗ってから縁を薄める（薄めた色が増えるので、人物の色数にそろえ直す）
             q, alpha = outline_pass(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
+            q = np.asarray(Image.fromarray(q * alpha[..., None].astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
         if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
             q, alpha = hood_from_reference(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
