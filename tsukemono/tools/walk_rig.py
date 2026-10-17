@@ -471,9 +471,16 @@ def build(name):
             row = base[nm][y + PADY]
             vis = [x for x in range(xl + PADX, W) if row[x] != '.']
             xr = vis[0] if vis else xl + PADX + fb.get('width', 6)
+            # 地の色: その行の見えている服の、ふちの線のすぐ内側の色を続ける（陰の段がつながる。なければ body）
+            body_ch = fb['body']
+            if vis:
+                near_cols = [row[x] for x in vis[:6] if lum_of(row[x]) > lum_of(fb['edge']) + 30]
+                if near_cols:
+                    body_ch = Counter(near_cols).most_common(1)[0][0]
             for x in range(xl + PADX, xr):
-                if hidden[y + PADY, x] and row[x] == '.':
-                    ch = fb['edge'] if x == xl + PADX else fb['body']
+                # closeGap: 持ち物の角の外（もとは背景）も埋めて、ふちの線から見えている服までをすき間なくつなぐ（持ち物が動いたとき、ぎざぎざの欠けが見えないように）
+                if (hidden[y + PADY, x] or (fb.get('closeGap') and not al[y + PADY, x])) and row[x] == '.':
+                    ch = fb['edge'] if x == xl + PADX else body_ch
                     row[x] = ch
                     drawn.setdefault(nm, []).append([y + PADY, x, ch])
     for nm, y, x, ch in root:
