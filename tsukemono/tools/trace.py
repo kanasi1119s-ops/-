@@ -256,7 +256,9 @@ for i, k in enumerate(SLOTS):
                     t = tex[variant]
                     img[y, x, :3] = t[y % t.shape[0], (x + (t.shape[1] - w) // 2) % t.shape[1]]
                 img[y, x, 3] = 255
-        Image.fromarray(img).save(os.path.join(OUT, f'slot{i}_{variant}.png'))
+        fp = os.path.join(OUT, f'slot{i}_{variant}.png')
+        if not os.path.exists(fp) or os.environ.get('TRACE_SLOTS'):  # 樽の中身はエディタで塗った絵（tools/editor_barrels.mjs）を使う。仮置きはないときだけ
+            Image.fromarray(img).save(fp)
     slot_meta.append({'x': x0, 'y': y0, 'w': w, 'h': h})
 
 # ---------------------------------------------------------------- 空を抜く（上から塗りつぶしでつながった青）
