@@ -22,7 +22,7 @@ def('salt_b', ['..w..', 'w...w', '....w']);
 def('salt_c', ['.w..w', '..w..', 'w....']);
 // 傘（雨・雪の日）。u = 傘の色
 { // 傘: 768×432 の大きさで計算して描く（半円のかさ・8つの骨の先・柄）。u = 傘の色、U = 骨の影
-  const W = 52, R = 26, H = 10;
+  const W = 52, R = 26, H = 14;
   const dome = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => {
     const dx = (x + 0.5 - R) / R, dy = (H - 0.5 - y) / H; // だ円（横 R・縦 H）
     const r2 = dx * dx + dy * dy;
