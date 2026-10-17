@@ -27,6 +27,7 @@ BG_SRC = os.path.join(ROOT, 'assets/reference/shop_background.jpg')
 OUT = os.path.join(ROOT, 'assets/img')
 SC = 2  # 画面の大きさの倍率（384×216 を 1 として。2 なら 768×432。下の座標はすべて 384×216 で書き、使うときに SC 倍する）
 W, H = 384 * SC, 216 * SC
+QUANT = {'0': Image.Quantize.MEDIANCUT, '1': Image.Quantize.MAXCOVERAGE, '2': Image.Quantize.FASTOCTREE, '3': Image.Quantize.LIBIMAGEQUANT}[os.environ.get('TRACE_QUANT', '1')]  # 減色の方法（既定 1: 色の範囲を広く残す。0 のメディアンカットは顔の縁の薄い桃色が灰色に寄る）
 VOTE = os.environ.get('TRACE_VOTE', '0') == '1'  # 0: 面積の平均で縮めて減色（なめらか、既定） / 1: 多数決で縮める（ドットが立つ）
 
 src = cv2.imread(SRC)
@@ -34,7 +35,7 @@ S = src.shape[1] / W
 
 # ---------------------------------------------------------------- 減色
 rgb = Image.open(SRC).convert('RGB').resize((W, H), Image.BOX)
-pal_img = rgb.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+pal_img = rgb.quantize(colors=128, method=QUANT, dither=Image.Dither.NONE)
 PAL = np.array(pal_img.getpalette()[:128 * 3]).reshape(-1, 3)
 base = np.asarray(pal_img.convert('RGB')).copy()
 
@@ -48,7 +49,7 @@ def vote_downscale(full, mask, tw, th, colors, dark_weight=1.6, seed=0):
     px = full[msk]
     rs = np.random.RandomState(seed)
     samp = px[rs.choice(len(px), min(len(px), 200000), replace=False)]
-    pal_img = Image.fromarray(samp.reshape(1, -1, 3).astype(np.uint8)).quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    pal_img = Image.fromarray(samp.reshape(1, -1, 3).astype(np.uint8)).quantize(colors=colors, method=QUANT, dither=Image.Dither.NONE)
     pal = np.array(pal_img.getpalette()[:colors * 3]).reshape(-1, 3)
     pal = pal[:max(1, len({tuple(c) for c in pal}))] if False else pal
     flat = full.reshape(-1, 3).astype(np.int32)
@@ -183,7 +184,7 @@ if VOTE:
     bg = bg.copy()
 else:
     bg_rgb = Image.open(BG_SRC).convert('RGB').resize((W, H), Image.BOX)
-    bg = np.asarray(bg_rgb.quantize(colors=BG_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')).copy()
+    bg = np.asarray(bg_rgb.quantize(colors=BG_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB')).copy()
 
 # ---------------------------------------------------------------- 吊るし物（揺らすので背景から抜く）
 DARK = np.array([37, 25, 32])
@@ -576,15 +577,38 @@ def outline_pass(q, alpha, sub, m, tw, th, crop, soften=0.3):
     edge = al & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])  # 4近傍に透明があるマス
     line = (edge & (dcov > 0.08)) | rescue
     out[line] = np.clip(dcol[line], 0, 255).astype(np.uint8)
-    # (3) 縁を薄める: 内側（縁でない不透明）のとなりの平均色に寄せる
+    # (2') 背景の白と混ざって灰色になった縁のマス（顔の輪郭の外側など）: 内側のとなりより明らかに明るい灰色なら、
+    #      そのマスの明るくない画素の色にする。明るくない画素がなければ、人物の面積が少ないマスは落とし、多ければ内側の色で塗る
+    light = fig & (lum >= 180) & ((f.max(-1) - f.min(-1)) < 40)
+    solid = fig & ~light
+    scov = small(solid)
+    scol = np.stack([small(solid * f[..., c]) for c in range(3)], -1) / np.maximum(scov, 1e-6)[..., None]
     inner = al & ~edge
-    res = out.copy()
-    ys, xs = np.nonzero(line)
-    for y, x in zip(ys, xs):
+    lum_s = lambda px: float(px[0]) * 0.299 + float(px[1]) * 0.587 + float(px[2]) * 0.114
+    def inner_mean(y, x):
         nb = [out[y + dy, x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)
               if (dy or dx) and 0 <= y + dy < H and 0 <= x + dx < W and inner[y + dy, x + dx]]
-        if nb:
-            mean = np.mean(np.array(nb, np.float32), 0)
+        return np.mean(np.array(nb, np.float32), 0) if nb else None
+    ys, xs = np.nonzero(edge & ~line)
+    for y, x in zip(ys, xs):
+        px = out[y, x].astype(int)
+        if px.max() - px.min() >= 40:
+            continue
+        mean = inner_mean(y, x)
+        if mean is None or lum_s(px) <= lum_s(mean) + 30:
+            continue
+        if scov[y, x] > 0.03:
+            out[y, x] = np.clip(scol[y, x], 0, 255).astype(np.uint8)
+        elif cov[y, x] < 0.6:
+            al[y, x] = False
+        else:
+            out[y, x] = np.clip(mean, 0, 255).astype(np.uint8)
+    # (3) 縁を薄める: 内側（縁でない不透明）のとなりの平均色に寄せる
+    res = out.copy()
+    ys, xs = np.nonzero(line & al)
+    for y, x in zip(ys, xs):
+        mean = inner_mean(y, x)
+        if mean is not None:
             res[y, x] = np.clip(out[y, x] * (1 - soften) + mean * soften, 0, 255).astype(np.uint8)
     return res, al
 
@@ -663,11 +687,11 @@ def extract_poses(name):
             rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
             cs = cv2.resize(rgbf, (tw, th), interpolation=cv2.INTER_AREA) / np.maximum(ms[..., None], 1e-6)
             cs = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-            q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+            q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB'))
         alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         if not VOTE:  # 輪郭線を先に濃く入れ、中を塗ってから縁を薄める（薄めた色が増えるので、人物の色数にそろえ直す）
             q, alpha = outline_pass(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
-            q = np.asarray(Image.fromarray(q * alpha[..., None].astype(np.uint8)).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+            q = np.asarray(Image.fromarray(q * alpha[..., None].astype(np.uint8)).quantize(colors=POSE_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB'))
         if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
             q, alpha = hood_from_reference(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
@@ -686,7 +710,7 @@ def extract_poses(name):
         for i in HOOD[name]['dst']:
             fp = os.path.join(OUT, f'pose_{name}_{i}.png')
             out = transplant_hood(np.asarray(Image.open(fp).convert('RGBA')), src)
-            q = np.asarray(Image.fromarray(out[..., :3]).quantize(colors=POSE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB'))
+            q = np.asarray(Image.fromarray(out[..., :3]).quantize(colors=POSE_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB'))
             out = np.dstack([q, out[..., 3]]).astype(np.uint8)  # 頭巾の色が足されたぶん、色数をそろえ直す
             Image.fromarray(out).save(fp)
             poses[i]['h'] = int(out.shape[0])
