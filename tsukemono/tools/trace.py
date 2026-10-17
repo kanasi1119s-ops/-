@@ -603,6 +603,16 @@ def fill_holes(rgba, region):
 POSE_HEIGHT = {k: v * SC for k, v in POSE_HEIGHT.items()}
 
 
+def sharp_resize(rgbf, m, tw, th):
+    """色を縮める: Pillow のランチョス（ふちをはっきり残しつつ、縮めるときのノイズは抑える）。
+    rgbf は人物のマスクをかけた色。同じように縮めたマスクで割って、背景の色が混ざらないようにする"""
+    def lz(ch):
+        return np.asarray(Image.fromarray(ch.astype(np.float32), 'F').resize((tw, th), Image.LANCZOS))
+    ml = np.maximum(lz(m), 0)
+    cs = np.stack([lz(rgbf[..., c]) for c in range(3)], -1) / np.maximum(ml[..., None], 0.05)
+    return np.clip(cs, 0, 255)
+
+
 def drop_ground_shadow(m, sh, rgb):
     """足元の地面の影を落とす。灰色の候補のうち、その列の下に人物の画素がないものは確実に影（靴の下・つま先の先・両足のあいだ）。
     残りの候補（靴の上にある灰色）は、確実な影と同じ色のものだけ落とす。白い靴下や白い靴の陰の灰色は影と色がちがうので残る。"""
@@ -791,7 +801,7 @@ def extract_poses(name):
             q = small[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy()
         else:
             rgbf = a[y0:y1, x0:x1].astype(np.float32) * m[..., None]
-            cs = cv2.resize(rgbf, (tw, th), interpolation=cv2.INTER_AREA) / np.maximum(ms[..., None], 1e-6)
+            cs = sharp_resize(rgbf, m, tw, th)  # ランチョスで縮める（面積の平均より目や線がはっきり残る）
             cs = cs[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
             q = np.asarray(Image.fromarray(np.clip(cs, 0, 255).astype(np.uint8)).quantize(colors=POSE_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB'))
         alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
