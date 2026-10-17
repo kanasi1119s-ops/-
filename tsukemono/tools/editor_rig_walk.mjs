@@ -73,6 +73,7 @@ for (const name of names) {
   if (await page.isChecked('#symmetryV')) await page.click('#symmetryV');
   if (await page.isChecked('#onionSkin')) await page.click('#onionSkin');
   await setRange('#zoom', 8);
+  await page.setViewportSize({ width: Math.max(1500, W * 8 + 600), height: Math.max(1700, H * 8 + 800) }); // 絵が大きくても下の行が画面の外に出ないように（外に出た行はマウスが届かず消し残る）
   await setRange('#brushSize', 1);
   let B;
   const measure = async () => { B = await page.$eval('#gridCanvas', (c) => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }); };
