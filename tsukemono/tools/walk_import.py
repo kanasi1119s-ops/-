@@ -4,6 +4,7 @@
 import json
 import os
 import numpy as np
+import cv2
 from PIL import Image
 from defringe import defringe
 
@@ -16,6 +17,23 @@ sheets = json.load(open(os.path.join(ED, 'sheets.json'), encoding='utf8'))
 for f in os.listdir(IMG):
     if f.startswith('walk_'):
         os.remove(os.path.join(IMG, f))
+CRUMB = 64  # これより小さく、体から離れたかけら（脚を動かしたときに取り残されたドット）は消す
+
+
+def drop_crumbs(rgba):
+    """体（いちばん大きいかたまり）から離れた小さなかけらを消す。足もとの影（半透明）は数えない"""
+    out = rgba.copy()
+    body = out[..., 3] == 255  # 影は半透明なので入らない
+    n, lab, st, _ = cv2.connectedComponentsWithStats(body.astype(np.uint8), 4)
+    if n <= 2:
+        return out
+    main = 1 + int(np.argmax(st[1:, 4]))
+    for i in range(1, n):
+        if i != main and st[i, 4] < CRUMB:
+            out[lab == i] = 0
+    return out
+
+
 meta = {}
 for name, s in sheets.items():
     sheet = Image.open(os.path.join(ED, s['sheet'])).convert('RGBA')
@@ -24,7 +42,7 @@ for name, s in sheets.items():
     frames = []
     for k, fr in enumerate(s['frames']):
         im = sheet.crop((fr['x'], 0, fr['x'] + fw, fh))
-        im = Image.fromarray(defringe(np.asarray(im))[0])  # ふちに残った白いにじみを取る
+        im = Image.fromarray(drop_crumbs(defringe(np.asarray(im))[0]))  # ふちに残った白いにじみと、体から離れたかけらを取る
         im.save(os.path.join(IMG, f'walk_{name}_{k}.png'))
         frames.append({'img': f'walk_{name}_{k}', 'w': fw, 'h': fh, 'ax': p0['ax'] + s.get('padLeft', 0), 'ms': fr['ms'], 'below': s.get('padBottom', 0)})  # below: 足の裏より下の行（影）
     meta[name] = frames

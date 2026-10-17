@@ -633,13 +633,13 @@ def drop_ground_shadow(m, sh, rgb):
     return out
 
 
-def bridge_feet(m, rgb, top, gap):
+def bridge_feet(m, rgb, top, gap, bgc):
     """脚と靴のあいだの隙間を埋める（背景と同じくらい明るい白い靴下などは背景と見分けがつかず穴になる）。
     足元の範囲（top より下）で、上にも下にも gap 以内に人物の画素があり、色が明るくて鮮やかでないマスだけ埋める。"""
     H, W = m.shape
     fgm = m > 0
     mx, mn = rgb.max(-1), rgb.min(-1)
-    ok = (mx > 150) & (mx - mn < 60)
+    ok = (mx > 150) & (mx - mn < 60) & (np.abs(rgb - bgc).sum(-1) > 30)  # 背景の紙の色そのもの（脚と脚のあいだ）は埋めない
     up = np.zeros((H, W), int); dn = np.zeros((H, W), int)
     last = np.full(W, -10 ** 6)
     for y in range(H):
@@ -777,7 +777,7 @@ def extract_poses(name):
         sh = shadow[y0:y1, x0:x1].copy()
         sh[:max(0, (y1 - y0) - int(34 * h0 / 572))] = False  # 足元の影だけ落とす
         m = drop_ground_shadow(m, sh, a[y0:y1, x0:x1])
-        m = bridge_feet(m, a[y0:y1, x0:x1], max(0, (y1 - y0) - int(50 * h0 / 572)), int(30 * h0 / 572))
+        m = bridge_feet(m, a[y0:y1, x0:x1], max(0, (y1 - y0) - int(50 * h0 / 572)), int(30 * h0 / 572), bgc)
         k = CLOSE_HOLES.get(name)
         pad = (k or 0) + 2  # 外側に余白を足してから閉じる（端がふさがらないように）
         mp = np.pad(m, pad)
