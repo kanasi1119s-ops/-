@@ -300,7 +300,6 @@ WARM_SHADOW = {'boy': (55, 172), 'girl': (55, 172), 'student': (55, 172), 'gakur
 # 背景との色の差がこれより大きい所を人物とみなす（既定40。背景に近い白い靴などがある絵は下げる）
 FG_DIFF = {}
 # 影とみなす青みの上限（b - r）。青みがかった白い靴の陰を影と間違える絵は下げる
-SHADOW_BLUE = {'yankee': 12, 'shades': 12, 'volley': 12, 'soccer': 12, 'racer': 12, 'karate': 12, 'samurai': 12, 'beach': 12, 'parasol': 12, 'knight': 12, 'alien': 12}
 # 輪郭のすき間を閉じてから内側を埋める（背景と同じ色の部分がある絵。値は閉じる幅）
 # 内側の穴でも、背景との色の差がこれ以下なら埋めない（脚のあいだのすき間など）
 HOLE_NOT_BG = {'beach': 18, 'knight': 15, 'centaur': 18}
@@ -504,6 +503,49 @@ def transplant_hood(dst, src):
 POSE_HEIGHT = {k: v * SC for k, v in POSE_HEIGHT.items()}
 
 
+def drop_ground_shadow(m, sh, rgb):
+    """足元の地面の影を落とす。灰色の候補のうち、その列の下に人物の画素がないものは確実に影（靴の下・つま先の先・両足のあいだ）。
+    残りの候補（靴の上にある灰色）は、確実な影と同じ色のものだけ落とす。白い靴下や白い靴の陰の灰色は影と色がちがうので残る。"""
+    body = (m > 0) & ~sh
+    below = np.cumsum(body[::-1], 0)[::-1] - body  # そのマスより下にある人物の画素の数
+    near = cv2.dilate(body.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0  # 人物の画素から2マス以内（靴の底の灰色などを影と間違えないように）
+    sure = sh & (below == 0) & ~near
+    out = m.copy()
+    out[sure] = 0
+    rest = sh & ~sure
+    if sure.sum() >= 20 and rest.any():
+        keys, counts = np.unique(rgb[sure] // 8, axis=0, return_counts=True)
+        freq = keys[counts >= max(3, sure.sum() * 0.005)] * 8 + 4  # 影によく出る色
+        if len(freq):
+            d = np.abs(rgb[rest][:, None, :] - freq[None, :, :]).sum(-1).min(1)
+            idx = np.argwhere(rest)[d <= 18]
+            out[idx[:, 0], idx[:, 1]] = 0
+    return out
+
+
+def bridge_feet(m, rgb, top, gap):
+    """脚と靴のあいだの隙間を埋める（背景と同じくらい明るい白い靴下などは背景と見分けがつかず穴になる）。
+    足元の範囲（top より下）で、上にも下にも gap 以内に人物の画素があり、色が明るくて鮮やかでないマスだけ埋める。"""
+    H, W = m.shape
+    fgm = m > 0
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    ok = (mx > 150) & (mx - mn < 60)
+    up = np.zeros((H, W), int); dn = np.zeros((H, W), int)
+    last = np.full(W, -10 ** 6)
+    for y in range(H):
+        last[fgm[y]] = y
+        up[y] = y - last
+    last = np.full(W, 10 ** 6)
+    for y in range(H - 1, -1, -1):
+        last[fgm[y]] = y
+        dn[y] = last - y
+    fill = ~fgm & ok & (up <= gap) & (dn <= gap)
+    fill[:top] = False
+    out = m.copy()
+    out[fill] = 1
+    return out
+
+
 def extract_poses(name):
     a = np.asarray(Image.open(os.path.join(ROOT, f'assets/reference/pose_{name}.jpg')).convert('RGB')).astype(int)
     h0, w0, _ = a.shape
@@ -518,7 +560,8 @@ def extract_poses(name):
     grid &= gridc
     fg = ((np.abs(a - bgc).sum(-1) > FG_DIFF.get(name, 40)) & ~grid).astype(np.uint8)
     # 影は背景より暗い灰色（白い靴や服の明るい陰は背景に近いので、影とみなさない）
-    shadow = (b >= r - 10) & (b - r <= SHADOW_BLUE.get(name, 25)) & ((mx - mn) < 30) & (mx > 70) & (mx < bgc.max() - 20)
+    # 色相は見ない（青みがかった影も赤みがかった影もある）。どれが地面の影かは drop_ground_shadow が形と色で決める
+    shadow = ((mx - mn) < 30) & (mx > 105) & (mx < bgc.max() - 8)
     if name in WARM_SHADOW:  # 影が茶色がかった灰色の絵
         lo, hi, *rest = WARM_SHADOW[name]
         shadow |= ((mx - mn) < (rest[0] if rest else 20)) & (mx > lo) & (mx < hi)
@@ -550,7 +593,8 @@ def extract_poses(name):
         m = fg[y0:y1, x0:x1].copy()
         sh = shadow[y0:y1, x0:x1].copy()
         sh[:max(0, (y1 - y0) - int(34 * h0 / 572))] = False  # 足元の影だけ落とす
-        m[sh] = 0
+        m = drop_ground_shadow(m, sh, a[y0:y1, x0:x1])
+        m = bridge_feet(m, a[y0:y1, x0:x1], max(0, (y1 - y0) - int(50 * h0 / 572)), int(30 * h0 / 572))
         k = CLOSE_HOLES.get(name)
         pad = (k or 0) + 2  # 外側に余白を足してから閉じる（端がふさがらないように）
         mp = np.pad(m, pad)
