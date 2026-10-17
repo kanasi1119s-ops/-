@@ -123,6 +123,7 @@ def grabcut(name):
     inv = (1 - mm).copy()
     cv2.floodFill(inv, np.zeros((inv.shape[0] + 2, inv.shape[1] + 2), np.uint8), (0, 0), 2)
     mm[inv == 1] = 1  # 内側の穴を埋める
+    FULL_MASKS[name] = mm.astype(bool)  # 元の大きさのマスク（色を多数決で決めるときに使う）
     # 384×216 へ: セルの半分以上が人物なら人物
     small = cv2.resize(mm.astype(np.float32), (W, H), interpolation=cv2.INTER_AREA) > 0.5
     keep = np.zeros_like(small)
@@ -134,6 +135,7 @@ def grabcut(name):
     return keep
 
 
+FULL_MASKS = {}
 masks = {n: grabcut(n) for n in BOXES}
 # kid3 の後ろの茂みの色を落とす
 x0, y0, x1, y1 = BOXES['kid3']
@@ -149,10 +151,12 @@ def save_sprite(name, mask):
     ys, xs = np.nonzero(mask[y0:y1, x0:x1])
     ax0, ay0, ax1, ay1 = x0 + xs.min(), y0 + ys.min(), x0 + xs.max() + 1, y0 + ys.max() + 1
     rgba = np.zeros((ay1 - ay0, ax1 - ax0, 4), np.uint8)
-    # 人物は人物だけで減色する（全体の減色だと肌や服のピンクが消える）
-    crop = rgb.crop((ax0, ay0, ax1, ay1))
-    own = crop.quantize(colors=24, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')
-    rgba[..., :3] = np.asarray(own)
+    # 人物は人物だけで減色する（全体の減色だと肌や服のピンクが消える）。元の絵の画素から24色に決めて多数決で縮める
+    fy0, fy1, fx0, fx1 = int(ay0 * S), int(ay1 * S), int(ax0 * S), int(ax1 * S)
+    full = src[fy0:fy1, fx0:fx1, ::-1].copy()  # cv2 は BGR
+    fm = FULL_MASKS[name][fy0:fy1, fx0:fx1]
+    own, _ = vote_downscale(full, fm if fm.any() else None, ax1 - ax0, ay1 - ay0, 24)
+    rgba[..., :3] = despeckle(own, mask[ay0:ay1, ax0:ax1])
     rgba[..., 3] = mask[ay0:ay1, ax0:ax1] * 255
     Image.fromarray(rgba).save(os.path.join(OUT, f'{"char_" if name != "basket" else ""}{name}.png'))
     return (int(ax0), int(ay0), int(ax1 - ax0), int(ay1 - ay0))
