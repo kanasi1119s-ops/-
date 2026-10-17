@@ -373,7 +373,7 @@ def recolor_outfit(rgb, masks, src, ref):
 
 # 頭巾をそろえる: ポーズ集で頭巾をかぶっているポーズとかぶっていないポーズが混ざっている人は、
 # かぶっているポーズ（src）の頭巾を、かぶっていないポーズ（dst）の髪と入れかえる（顔の位置で合わせる。顔はそのまま）
-HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7], 'hooded': [2, 4, 5]}}
+HOOD = {'granny': {'src': 4, 'dst': [0, 1, 3, 6, 7]}}
 
 
 POSE_COLORS = 48  # 人物1人の色数（記号 0-9A-Za-l。m 以降は人ごとの足し色に使える）
@@ -401,59 +401,6 @@ def _head_cover(rgba):
     cover = np.isin(lab, list(top)) & cand
     ys, xs = np.nonzero(skin[:chin + 1])
     return cover, chin, (int(ys.min()), int(xs.min()))
-
-
-def hood_from_reference(q, alpha, sub, m, tw, th, crop):
-    """頭巾を元の絵から描き直す。元の絵（縮める前）の頭のドットを 線・頭巾の白・髪の灰色・肌 に分け、
-    1マスごとに面積の多い種類で決めて縮める（細い線や白が灰色に混ざらない）。色は元の絵の、その種類の色。
-    q, alpha: 縮めたあとの絵。sub: 元の絵の切り抜き。m: 人物のマスク（元の大きさ）。crop: 縮めた絵の切り取り位置"""
-    f = sub.astype(np.float32)
-    lum = f @ np.array([0.299, 0.587, 0.114], np.float32)
-    mx, mn = f.max(-1), f.min(-1)
-    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
-    hue = np.where(mx == f[..., 0], (f[..., 1] - f[..., 2]) / np.maximum(mx - mn, 1e-6) * 60, 999)
-    fig = m > 0
-    skin = fig & (hue > 12) & (hue < 40) & (sat > 0.25) & (mx > 140)
-    dark = fig & ~skin & (lum < 100)
-    light = fig & ~skin & ~dark & (lum >= 195) & (mx - mn < 45)
-    mid = fig & ~skin & ~dark & ~light
-    (ya, yb, xa, xb) = crop
-    def small(mask):
-        return cv2.resize(mask.astype(np.float32), (tw, th), interpolation=cv2.INTER_AREA)[ya:yb, xa:xb]
-    cov = np.stack([small(~fig), small(skin), small(dark), small(light), small(mid)])  # 背景・肌・線・白・灰
-    lab = cov.argmax(0)
-    # 外周の細い線（元の絵で2〜3画素の幅）は、縮めると背景と半々になって消えやすい。人物が2割以上・線が2割以上のマスは線にする
-    lab[(cov[0] < 0.8) & (cov[2] >= 0.2) & ((lab == 0) | (lab == 3))] = 2
-    light_lum = small(light * lum) / np.maximum(small(light), 1e-6)
-    # 色: 元の絵のその種類の色（中央値）
-    col = lambda mask, d: np.median(sub[mask], 0).astype(np.uint8) if mask.any() else np.array(d, np.uint8)
-    c_line, c_white, c_grey = col(dark, (52, 52, 62)), col(light & (lum >= 225), (236, 238, 242)), col(mid, (150, 152, 160))
-    c_shade = col(light & (lum < 225), (210, 212, 218))
-    # 頭（あごより上）だけ描き直す
-    rgba = np.dstack([q, alpha * 255]).astype(np.uint8)
-    cover, chin, _ = _head_cover(rgba)
-    out = rgba.copy()
-    skin_now = _skin(rgba)
-    for y in range(min(chin + 1, out.shape[0])):
-        for x in range(out.shape[1]):
-            L = lab[y, x]
-            if L == 0:
-                if not skin_now[y, x]:
-                    out[y, x] = 0
-            elif L == 1:
-                if not skin_now[y, x] and not alpha[y, x]:
-                    out[y, x, :3] = c_shade; out[y, x, 3] = 255  # まれ: 肌のはずが透明 → 影の色
-            elif L == 2:
-                out[y, x, :3] = c_line; out[y, x, 3] = 255
-            elif L == 3:
-                if not skin_now[y, x]:  # 顔の上には塗らない
-                    out[y, x, :3] = c_white if light_lum[y, x] >= 218 else c_shade; out[y, x, 3] = 255
-            else:
-                # 髪の灰色: いま灰色っぽい（彩度の低い）マスだけ。顔の影や目のまわりの肌は塗らない
-                px = out[y, x, :3].astype(int)
-                if not alpha[y, x] or (not skin_now[y, x] and px.max() - px.min() < 0.22 * max(px.max(), 1)):
-                    out[y, x, :3] = c_grey; out[y, x, 3] = 255
-    return out[..., :3], out[..., 3] > 0
 
 
 def crisp_hood(rgba):
@@ -707,8 +654,6 @@ def extract_poses(name):
         if not VOTE:  # 輪郭線を先に濃く入れ、中を塗ってから縁を薄める（薄めた色が増えるので、人物の色数にそろえ直す）
             q, alpha = outline_pass(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
             q = np.asarray(Image.fromarray(q * alpha[..., None].astype(np.uint8)).quantize(colors=POSE_COLORS, method=QUANT, dither=Image.Dither.NONE).convert('RGB'))
-        if name in HOOD and i in HOOD[name]['hooded']:  # 頭巾を元の絵から描き直す
-            q, alpha = hood_from_reference(q, alpha, a[y0:y1, x0:x1], m, tw, th, (ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
         if name in OUTFIT:  # 襟・スカートの色をポーズ0にそろえる
             masks = outfit_regions(q, alpha, OUTFIT[name].get(i, ()))
             st_ = outfit_stats(q, masks)
