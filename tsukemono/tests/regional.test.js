@@ -16,8 +16,8 @@ function shop(n, season = 'spring', seed = 1) {
   return g;
 }
 
-test('地方の漬物は4つ。条件でひらめき、レベルと地方の枠がそろうまで挑めない', () => {
-  const regional = Object.entries(CONFIG.pickles).filter(([, p]) => p.region).map(([id]) => id);
+test('地方の漬物（特別な決まりのあるもの）は4つ。条件でひらめき、レベルと地方の枠がそろうまで挑めない', () => {
+  const regional = Object.entries(CONFIG.pickles).filter(([, p]) => p.region && p.unlock.via !== 'letter').map(([id]) => id);
   assert.deepEqual(regional.sort(), ['heshiko', 'iburigakko', 'sugukizuke', 'sunki']);
   for (const id of regional) {
     const g = shop(7);
@@ -32,14 +32,18 @@ test('地方の枠: レベル3で1つ。枠がいっぱいだと、ひらめい�
   const g = shop(3);
   assert.equal(g.regionSlots(), 1);
   g.learn('sunki');
-  assert.deepEqual(g.regions, ['長野・木曽']); // 空いていたので入った
-  g.learn('heshiko');
-  assert.match(g.canBrew('heshiko').error, /地方の枠/);
-  assert.match(g.openRegion('福井・若狭').error, /いっぱい/);
-  g.addXp(lv(4));
-  assert.equal(g.openRegion('福井・若狭').ok, true);
+  assert.deepEqual(g.regions, ['北陸・甲信・岐阜']); // 空いていたので入った
+  g.learn('heshiko'); // 同じ地方なので、そのまま挑める
   g.buyContract('saba');
   assert.equal(g.canBrew('heshiko').ok, true);
+  g.addXp(lv(5)); g.buyPlace('kunsei'); g.popEvents();
+  g.wisdom.joined = true; g.regions = ['北陸・甲信・岐阜', '関東', '東海・近畿']; // 枠（Lv5で3つ）をいっぱいにする
+  g.learn('iburigakko'); // 北海道・東北
+  assert.match(g.canBrew('iburigakko').error, /地方の枠/);
+  assert.match(g.openRegion('北海道・東北').error, /いっぱい/);
+  g.addXp(lv(6));
+  assert.equal(g.openRegion('北海道・東北').ok, true);
+  assert.equal(g.canBrew('iburigakko').ok, true);
 });
 
 test('すんき: 秋冬に赤かぶを塩をひかえて漬けるとひらめき、種が届く。塩は使わず、種を使う', () => {
@@ -98,7 +102,7 @@ test('すぐき漬け: 加温室で漬ける。温度管理が主役（40℃前�
   g.buyContract('suguki');
   assert.match(g.canBrew('sugukizuke').error, /加温室/);
   g.buyPlace('kaon');
-  assert.equal(g.brew(0, { veg: 'suguki', pickle: 'sugukizuke', saltPct: 3.5, kaonTemp: 50 }).ok, false);
+  assert.equal(g.brew(0, { veg: 'suguki', pickle: 'sugukizuke', saltPct: 3.5, kaonTemp: 60 }).ok, false);
   const r = g.brew(0, { veg: 'suguki', pickle: 'sugukizuke', saltPct: 3.5, place: 'doma', kaonTemp: 40 });
   assert.ok(r.ok, r.error);
   assert.equal(g.barrels[0].place, 'kaon');
@@ -113,7 +117,7 @@ test('へしこ: 鯖を塩でたっぷり漬けて、季節をまたいで約1�
   g.brew(0, { veg: 'kyuri', pickle: 'nukazuke', saltPct: 0, tempC: 20 });
   g.advance(DAY * 2);
   assert.equal(g.recipeState('heshiko'), 'known'); // 鯖の契約＋ぬか床でひらめく
-  g.addXp(lv(4)); g.openRegion('福井・若狭');
+  g.addXp(lv(4));
   g.barrels[0] = null;
   assert.ok(g.brew(0, { veg: 'saba', pickle: 'heshiko', saltPct: 15, place: 'doma' }).ok);
   const t0 = g.barrels[0].tempC;
@@ -131,6 +135,6 @@ test('セーブ: 地方の枠と種が残る', () => {
   g.learn('sunki');
   const h = createGame();
   assert.equal(h.restore(g.snapshot()), true);
-  assert.deepEqual(h.regions, ['長野・木曽']);
+  assert.deepEqual(h.regions, ['北陸・甲信・岐阜']);
   assert.equal(h.tane.sunki, 1);
 });

@@ -25,7 +25,7 @@
 //   praise      : お客のほめ言葉（なくてもよい。満足したお客がときどき言う）
 //   drying      : 干してから漬ける（段階E）。{ max, ideal: [lo, hi], default }: 干す日数（そのあいだ樽はふさがる）。干すと食感・塩味が締まり、傷みにくい
 //   umezu       : 梅酢に浸す漬物（梅干し。段階E）。梅が梅酢から出るとカビやすい。重石を直して沈め、カビは清潔なスプーンで取る
-//   region      : 地方の漬物（段階F）。店のレベルで開く「地方の枠」にその地方を入れると挑める
+//   region      : 地方の漬物（段階F）。店のレベルで開く「地方の枠」にその地方（資料の6地方）を入れると挑める。prefecture = 都道府県、ref = 資料 data/prefectures.js の id
 //   saltFree    : 塩を使わない（すんき）。starter = 種にする漬物の id（前の樽から種を取り分け、次の樽に使う）
 //   smoking     : 燻してから漬ける（いぶりがっこ）。{ woods: { id: { name, flavor } }, max, ideal: [lo, hi], default }
 //   place       : 決まった置き場所で漬ける（すぐき漬けは加温室）。bestTemp: 風味がいちばん深くなる温度 [lo, hi]
@@ -116,6 +116,7 @@ export const PICKLES = [
   },
   {
     id: 'nozawanazuke',
+    ref: 'p20-1', // 資料の長野の野沢菜漬（はじめから作れる）
     name: '野沢菜漬',
     vegetables: ['nozawana'],
     steps: ['野沢菜を洗う', '塩と唐辛子で漬ける', '重石をして寒い所で2〜3週間'],
@@ -135,6 +136,7 @@ export const PICKLES = [
 
   {
     id: 'umeboshi',
+    ref: 'p30-1', // 資料の和歌山の梅干し
     name: '梅干し',
     vegetables: ['ume'],
     steps: ['青梅を洗い、へたを取る', '塩をまぶして壺に漬ける（梅酢が上がる）', '梅が梅酢に浸かるよう重石を直す', '約1か月（表面にカビが出たら清潔なスプーンで取る）'],
@@ -185,6 +187,7 @@ export const PICKLES = [
   },
   {
     id: 'shibazuke',
+    ref: 'p26-2', // 資料の京都のしば漬け
     name: '柴漬け',
     vegetables: ['nasu', 'kyuri', 'myoga'],
     steps: ['なすときゅうりを刻む', '赤しそと塩で漬ける', '重石をして乳酸発酵させる'],
@@ -261,7 +264,7 @@ export const PICKLES = [
   {
     id: 'sunki',
     name: 'すんき',
-    region: '長野・木曽',
+    region: '北陸・甲信・岐阜', prefecture: '長野', ref: 'p20-2', // 資料 data/prefectures.js の id
     vegetables: ['akakabu'],
     steps: ['赤かぶの茎と葉を湯通しする', '前の年のすんき（種）と交互に樽に詰める', '重石をして、寒い所で約1か月', '塩は使わない'],
     saltFree: true, // 塩を使わない（乳酸発酵だけで漬ける）
@@ -289,7 +292,7 @@ export const PICKLES = [
   {
     id: 'iburigakko',
     name: 'いぶりがっこ',
-    region: '秋田',
+    region: '北海道・東北', prefecture: '秋田', ref: 'p05-1',
     vegetables: ['daikon'],
     steps: ['大根を囲炉裏の上で薪で燻して干す（4〜5日）', '米ぬか・塩・ざらめで漬ける', '冬の冷気で2か月以上'],
     smoking: { woods: { nara: { name: 'ナラ', flavor: 1.0 }, sakura: { name: 'サクラ', flavor: 1.15 }, kunugi: { name: 'クヌギ', flavor: 0.9 } }, max: 8, ideal: [4, 5], default: 4 }, // 日数は【出典】4〜5日、香りの差は【仮置き】
@@ -319,7 +322,7 @@ export const PICKLES = [
   {
     id: 'sugukizuke',
     name: 'すぐき漬け',
-    region: '京都・上賀茂',
+    region: '東海・近畿', prefecture: '京都', ref: 'p26-3',
     vegetables: ['suguki'],
     steps: ['下漬け（塩をまぶして一晩）', '本漬け（天秤押しで重石をかける）', '室入れ（加温室で約40℃、1週間ほど発酵）', '半月ほどで食べられる'],
     place: 'kaon', // 加温室で漬ける（温度を選べる）
@@ -347,7 +350,7 @@ export const PICKLES = [
   {
     id: 'heshiko',
     name: 'へしこ',
-    region: '福井・若狭',
+    region: '北陸・甲信・岐阜', prefecture: '福井', ref: 'p18-1',
     vegetables: ['saba'],
     steps: ['鯖をたっぷりの塩で下漬け（約1週間）', '米ぬかに漬け替える（本漬け）', '季節をまたいで約1年熟成'],
     seasonal: true, // 季節をまたいで熟成。夏の暑さで傷みやすい
@@ -385,8 +388,8 @@ export function picklesFrom(defs) {
     if (pickles[d.id]) throw new Error(`漬物の定義 ${d.id}: id がかぶっている`);
     const u = d.unlock;
     if (u) {
-      if (!['condition', 'failure', 'taught'].includes(u.via)) throw new Error(`漬物の定義 ${d.id}: unlock.via は condition / failure / taught`);
-      if (u.via !== 'taught' && !u.when) throw new Error(`漬物の定義 ${d.id}: unlock.when がない`);
+      if (!['condition', 'failure', 'taught', 'letter'].includes(u.via)) throw new Error(`漬物の定義 ${d.id}: unlock.via は condition / failure / taught / letter`);
+      if (!['taught', 'letter'].includes(u.via) && !u.when) throw new Error(`漬物の定義 ${d.id}: unlock.when がない`);
       if (!u.hint) throw new Error(`漬物の定義 ${d.id}: unlock.hint がない`);
     }
     const { id, affinity: aff = {}, ...rest } = d;

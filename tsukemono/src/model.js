@@ -85,7 +85,9 @@ export function simulate(p, cfg = CONFIG) {
   const stage = stageOf(ratio, pickle.window);
 
   const half = pickle.acidHalfProgress ?? t.acidHalfProgress;
-  const acid = (100 * progress) / (progress + half);
+  const absorbed0 = 1 - Math.exp(-days / t.saltAbsorbTauDays);
+  // 酢漬けは、発酵しなくても漬けたそばから酸っぱい（acidBase。漬け汁がしみるほど効く）
+  const acid = Math.min(100, (100 * progress) / (progress + half) + (pickle.acidBase ?? 0) * absorbed0);
 
   // 塩の入り方は野菜ごと（saltUptake）。水分が多いほど塩味は薄まり、干して水分を抜くと締まる（段階E）
   const dr = cfg.drying, dry = Math.max(0, p.dry ?? 0); // 燻す日数も干すのと同じに数える（いぶりがっこ）

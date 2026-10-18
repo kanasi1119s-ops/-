@@ -8,6 +8,7 @@ import { attachBusiness, agingFactor, hash01 } from './business.js';
 import { attachSaga, newStory } from './saga.js';
 import { attachWisdom } from './wisdom.js';
 import { SAVE_VERSION, migrateSnapshot } from './save.js';
+import { REGIONS } from '../data/prefectures.js';
 import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
@@ -126,14 +127,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.recipes[id] = { via, day: g.day(), made: 0 };
     const p = cfg.pickles[id];
     if (p.region && !g.regions.includes(p.region) && g.regions.length < g.regionSlots()) g.regions.push(p.region); // 枠が空いていれば、その地方に挑む
-    if (p.starter) g.tane[p.starter] = Math.max(1, g.tane[p.starter] ?? 0); // 最初の種は、ひらめきと一緒に届く
+    if (p.starter && !p.starterAfter) g.tane[p.starter] = Math.max(1, g.tane[p.starter] ?? 0); // 最初の種は、ひらめきと一緒に届く（三五八は寝かせてから）
     g.events.push({ type: 'inspire', pickle: id, via, line: line ?? p.unlock?.line ?? '', tooEarly: g.level().level < p.level ? p.level : 0 });
     g.addXp(cfg.progress.xpInspire);
     return true;
   };
   // ---- 地方の枠（段階F） ----
   g.regionSlots = () => g.level().regions ?? 0;
-  g.regionList = () => [...new Set(Object.values(cfg.pickles).map((p) => p.region).filter(Boolean))];
+  g.regionList = () => REGIONS; // 資料（data/prefectures.js）の6地方
   /** 地方の枠に入れる（空きがなければ入れられない。一度入れた地方はそのまま） */
   g.openRegion = (r) => {
     if (!g.regionList().includes(r)) return { ok: false, error: 'その地方はありません' };
@@ -147,7 +148,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     let ctx = null;
     for (const [id, p] of Object.entries(cfg.pickles)) {
       const u = p.unlock;
-      if (!u || g.knows(id) || u.via === 'taught') continue;
+      if (!u || g.knows(id) || u.via === 'taught' || u.via === 'letter') continue; // 教わる・便りで覚えるものは、樽の条件ではひらめかない
       if (!ctx) ctx = { pickle: b.pickle, veg: b.veg, additives: b.additives ?? [], saltPct: b.saltPct, place: b.place, tempC: b.tempC, season: g.season(), days: g.barrelAge(b), owned: g.places, contracts: g.contracts, stage };
       if (u.when.stage && !ctx.stage) ctx.stage = g.tasteOf(g.barrels.indexOf(b))?.stage ?? null;
       const miss = unmet(u.when, ctx);
@@ -251,7 +252,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const vegPart = g.vegCost(veg), saltPart = Math.round(saltPct * cfg.sales.saltCostPerPct);
     const scaled = fromStock ? Math.round((vegPart * (n - fromStock) + saltPart * n) / std / 10) * 10
       : n !== std ? Math.round(((vegPart + saltPart) * n) / std / 10) * 10 : vegPart + saltPart;
-    return scaled + special + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
+    const labor = Math.round(((cfg.pickles[pickle]?.labor ?? 0) * n) / std / 10) * 10; // 手間のかかる漬物（漬け替え・煮返しなど）の手間賃
+    return scaled + special + labor + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
   };
   /** 特別な食材を使えるか（店のレベル・使える漬物・同じ種類は1つ・数） */
   g.checkSpecials = (pickle, specials = []) => {
@@ -298,6 +300,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return { ok: true, cost };
   };
 
+  /** いっしょに要る食材と個数 [[食材, 個数], ...]（個数あたりの割合から） */
+  g.withNeeds = (pickle, count) => Object.entries(cfg.pickles[pickle]?.with ?? {}).map(([m, r]) => [m, Math.max(1, Math.ceil(count * r))]);
   g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry, smoke, kaonTemp, specials = [] }) => {
     specials = [...new Set(specials)];
     if (cfg.pickles[pickle]?.place) place = cfg.pickles[pickle].place; // すぐき漬けは加温室で
@@ -319,7 +323,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const v = cfg.vegetables[veg], p = cfg.pickles[pickle];
     if (!v || !p) return { ok: false, error: '野菜か漬物が不正です' };
     if (!p.vegetables.includes(veg)) return { ok: false, error: `${p.name}に${v.name}は使えません` };
-    if (!g.vegAvailable(veg)) return { ok: false, error: `${v.name}は${v.contract.farmer}と契約すると仕入れられます` };
+    if (!g.vegAvailable(veg)) return { ok: false, error: `${v.name}は${g.vegLock(veg)}` };
     const can = g.canBrew(pickle);
     if (!can.ok) return can;
     // 干す日数（たくあんなど。段階E）。干しているあいだも樽はふさがる
@@ -340,6 +344,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
     const cost = g.brewCost({ veg, saltPct: p.usesNukaBed ? 0 : saltPct, additives, count, pickle, specials });
     if (cost > g.money) return { ok: false, error: 'お金が足りません' };
+    // いっしょに要る食材（にしん漬けのにしん・福神漬けの七種など）: 在庫にそろっていないと漬けられない
+    const needs = g.withNeeds(pickle, count);
+    const short = needs.filter(([m, n]) => g.stockCount(m) < n);
+    if (short.length) return { ok: false, error: `${p.name}は「仕入れ」で${short.map(([m, n]) => `${cfg.vegetables[m].name}を${n}個`).join('・')}そろえてから` };
+    for (const [m, n] of needs) g.useStock(m, n);
     g.money -= cost;
     g.stats.cost += cost;
     if (p.usesNukaBed) {

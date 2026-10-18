@@ -10,23 +10,30 @@ import { VEGETABLES, vegetablesFrom } from '../data/vegetables.js';
 import { WISDOM } from '../data/wisdom.js';
 import { SPECIALS } from '../data/specials.js';
 import { UPGRADES } from '../data/upgrades.js';
+import { REGIONAL, regionalPickles } from '../data/regional.js';
+import { PREFECTURE_PICKLES } from '../data/prefectures.js';
 
-const PICKLE_CFG = picklesFrom(PICKLES);
+const FERMENT = {
+  baseProgressPerDay: 1, // 【出典】塩3%・20℃の白菜漬けが約1週間で食べ頃（ripeAt=7と合わせて）
+  // [温度℃, 係数]。間は線形補間、範囲外は端の値。 【出典: 企画書の初期値】
+  tempCoef: [[4, 0.1], [10, 0.4], [20, 1.0], [25, 1.4], [40, 3.0]],
+  // [塩分%, 係数]。 【出典: 企画書の初期値】
+  saltCoef: [[2, 1.3], [3, 1.0], [5, 0.6], [10, 0.25], [20, 0.05]],
+};
 const FACILITY_CFG = facilitiesFrom(FACILITIES);
 const VEG_CFG = vegetablesFrom(VEGETABLES);
+// 全国の漬物（data/regional.js）は、資料の数値から食べ頃を計算して足す
+export const REGIONAL_PICKLES = regionalPickles(REGIONAL, { ferment: FERMENT, vegetables: VEG_CFG.vegetables, dataset: PREFECTURE_PICKLES });
+/** 漬物の定義すべて（data/pickles.js ＋ 全国の漬物） */
+export const PICKLE_DEFS = [...PICKLES, ...REGIONAL_PICKLES];
+const PICKLE_CFG = picklesFrom(PICKLE_DEFS);
 
 export const CONFIG = {
   // ---------------------------------------------------------------
   // 発酵の進み（1日） = 基準の進み × 温度の係数 × 塩分の係数 × 野菜の係数
   // 進みは「標準日」で数える。白菜を塩3%・20℃で漬けると1日で1標準日進む。
   // ---------------------------------------------------------------
-  ferment: {
-    baseProgressPerDay: 1, // 【出典】塩3%・20℃の白菜漬けが約1週間で食べ頃（ripeAt=7と合わせて）
-    // [温度℃, 係数]。間は線形補間、範囲外は端の値。 【出典: 企画書の初期値】
-    tempCoef: [[4, 0.1], [10, 0.4], [20, 1.0], [25, 1.4], [40, 3.0]],
-    // [塩分%, 係数]。 【出典: 企画書の初期値】
-    saltCoef: [[2, 1.3], [3, 1.0], [5, 0.6], [10, 0.25], [20, 0.05]],
-  },
+  ferment: FERMENT,
 
   // ---------------------------------------------------------------
   // 味の各指標（0〜100の目安）
@@ -76,7 +83,8 @@ export const CONFIG = {
   // 燻す（いぶりがっこ。段階F）: 目安の日数まで燻すと風味の深さが最大 ×1.5、目安を過ぎると1日ごとに −12%（えぐい）【仮置き】
   smoking: { bonusMax: 0.5, overPenalty: 0.12 },
   // 加温室の温度を選べる幅（すぐき漬け。段階F）【仮置き】出典は「約40℃」
-  kaonRange: [30, 45],
+  letterEvery: 5, // 【仮置き】地方の便りが届く間隔（日）
+  kaonRange: [30, 55], // かぶらずしの糀は50℃前後（【出典】資料 p17-1）
   // 梅酢（梅干し。段階E）: 梅は梅酢に浸かっていればカビにくい。日がたつと梅が梅酢から出てくる 【仮置き】
   umezu: { exposePerDay: 0.08, safe: 0.3, moldInBrine: 0.2, moldExposed: 3 },
 

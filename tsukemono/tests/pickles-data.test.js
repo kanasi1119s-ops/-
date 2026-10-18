@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PICKLES, picklesFrom } from '../data/pickles.js';
-import { CONFIG } from '../src/config.js';
+import { CONFIG, PICKLE_DEFS } from '../src/config.js';
 import { createGame, bookTotal } from '../src/game.js';
 import { simulate } from '../src/model.js';
 
 // 定義を1件足しただけの設定
-const withDef = (def) => ({ ...CONFIG, ...picklesFrom([...PICKLES, def]) });
+const withDef = (def) => ({ ...CONFIG, ...picklesFrom([...PICKLE_DEFS, def]) });
 const testzuke = {
   id: 'testzuke', name: 'ためし漬け', vegetables: ['nasu', 'kyuri'],
   steps: ['なす・きゅうりを刻む', '赤しそと塩で漬ける'], saltHint: '3〜4%', salt: { lo: 3, hi: 4 }, tempHint: '10〜20℃', temp: { lo: 10, hi: 20 },
@@ -14,7 +14,8 @@ const testzuke = {
 };
 
 test('漬物はデータの定義から作られる（はじめから知っているのは今までの5種と梅干し）', () => {
-  assert.deepEqual(Object.keys(CONFIG.pickles), PICKLES.map((p) => p.id));
+  assert.deepEqual(Object.keys(CONFIG.pickles), PICKLE_DEFS.map((p) => p.id));
+  assert.deepEqual(PICKLE_DEFS.slice(0, PICKLES.length), PICKLES);
   assert.equal(CONFIG.pickles.hakusaizuke.ripeAt, 7);
   assert.equal(CONFIG.affinity.takuan.zarame, 'good');
   for (const p of Object.values(CONFIG.pickles)) {

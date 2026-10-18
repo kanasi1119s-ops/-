@@ -34,7 +34,10 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
   };
 
   // ---- 相場（季節 × 日ごとの揺れ × 特売 × 行事） ----
-  g.vegAvailable = (veg) => !cfg.vegetables[veg]?.contract || g.contracts.includes(veg);
+  // 契約が要る野菜と、地方の食材（その地方を地方の枠に入れると取り寄せられる）
+  g.vegAvailable = (veg) => { const v = cfg.vegetables[veg]; return !!v && (!v.contract || g.contracts.includes(veg)) && (!v.region || g.regions.includes(v.region)) && (!v.only || v.only.includes(g.season())); };
+  /** 仕入れられない理由（なければ null） */
+  g.vegLock = (veg) => { const v = cfg.vegetables[veg]; if (!v) return 'ありません'; if (v.contract && !g.contracts.includes(veg)) return `${v.contract.farmer}と契約がいる`; if (v.region && !g.regions.includes(v.region)) return `地方の枠に「${v.region}」を入れると取り寄せられる`; if (v.only && !v.only.includes(g.season())) return `${v.only.map((x) => cfg.season[x].name).join('・')}だけ`; return null; };
   const vegIds = () => Object.keys(cfg.vegetables).filter(g.vegAvailable);
   /** 今日の特売の野菜（なければ null） */
   g.saleVeg = (day = g.day()) => {
@@ -61,7 +64,7 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
   g.stockCost = (veg, n) => Math.round((perPortion(veg) * n) / 10) * 10;
   g.buyStock = (veg, n) => {
     if (!cfg.vegetables[veg]) return { ok: false, error: 'その野菜はありません' };
-    if (!g.vegAvailable(veg)) return { ok: false, error: `${cfg.vegetables[veg].contract.farmer}と契約するまで仕入れられません` };
+    if (!g.vegAvailable(veg)) return { ok: false, error: `${cfg.vegetables[veg].name}は${g.vegLock(veg)}` };
     if (!Number.isInteger(n) || n < 1) return { ok: false, error: '数がおかしい' };
     const cost = g.stockCost(veg, n);
     if (cost > g.money) return { ok: false, error: 'お金が足りません' };
@@ -169,9 +172,18 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed && b.film >= cfg.care.filmHarmless) g.care(i); });
     // 種が絶えても、冬のはじめには木曽から種が届く（すんき。段階F）
     for (const [id, p] of Object.entries(cfg.pickles)) {
-      if (p.starter && g.knows(id) && !(g.tane[p.starter] > 0) && g.season() === 'winter' && g.dayOfSeason() === 1 && !g.barrels.some((b) => b?.pickle === id)) { g.tane[p.starter] = 1; g.events.push({ type: 'taneArrived', pickle: id }); }
+      if (p.starterAfter && g.knows(id) && !g.recipes[id].starterReady && g.day() - g.recipes[id].day >= p.starterAfter) { g.recipes[id].starterReady = true; g.tane[p.starter] = Math.max(1, g.tane[p.starter] ?? 0); g.events.push({ type: 'starterReady', pickle: id }); continue; }
+      if (p.starter && !p.starterAfter && g.knows(id) && !(g.tane[p.starter] > 0) && g.season() === 'winter' && g.dayOfSeason() === 1 && !g.barrels.some((b) => b?.pickle === id)) { g.tane[p.starter] = 1; g.events.push({ type: 'taneArrived', pickle: id }); }
     }
     g.wisdomMorning(); // 梅子さん（知恵袋のおばあちゃん）
+    // 地方の便り: 地方の枠に入れた地方から、ときどき作り方の便りが届く（全国の漬物。data/regional.js）
+    if (g.day() % cfg.letterEvery === 0) {
+      const cand = Object.entries(cfg.pickles).filter(([id, p]) => p.unlock?.via === 'letter' && !g.knows(id) && g.regions.includes(p.region));
+      if (cand.length) {
+        const [id, p] = cand[Math.floor(hash01(g.seed, g.day(), 'letter') * cand.length)];
+        g.learn(id, 'letter', p.unlock.line);
+      }
+    }
     const ev = g.event();
     if (ev && ev.from === g.dayOfSeason()) g.events.push({ type: 'season', id: ev.id, name: ev.name, note: ev.note });
     if (g.peddlerOffer()) g.events.push({ type: 'peddler' });

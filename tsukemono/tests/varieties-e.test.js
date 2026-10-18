@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CONFIG } from '../src/config.js';
+import { CONFIG, PICKLE_DEFS, REGIONAL_PICKLES } from '../src/config.js';
 import { VEGETABLES, vegetablesFrom } from '../data/vegetables.js';
 import { PICKLES, picklesFrom } from '../data/pickles.js';
 import { createGame, bookTotal } from '../src/game.js';
@@ -36,7 +36,7 @@ test('食感の変わり方: 5日漬けると、きゅうりはやわらかく�
 
 test('データで足せる: 野菜を1件足し、漬物の定義に入れると、仕入れて仕込める', () => {
   const veg = { id: 'gobo', name: 'ごぼう', water: 0.81, saltUptake: 0.7, fermentRate: 0.7, crisp0: 95, crispTau: 90, spoilMult: 0.8, cost: 400, seasons: { spring: 1, summer: 1.2, autumn: 0.8, winter: 0.9 } };
-  const pk = PICKLES.map((p) => (p.id === 'asazuke' ? { ...p, vegetables: [...p.vegetables, 'gobo'] } : p));
+  const pk = PICKLE_DEFS.map((p) => (p.id === 'asazuke' ? { ...p, vegetables: [...p.vegetables, 'gobo'] } : p));
   const cfg = { ...CONFIG, ...vegetablesFrom([...VEGETABLES, veg]), ...picklesFrom(pk) };
   cfg.market = { ...CONFIG.market, priceBySeason: vegetablesFrom([...VEGETABLES, veg]).priceBySeason };
   const g = createGame({ cfg });

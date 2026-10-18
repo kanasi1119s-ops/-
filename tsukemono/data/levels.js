@@ -17,7 +17,7 @@ export const LEVELS = [
   { level: 4, xp: 400, title: '漬物名人', line: 'ぬか床に話しかけても、もう誰も驚かない。', barrels: 5, regions: 2, opens: ['加温室', '地方の漬物の枠 2つ'] }, // 【仮置き】
   { level: 5, xp: 750, title: '漬物番長', line: '重石を持つ姿が、やけに様になってきた。', barrels: 5, regions: 3, opens: ['燻製小屋', '地方の漬物の枠 3つ'] }, // 【仮置き】
   { level: 6, xp: 1200, title: '漬物仙人', line: '白菜の気持ちがわかる（気がする）。', barrels: 5, regions: 4, opens: ['地方の漬物の枠 4つ'] }, // 【仮置き】
-  { level: 7, xp: 2000, title: '最強の漬物屋', line: 'ついに「最強」を名乗っても怒られなくなった。…でも道はまだ続く。', barrels: 5, regions: 4, opens: [] }, // 【仮置き】
+  { level: 7, xp: 2000, title: '最強の漬物屋', line: 'ついに「最強」を名乗っても怒られなくなった。…でも道はまだ続く。', barrels: 5, regions: 6, opens: ['地方の枠 6つ（全国）'] }, // 【仮置き】
 ];
 
 /** 最後のレベルより先は、この経験ごとに「＋1」ずつ上がる（遊びは終わりなし） */

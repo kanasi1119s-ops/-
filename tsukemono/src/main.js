@@ -14,6 +14,8 @@ import { encodeSave, decodeSave } from './save.js';
 import { agingFactor, STAFF, AGES } from './business.js';
 import { Sound } from './audio.js';
 import { SCENE, IMAGES } from '../assets/scene.js';
+import { PREFECTURE_PICKLES } from '../data/prefectures.js';
+import { NOT_PLAYABLE } from '../data/regional.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -80,7 +82,7 @@ function view() {
   return {
     ...v,
     barrels: game.barrels.map((b) => ({
-      filled: !!b, veg: b?.veg, top: b ? C.pickles[b.pickle].top : undefined,
+      filled: !!b, veg: b ? (C.vegetables[b.veg]?.img ?? b.veg) : undefined, top: b ? C.pickles[b.pickle].top : undefined, // 絵のない食材は、似た野菜の絵（img）で
       film: b ? (C.pickles[b.pickle].usesNukaBed ? Math.max(b.film ?? 0, game.nuka.film) : (b.film ?? 0)) : 0,
       selected: false, label: null, // 札は画面の上に重ねて出す（下の renderChips）
     })),
@@ -237,7 +239,7 @@ function renderWin() {
 WINS.market = () => {
   const sale = game.saleVeg(), ev = game.event(), season = game.season();
   const rows = Object.entries(C.vegetables).map(([id, v]) => {
-    if (!game.vegAvailable(id)) return `<div class="item"><span class="grow">${v.name}<br><span class="hint">${v.contract.farmer}と契約すると仕入れられる（「店」で。レベル${v.contract.level}から）</span></span></div>`;
+    if (!game.vegAvailable(id)) return `<div class="item"><span class="grow">${v.name}<br><span class="hint">${v.contract && !game.contracts.includes(id) ? `${v.contract.farmer}と契約すると仕入れられる（「店」で。レベル${v.contract.level}から）` : game.vegLock(id)}</span></span></div>`;
     const base = C.market.priceBySeason[id]?.[season] ?? 1, f = game.marketFactor(id);
     const trend = f < base * 0.95 ? '<span class="pos">↓安い</span>' : f > base * 1.05 ? '<span class="neg">↑高い</span>' : '<span class="hint">ふつう</span>';
     const lots = game.stock[id] ?? [], n = game.stockCount(id);
@@ -389,6 +391,8 @@ const specialTiles = (r) => {
   }).join('');
 };
 const SALT_DEFAULT = { asazuke: 2.5, takuan: 5, umeboshi: 18 };
+/** 漬物を選んだときの塩分（目安の真ん中。全国の漬物は資料の範囲から） */
+const saltDefault = (id) => SALT_DEFAULT[id] ?? (C.pickles[id].salt && C.pickles[id].ref ? Math.round(((C.pickles[id].salt.lo + C.pickles[id].salt.hi) / 2) * 2) / 2 : 3);
 const SALT_MAX = () => Math.max(15, C.pickles[ui.recipe.pickle]?.salt?.hi ?? 0, ui.recipe.saltPct); // 梅干しは20%まで
 WINS.brew = () => {
   const r = effRecipe(), p = C.pickles[r.pickle];
@@ -401,7 +405,8 @@ WINS.brew = () => {
     const can = game.canBrew(id), star = masteryStars(id);
     return `<button class="tile${r.pickle === id ? ' on' : ''}" data-pickle="${id}" ${can.ok ? '' : 'disabled'}>${game.recipeState(id) === 'known' && game.recipes[id].via !== 'start' ? '<i class="tag">新</i>' : ''}<b>${x.name}${star ? ` <small class="ukon">${star}</small>` : ''}</b>${x.region ? `<span class="ukon">${x.region}</span>` : ''}<span>${can.ok ? `${x.ripeAt >= 10 ? '長く漬ける' : x.ripeAt >= 3 ? '数日〜' : '早い'} ・ ${yen(x.price)}${x.portions ? `×${x.portions}` : ''}` : can.error}</span></button>`;
   }).join('') + (unknownN ? `<button class="tile" data-act="openRecipes"><b>？？？</b><span>まだ知らない作り方 ${unknownN}つ（レシピ帳）</span></button>` : '');
-  const vegs = p.vegetables.map((id) => { const ok = game.vegAvailable(id), n = game.stockCount(id); return `<button class="tile${r.veg === id ? ' on' : ''}" data-veg="${id}" ${ok ? '' : 'disabled'}>${game.saleVeg() === id ? '<i class="tag">特</i>' : game.inSeason(id) ? '<i class="tag">旬</i>' : ''}<b>${C.vegetables[id].name}</b><span>${ok ? `${yen(game.vegCost(id))}${n ? ` ・ 在庫${n}` : ''}` : '契約がいる'}</span></button>`; }).join('');
+  const vegs = p.vegetables.map((id) => { const ok = game.vegAvailable(id), n = game.stockCount(id); return `<button class="tile${r.veg === id ? ' on' : ''}" data-veg="${id}" ${ok ? '' : 'disabled'}>${game.saleVeg() === id ? '<i class="tag">特</i>' : game.inSeason(id) ? '<i class="tag">旬</i>' : ''}<b>${C.vegetables[id].name}</b><span>${ok ? `${yen(game.vegCost(id))}${n ? ` ・ 在庫${n}` : ''}` : esc(game.vegLock(id))}</span></button>`; }).join('');
+  const withs = game.withNeeds(r.pickle, r.count ?? game.standardCount(r.pickle)).map(([m, n]) => { const have = game.stockCount(m); return `${C.vegetables[m].name} ${n}個${have >= n ? `<span class="pos">（在庫${have}）</span>` : `<span class="warn">（在庫${have}・「仕入れ」で買う）</span>`}`; });
   const adds = Object.entries(C.additives).map(([id, x]) => { const on = r.additives.includes(id); return `<button class="tile${on ? ' on' : ''}" data-add="${id}" ${!on && r.additives.length >= C.additiveMax ? 'disabled' : ''}><b>${x.name} ${affMark(r.pickle, id)}</b><span>${yen(x.cost)}</span></button>`; }).join('');
   const places = Object.entries(C.places).filter(([id, x]) => x.level <= game.level().level || game.places.includes(id)).map(([id, x]) => { const own = game.places.includes(id); const fixedOut = p.place && p.place !== id; return `<button class="tile${r.place === id ? ' on' : ''}" data-place="${id}" ${own && !fixedOut ? '' : 'disabled'}><b>${x.name}</b><span>${own ? `${x.adjustable ? kaonT() : game.placeTemp(id)}℃` : '未購入（店で買う）'}</span></button>`; }).join('');
   let predict = '';
@@ -417,7 +422,7 @@ WINS.brew = () => {
     title: '仕込む',
     body: `
     <div class="sec"><h3>樽</h3><div class="row">${empties.map((i) => `<button class="tile${ui.slot === i ? ' on' : ''}" data-bslot="${i}" style="flex:0 0 auto">樽${i + 1}</button>`).join('')}</div></div>
-    <div class="sec"><h3>漬物</h3><div class="tiles">${pickles}</div><div class="hint">作り方: ${p.steps.join(' → ')}　・　温度の目安 ${p.tempHint}</div></div>
+    <div class="sec"><h3>漬物</h3><div class="tiles">${pickles}</div><div class="hint">作り方: ${p.steps.join(' → ')}　・　温度の目安 ${p.tempHint}</div>${withs.length ? `<div class="hint">いっしょに要る食材: ${withs.join(' ・ ')}</div>` : ''}</div>
     <div class="sec"><h3>野菜　<span class="hint">値段は今日の相場（6個分）。在庫があれば先に使う</span> <button class="btn ghost" data-act="openMarket" style="padding:2px 8px">仕入れ</button></h3><div class="tiles">${vegs}</div><div class="hint">${C.vegetables[r.veg].name}: 水分${Math.round(C.vegetables[r.veg].water * 1000) / 10}% ・ 塩の入り方 ${C.vegetables[r.veg].saltUptake >= 1.1 ? '速い' : C.vegetables[r.veg].saltUptake <= 0.85 ? 'ゆっくり' : 'ふつう'} ・ ${C.vegetables[r.veg].note ?? ''}</div></div>
     <div class="sec"><h3>塩　<span class="hint">目安 ${p.saltHint}</span></h3>
       ${p.saltFree ? `<div class="hint">塩は使わない。前の樽から取り分けた<b class="ukon">種</b>で漬ける（種 ${game.tane[p.starter] ?? 0}）。うまくできた樽から、次の種が取れる。</div>`
@@ -549,7 +554,7 @@ function upgradeRows(group) {
 
 // 帳面（記録・図鑑・お客）
 WINS.book = ({ tab = 'log' }) => {
-  const tabs = [['story', '物語'], ['recipes', 'レシピ帳'], ['wisdom', '知恵袋'], ['log', '販売の記録'], ['book', '組み合わせ'], ['guests', 'お客の好み']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
+  const tabs = [['story', '物語'], ['recipes', 'レシピ帳'], ['atlas', '全国めぐり'], ['wisdom', '知恵袋'], ['log', '販売の記録'], ['book', '組み合わせ'], ['guests', 'お客の好み']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
   let body = '';
   if (tab === 'story') {
     body = storyTab();
@@ -560,6 +565,8 @@ WINS.book = ({ tab = 'log' }) => {
       <div class="hint">まだ教わっていない知恵: ${C.wisdomTotal - ws.length}</div>` : '<p class="hint">まだ知恵袋のおばあちゃんに出会っていない。</p>';
   } else if (tab === 'recipes') {
     body = recipeBook();
+  } else if (tab === 'atlas') {
+    body = atlasTab();
   } else if (tab === 'log') {
     const st = game.stats;
     body = `<div class="hint">これまで: 売上 ${yen(st.revenue)} ・ 経費 ${yen(st.cost)} ・ <span class="${st.revenue - st.cost >= 0 ? 'pos' : 'neg'}">差し引き ${yen(st.revenue - st.cost)}</span> ・ 売れた数 ${st.sold}個</div>`
@@ -587,14 +594,44 @@ WINS.book = ({ tab = 'log' }) => {
 // レシピ帳（段階C）: 知っている作り方と、まだ知らない作り方の噂
 const masteryStars = (id) => { const n = game.recipes[id]?.made ?? 0; return n ? '★'.repeat(Math.min(MASTERY_NAMES.length - 1, Math.ceil(game.mastery(id) * (MASTERY_NAMES.length - 1)))) || '★' : ''; };
 const masteryName = (id) => MASTERY_NAMES[Math.min(MASTERY_NAMES.length - 1, Math.ceil(game.mastery(id) * (MASTERY_NAMES.length - 1)))];
-const VIA = { start: 'はじめから', condition: 'ひらめき', failure: '失敗から', taught: '教わった', bought: '行商人から' };
+const VIA = { start: 'はじめから', condition: 'ひらめき', failure: '失敗から', taught: '教わった', bought: '行商人から', letter: '便りで' };
+
+// 全国めぐり: 資料（data/prefectures.js）の47都道府県の漬物を、地方ごとに並べる。作ると印がつく
+const REF_TO_PICKLE = Object.fromEntries(Object.entries(C.pickles).filter(([, p]) => p.ref).map(([id, p]) => [p.ref, id]));
+function atlasStatus(d) {
+  if (NOT_PLAYABLE[d.id]) return { tag: '伝説', cls: 'raw', note: NOT_PLAYABLE[d.id] };
+  const id = REF_TO_PICKLE[d.id];
+  if (!id) return { tag: '参考', cls: 'raw', note: '資料に参考として載っているもの（ゲームでは作れない）' };
+  const st = game.recipeState(id);
+  return st === 'learned' ? { tag: '作った', cls: 'ripe', id } : st === 'known' ? { tag: '知っている', cls: 'over', id } : { tag: '未知', cls: 'raw', id, hidden: true };
+}
+function atlasTab() {
+  const all = PREFECTURE_PICKLES.map((d) => ({ d, s: atlasStatus(d) }));
+  const prefs = [...new Set(PREFECTURE_PICKLES.map((d) => d.prefecture))];
+  const madePrefs = prefs.filter((pr) => all.some((x) => x.d.prefecture === pr && x.s.tag === '作った')).length;
+  const regions = game.regionList().map((r) => {
+    const rows = all.filter((x) => x.d.region === r).map(({ d, s }) => {
+      const show = !s.hidden || game.regions.includes(r);
+      const head = `<b>${esc(d.prefecture)}</b> ${s.hidden && !game.regions.includes(r) ? '<b class="q">？？？</b>' : esc(d.name)} <span class="stage-tag ${s.cls}">${s.tag}</span>`;
+      const body = !show ? `<span class="hint">${esc(d.kind)}。地方の枠に「${esc(r)}」を入れると、便りが届くかも</span>`
+        : s.hidden ? `<span class="hint">${esc(d.kind)}。${esc(d.game_idea)}（まだ便りが来ていない）</span>`
+        : `<span class="hint">${esc(d.kind)} ・ ${esc(d.process)}${d.numbers ? ` ・ 数値: ${esc(d.numbers)}` : ''}${s.note ? `<br>${esc(s.note)}` : ''}<br>出典: ${esc(d.source)}</span>`;
+      return `<div class="item recipe${s.tag === '作った' ? ' ok' : ''}"><span class="grow">${head}<br>${body}</span></div>`;
+    }).join('');
+    const made = all.filter((x) => x.d.region === r && x.s.tag === '作った').length, n = all.filter((x) => x.d.region === r && x.s.id).length;
+    return `<div class="panel"><div class="ukon">${r} ${game.regions.includes(r) ? '（枠に入っている）' : ''} ・ 作った ${made} / ${n}</div><div class="list">${rows}</div></div>`;
+  }).join('');
+  return `<div>作った都道府県 <b class="ukon">${madePrefs}</b> / ${prefs.length}</div>
+    <div class="hint">全国の漬物の資料（出典つき）。作り方を覚えて売り、「うまい！」と言わせると「作った」になる。数値の記載がないものは、ゲームでは仮の数値で作れる。</div>${regions}`;
+}
 function recipeBook() {
   const lv = game.level().level;
   const ids = Object.keys(C.pickles);
   const filled = ids.filter((id) => game.recipeState(id) === 'learned').length;
   const affTotal = ids.length * Object.keys(C.additives).length, affFound = ids.reduce((n, id) => n + Object.keys(C.additives).filter((a) => affKnown(id, a)).length, 0);
   const bestOf = (id) => Math.max(0, ...Object.entries(game.book).filter(([k]) => k.startsWith(`${id}:`)).map(([, e]) => e.best));
-  const cards = ids.map((id) => {
+  const letters = ids.filter((id) => C.pickles[id].unlock?.via === 'letter' && game.recipeState(id) === 'unknown');
+  const cards = ids.filter((id) => !letters.includes(id)).map((id) => {
     const p = C.pickles[id], st = game.recipeState(id), rec = game.recipes[id];
     if (st === 'unknown') {
       const u = p.unlock, heard = lv >= (u.hintLevel ?? 1);
@@ -610,7 +647,8 @@ function recipeBook() {
     return `<div class="item recipe${st === 'learned' ? ' ok' : ''}"><span class="grow">${head}<br>${info}${made}</span>${btn}</div>`;
   }).join('');
   const slots = game.regionSlots(), regs = game.regionList();
-  const regionBox = `<div class="panel"><div class="ukon">地方の枠 ${game.regions.length} / ${slots}</div><div class="hint">${slots ? '' : '店のレベル3から地方の漬物に挑める。'}${regs.map((r) => (game.regions.includes(r) ? `<b class="ukon">${r}</b>` : Object.entries(C.pickles).some(([id, p]) => p.region === r && game.knows(id)) && game.regions.length < slots ? `<button class="btn" data-region="${r}" style="padding:2px 8px">${r}に挑む</button>` : r)).join(' ・ ')}</div></div>`;
+  const regionBox = `<div class="panel"><div class="ukon">地方の枠 ${game.regions.length} / ${slots}</div><div class="hint">${slots ? '' : '店のレベル3から地方の漬物に挑める。'}${regs.map((r) => (game.regions.includes(r) ? `<b class="ukon">${r}</b>` : game.regions.length < slots ? `<button class="btn" data-region="${r}" style="padding:2px 8px">${r}に挑む</button>` : r)).join(' ・ ')}</div>
+    <div class="hint">枠に入れた地方からは${C.letterEvery}日ごとに作り方の便りが届き、その地方の食材も取り寄せられる。まだ便りの来ていない全国の漬物 ${letters.length}（「全国めぐり」で見られる）</div></div>`;
   return `${regionBox}<div>埋まった作り方 <b class="ukon">${filled}</b> / ${ids.length} ・ わかった調味の相性 <b class="ukon">${affFound}</b> / ${affTotal}</div>
     <div class="hint">売って「うまい！」と言わせると埋まる。同じ作り方でうまくいくほど腕が上がり、風味と食感が良くなる（${MASTERY_NAMES.join(' → ')}）。「？？？」は、噂を手がかりに材料・季節・温度・日数を組み合わせるとひらめく。</div>
     <div class="list">${cards}</div>`;
@@ -688,6 +726,7 @@ function flushEvents() {
     if (e.type === 'wisdom') { sound.se('found'); openWin('wisdom', { e }); return; }
     if (e.type === 'wisdomHint') { say(`「${e.text}」`, game.grannyDef.name); continue; }
     if (e.type === 'tane') { floatText('種を取り分けた', 384, 130, 'good'); say(`${C.pickles[e.pickle].name}の種を取り分けた（種 ${e.n}）。次の樽に使える。`, '店主'); continue; }
+    if (e.type === 'starterReady') { say(`寝かせておいた${C.pickles[e.pickle].name}の床が、いい香りになった。もう漬けられる。`, '店主'); continue; }
     if (e.type === 'taneArrived') { say(`木曽から小包。「種を絶やしたな？ 今年だけじゃぞ」…${C.pickles[e.pickle].name}の種が届いた。`, '店主'); continue; }
     if (e.type === 'season') { floatText(e.name, 384, 110, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
     if (e.type === 'peddler') { say('行商人が来ている。「店」の窓で、作り方の巻物を売っているらしい。（今日だけ）', '店主'); continue; }
@@ -944,7 +983,7 @@ function doBuy(id) {
 function clampRecipe() {
   if (!game.canBrew(ui.recipe.pickle).ok) ui.recipe.pickle = 'asazuke';
   const r = ui.recipe, p = C.pickles[r.pickle];
-  if (!p.vegetables.includes(r.veg)) r.veg = p.vegetables.find((v) => game.inSeason(v)) ?? p.vegetables[0];
+  if (!p.vegetables.includes(r.veg) || !game.vegAvailable(r.veg)) r.veg = p.vegetables.find((v) => game.vegAvailable(v) && game.inSeason(v)) ?? p.vegetables.find((v) => game.vegAvailable(v)) ?? p.vegetables[0];
   if (p.place && game.places.includes(p.place)) r.place = p.place; // すぐき漬けは加温室
   if (!game.places.includes(r.place)) r.place = 'doma';
 }
@@ -969,7 +1008,7 @@ document.addEventListener('click', (e) => {
   if (d.chip != null) { sound.se('select'); ui.slot = +d.chip; openWin('barrel', { slot: +d.chip }); return; }
   if (d.goto != null) { sound.se('select'); ui.slot = +d.goto; ui.win = { kind: 'barrel', slot: +d.goto }; ui.confirm = null; renderWin(); $('modal').hidden = false; renderChips(); return; }
   if (d.tab) { sound.se('select'); ui.win.tab = d.tab; renderWin(); return; }
-  if (d.pickle) { sound.se('select'); ui.recipe.pickle = d.pickle; ui.recipe.dry = undefined; ui.recipe.smoke = undefined; ui.recipe.specials = (ui.recipe.specials ?? []).filter((id) => !C.specials[id].pickles || C.specials[id].pickles.includes(d.pickle)); ui.recipe.saltPct = SALT_DEFAULT[d.pickle] ?? 3; ui.recipe.count = game.standardCount(d.pickle); clampRecipe(); renderWin(); return; }
+  if (d.pickle) { sound.se('select'); ui.recipe.pickle = d.pickle; ui.recipe.dry = undefined; ui.recipe.smoke = undefined; ui.recipe.specials = (ui.recipe.specials ?? []).filter((id) => !C.specials[id].pickles || C.specials[id].pickles.includes(d.pickle)); ui.recipe.saltPct = saltDefault(d.pickle); ui.recipe.count = game.standardCount(d.pickle); clampRecipe(); renderWin(); return; }
   if (d.count) { sound.se('select'); ui.recipe.count = clampCount((ui.recipe.count ?? 1) + +d.count); renderWin(); return; }
   if (d.countset) { sound.se('select'); ui.recipe.count = clampCount(+d.countset); renderWin(); return; }
   if (d.veg) { sound.se('select'); ui.recipe.veg = d.veg; renderWin(); return; }
@@ -1041,7 +1080,7 @@ document.addEventListener('click', (e) => {
   if (act === 'openMarket') { openWin('market'); return; }
   if (act === 'buyRecipe') { const r = game.buyRecipe(); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; closeWin(); return; }
   if (act === 'openRecipes') { openWin('book', { tab: 'recipes' }); return; }
-  if (act === 'tryRecipe') { const id = d.id; closeWin(); if (game.canBrew(id).ok) { ui.recipe.pickle = id; ui.recipe.saltPct = SALT_DEFAULT[id] ?? 3; ui.recipe.count = game.standardCount(id); clampRecipe(); const e2 = game.barrels.findIndex((b) => !b); if (e2 >= 0) { ui.slot = e2; openWin('brew'); } else say('空いている樽がない。売り切るか、樽を空けてから仕込もう。'); } return; }
+  if (act === 'tryRecipe') { const id = d.id; closeWin(); if (game.canBrew(id).ok) { ui.recipe.pickle = id; ui.recipe.saltPct = saltDefault(id); ui.recipe.count = game.standardCount(id); clampRecipe(); const e2 = game.barrels.findIndex((b) => !b); if (e2 >= 0) { ui.slot = e2; openWin('brew'); } else say('空いている樽がない。売り切るか、樽を空けてから仕込もう。'); } return; }
   if (act === 'ambient') { closeWin(); if (!world.busy) world.ambientVisit(view().season); return; }
   if (act === 'toTitle') { closeWin(); showTitle(); return; }
   if (act === 'reset') {
