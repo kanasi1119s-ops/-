@@ -54,69 +54,83 @@
 | 143 | affinityBadPenalty | `15` |  |
 | 144 | affinitySatBonus | `6` | 相性の良い調味1つにつき、どのお客の満足度も+6（悪いと−6） |
 | 145 | affinityNeutralFactor | `0.5` |  |
-| 180 | progress.xpPerPiece | `1` | 1個売るごとの経験 |
-| 181 | progress.xpGreatSat | `70` | この満足度以上で買われた分は |
-| 182 | progress.xpGreatMult | `2` | 経験×2 |
-| 183 | progress.xpNewBook | `5` | 図鑑に新しい組み合わせが載ったとき |
-| 184 | progress.xpInspire | `20` | ひらめいたとき |
-| 185 | progress.xpFirstSuccess | `30` | 作り方を初めて成功させたとき（図鑑が埋まる） |
-| 186 | progress.successSat | `60` | 1つの樽で、買ったお客の誰か1人でもこの満足度以上なら「成功」（うまいと言わせた） |
-| 187 | progress.masterAfter | `10` | 成功10樽で腕前が最大 |
-| 188 | progress.masterComplexity | `0.15` | 腕前が最大なら風味の深さ×1.15（作り方を磨くと品質が上がる） |
-| 189 | progress.masterTexture | `0.05` | 腕前が最大なら食感×1.05（扱いが上手になる） |
-| 209 | care.filmPerDay | `[[4, 0.008], [10, 0.05], [20, 0.08], [25, 0.12], [30, 0.15], [40, 0…` | 量は |
-| 210 | care.filmVisible | `0.3` | これ以上で「白い膜」が見える（4℃では約37日） |
-| 211 | care.filmHarmless | `0.15` | これ未満は味に響かない |
-| 212 | care.filmSatPenalty | `0.5` | 膜が一面に張ると満足度×0.5 |
-| 213 | care.filmComplexityPenalty | `0.4` | 膜が一面に張ると風味の深さ×0.6 |
-| 218 | nuka.startSalt | `7` | ぬか床の塩分% |
-| 219 | nuka.minSalt | `4, maxSalt: 12` |  |
-| 220 | nuka.saltLossPerBatch | `0.3` | ぬか漬けを1樽漬けるごとに床の塩分が減る |
-| 221 | nuka.sourPerDay | `[[4, 0.02], [10, 0.06], [20, 0.1], [25, 0.12], [26, 0.2], [30, 0.3]…` | かき混ぜないと1日に増える酸味（26℃以上で急に増える） |
-| 222 | nuka.lowSaltSourBoost | `0.05` | 塩分が1%下がるごとに酸味の増え方+5% |
-| 223 | nuka.stirSourDrop | `0.35` | かき混ぜると酸味がこれだけ下がる |
-| 224 | nuka.sourAcidBoost | `40` | 床の酸味1でぬか漬けの酸味+40 |
-| 225 | nuka.matureDays | `14` | 毎日かき混ぜて14日で熟成度が最大 |
-| 227 | nuka.waterPerBatch | `0.08` | ぬか漬けを標準の個数ぶん漬けるごとに、野菜から出る水で床が水っぽくなる（個数に比例） |
-| 228 | nuka.waterPerDay | `0.01` | 何もしなくても少しずつ水が出る |
-| 229 | nuka.waterSourBoost | `0.6` | 水っぽさ1で酸味の増え方×1.6（水分過多は酸っぱくなる原因） |
-| 230 | nuka.waterSaltLoss | `0.3` | 水っぽさ1でぬか漬けの塩味×0.7（薄まる） |
-| 232 | nuka.rotFilmStart | `0.5, rotPerFilm: 0.35` | 膜が半分を超えると、超えたぶん×0.35/日 |
-| 233 | nuka.rotSourStart | `0.6, rotPerSour: 0.35` | 酸味が0.6を超えると、超えたぶん×0.35/日 |
-| 234 | nuka.suteEveryDays | `4, rotPerSuteDay: 0.02` | 捨て漬けを4日より長く替えないと、1日ごとに+0.02/日 |
-| 235 | nuka.rotStirDrop | `0.05` | かき混ぜると傷みが少し戻る（空気を入れて悪い菌をおさえる） |
-| 236 | nuka.rotSpoilBoost | `100` | 傷み1でぬか漬けの傷みリスク+100% |
-| 237 | nuka.rotComplexityLoss | `0.5` | 傷み1で風味の深さ×0.5 |
-| 238 | nuka.umamiPerDay | `0.02` | 足した旨味は1日に0.02ずつ抜けていく |
-| 239 | nuka.umamiComplexityBoost | `0.3` | 旨味1でぬか漬けの風味の深さ×1.3 |
-| 246 | sales.portionsPerBatch | `6` | 1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値） |
-| 247 | sales.barrelCapacity | `60` | 1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる） |
-| 248 | sales.satScale | `1.7` | 好みとのズレ(重み付き平均)×この値を100から引く |
-| 249 | sales.stageFactor | `{ raw: 1, ripe: 1, over: 0.92, sour: 0.7 }` | 過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる） |
-| 250 | sales.likeBonus | `8` | 好きな種類の漬物なら満足度+8 |
-| 251 | sales.unripeMinFactor | `0.5` | 未熟だと満足度に 0.5〜1.0 を掛ける |
-| 252 | sales.spoilSatPenalty | `0.8` | 傷みリスク100%で満足度×0.2（期待値） |
-| 253 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
-| 255 | sales.priceMin | `0.6, priceMax: 1.3` |  |
-| 256 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
-| 257 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
-| 258 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
-| 259 | sales.buyStep | `15` |  |
-| 266 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
-| 267 | calendar.daysPerSeason | `28` |  |
-| 295 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
+| 190 | progress.xpPerPiece | `1` | 1個売るごとの経験 |
+| 191 | progress.xpGreatSat | `70` | この満足度以上で買われた分は |
+| 192 | progress.xpGreatMult | `2` | 経験×2 |
+| 193 | progress.xpNewBook | `5` | 図鑑に新しい組み合わせが載ったとき |
+| 194 | progress.xpInspire | `20` | ひらめいたとき |
+| 195 | progress.xpFirstSuccess | `30` | 作り方を初めて成功させたとき（図鑑が埋まる） |
+| 196 | progress.successSat | `60` | 1つの樽で、買ったお客の誰か1人でもこの満足度以上なら「成功」（うまいと言わせた） |
+| 197 | progress.masterAfter | `10` | 成功10樽で腕前が最大 |
+| 198 | progress.masterComplexity | `0.15` | 腕前が最大なら風味の深さ×1.15（作り方を磨くと品質が上がる） |
+| 199 | progress.masterTexture | `0.05` | 腕前が最大なら食感×1.05（扱いが上手になる） |
+| 219 | care.filmPerDay | `[[4, 0.008], [10, 0.05], [20, 0.08], [25, 0.12], [30, 0.15], [40, 0…` | 量は |
+| 220 | care.filmVisible | `0.3` | これ以上で「白い膜」が見える（4℃では約37日） |
+| 221 | care.filmHarmless | `0.15` | これ未満は味に響かない |
+| 222 | care.filmSatPenalty | `0.5` | 膜が一面に張ると満足度×0.5 |
+| 223 | care.filmComplexityPenalty | `0.4` | 膜が一面に張ると風味の深さ×0.6 |
+| 228 | nuka.startSalt | `7` | ぬか床の塩分% |
+| 229 | nuka.minSalt | `4, maxSalt: 12` |  |
+| 230 | nuka.saltLossPerBatch | `0.3` | ぬか漬けを1樽漬けるごとに床の塩分が減る |
+| 231 | nuka.sourPerDay | `[[4, 0.02], [10, 0.06], [20, 0.1], [25, 0.12], [26, 0.2], [30, 0.3]…` | かき混ぜないと1日に増える酸味（26℃以上で急に増える） |
+| 232 | nuka.lowSaltSourBoost | `0.05` | 塩分が1%下がるごとに酸味の増え方+5% |
+| 233 | nuka.stirSourDrop | `0.35` | かき混ぜると酸味がこれだけ下がる |
+| 234 | nuka.sourAcidBoost | `40` | 床の酸味1でぬか漬けの酸味+40 |
+| 235 | nuka.matureDays | `14` | 毎日かき混ぜて14日で熟成度が最大 |
+| 237 | nuka.waterPerBatch | `0.08` | ぬか漬けを標準の個数ぶん漬けるごとに、野菜から出る水で床が水っぽくなる（個数に比例） |
+| 238 | nuka.waterPerDay | `0.01` | 何もしなくても少しずつ水が出る |
+| 239 | nuka.waterSourBoost | `0.6` | 水っぽさ1で酸味の増え方×1.6（水分過多は酸っぱくなる原因） |
+| 240 | nuka.waterSaltLoss | `0.3` | 水っぽさ1でぬか漬けの塩味×0.7（薄まる） |
+| 242 | nuka.rotFilmStart | `0.5, rotPerFilm: 0.35` | 膜が半分を超えると、超えたぶん×0.35/日 |
+| 243 | nuka.rotSourStart | `0.6, rotPerSour: 0.35` | 酸味が0.6を超えると、超えたぶん×0.35/日 |
+| 244 | nuka.suteEveryDays | `4, rotPerSuteDay: 0.02` | 捨て漬けを4日より長く替えないと、1日ごとに+0.02/日 |
+| 245 | nuka.rotStirDrop | `0.05` | かき混ぜると傷みが少し戻る（空気を入れて悪い菌をおさえる） |
+| 246 | nuka.rotSpoilBoost | `100` | 傷み1でぬか漬けの傷みリスク+100% |
+| 247 | nuka.rotComplexityLoss | `0.5` | 傷み1で風味の深さ×0.5 |
+| 248 | nuka.umamiPerDay | `0.02` | 足した旨味は1日に0.02ずつ抜けていく |
+| 249 | nuka.umamiComplexityBoost | `0.3` | 旨味1でぬか漬けの風味の深さ×1.3 |
+| 256 | sales.portionsPerBatch | `6` | 1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値） |
+| 257 | sales.barrelCapacity | `60` | 1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる） |
+| 258 | sales.satScale | `1.7` | 好みとのズレ(重み付き平均)×この値を100から引く |
+| 259 | sales.stageFactor | `{ raw: 1, ripe: 1, over: 0.92, sour: 0.7 }` | 過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる） |
+| 260 | sales.likeBonus | `8` | 好きな種類の漬物なら満足度+8 |
+| 261 | sales.unripeMinFactor | `0.5` | 未熟だと満足度に 0.5〜1.0 を掛ける |
+| 262 | sales.spoilSatPenalty | `0.8` | 傷みリスク100%で満足度×0.2（期待値） |
+| 263 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
+| 265 | sales.priceMin | `0.6, priceMax: 1.3` |  |
+| 266 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
+| 267 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
+| 268 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
+| 269 | sales.buyStep | `15` |  |
+| 276 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
+| 277 | calendar.daysPerSeason | `28` |  |
+| 305 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
+
+## data/claimer.js
+
+| 行 | 項目 | 値 | 理由・メモ |
+| --- | --- | --- | --- |
+| 52 | — | `{ id: 'apologize', name: '平謝りする', note: 'その場はおさまる。でも相手は調子に乗る', rep:…` |  |
+| 53 | — | `{ id: 'omake', name: 'おまけで黙らせる', note: '1個タダで渡す。味をしめてまた来る', piece: …` |  |
+| 56 | explain.success | `{ base: 0.2, perLevel: 0.06, perQuality: 0.25, win: { rep: 2, nerve…` |  |
+| 59 | — | `{ id: 'regular', name: '常連さんに助け舟を出してもらう', note: 'この時間帯に常連が来ていたら頼める'…` |  |
+| 60 | — | `{ id: 'ban', name: '出入り禁止にする', note: '季節がひとつ巡るまで来なくなる。ただし角が立って評判が少し…` |  |
+| 64 | — | `export const IGNORE = { id: 'ignore', name: '聞こえないふり', rep: -3, ner…` |  |
 
 ## data/facilities.js
 
 | 行 | 項目 | 値 | 理由・メモ |
 | --- | --- | --- | --- |
-| 14 | — | `{ id: 'outdoor', name: '屋外', cost: 0, level: 1, offset: 3, note: '外…` |  |
-| 15 | — | `{ id: 'doma', name: '土間', cost: 0, level: 1, offset: -2, note: '外気温…` |  |
-| 16 | — | `{ id: 'fridge', name: '冷蔵庫', cost: 3000, level: 1, fixed: 4, note: …` | 値段は |
-| 17 | — | `{ id: 'muro', name: '室（むろ）', cost: 4000, level: 1, fixed: 22, note:…` | 【出典】ザワークラウト18〜22℃。値段は |
-| 18 | — | `{ id: 'tsubo', name: '壺', cost: 2000, level: 2, note: '小さな仕込み用の陶器の壺…` |  |
-| 19 | — | `{ id: 'kaon', name: '加温室', cost: 12000, level: 4, fixed: 40, note: …` | 【出典】すぐきの室は約40℃。値段は |
-| 20 | — | `{ id: 'kunsei', name: '燻製小屋', cost: 15000, level: 5, note: '薪で燻す小屋（…` |  |
+| 15 | — | `{ id: 'outdoor', name: '屋外', cost: 0, level: 1, offset: 3, note: '外…` |  |
+| 16 | — | `{ id: 'doma', name: '土間', cost: 0, level: 1, offset: -2, note: '外気温…` |  |
+| 17 | — | `{ id: 'fridge', name: '冷蔵庫', cost: 3000, level: 1, fixed: 4, note: …` | 値段は |
+| 18 | — | `{ id: 'muro', name: '室（むろ）', cost: 4000, level: 1, fixed: 22, note:…` | 【出典】ザワークラウト18〜22℃。値段は |
+| 19 | — | `{ id: 'tsubo', name: '壺', cost: 2000, level: 2, note: '小さな仕込み用の陶器の壺…` |  |
+| 20 | — | `{ id: 'kaon', name: '加温室', cost: 12000, level: 4, fixed: 40, note: …` | 【出典】すぐきの室は約40℃。値段は |
+| 21 | — | `{ id: 'fuda', name: '品質表示の札', cost: 1500, level: 1, claimer: { expl…` |  |
+| 22 | — | `{ id: 'koenote', name: 'お客様の声ノート', cost: 800, level: 1, claimer: { …` |  |
+| 23 | — | `{ id: 'manekineko', name: 'にらみ招き猫', cost: 5000, level: 3, claimer: …` |  |
+| 24 | — | `{ id: 'kunsei', name: '燻製小屋', cost: 15000, level: 5, note: '薪で燻す小屋（…` |  |
 
 ## data/levels.js
 
@@ -216,4 +230,4 @@
 | 208 | kasuzuke.complexityMax | `90` |  |
 | 209 | kasuzuke.price | `800` |  |
 
-合計 189 件
+合計 198 件

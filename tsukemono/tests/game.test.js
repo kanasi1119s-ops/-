@@ -137,7 +137,7 @@ test('客は名前なしでランダムに来て、好みのタイプもばら�
     g.brew(0, recipe);
     const r = g.sell(0);
     total += r.visitors.length;
-    for (const v of r.visitors) types.add(v.customer.id);
+    for (const v of r.visitors) if (!v.claimer) types.add(v.customer.id);
   }
   assert.equal(types.size, CONFIG.customers.length);
   const avg = total / 200;

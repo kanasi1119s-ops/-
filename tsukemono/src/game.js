@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import { simulate, filmPerDay, nukaStep, nukaApply, applyCare } from './model.js';
 import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
+import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
 export function createRng(seed = 1) {
@@ -22,6 +23,9 @@ export function createRng(seed = 1) {
 }
 
 export const SAVE_VERSION = 1;
+
+/** 難癖のお客（好みのタイプではない特別なお客） */
+export const CLAIMER_CUSTOMER = { id: 'claimer', name: '難癖のお客', hint: 'なんにでもケチをつける' };
 
 export const BARREL_COUNT = CONFIG.barrelsInvest.start; // 最初の樽の数（投資で増やせる）
 
@@ -61,6 +65,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     places: Object.keys(cfg.facilities).filter((k) => cfg.facilities[k].cost === 0), // 持っている設備（置き場所と道具）
     xp: 0, // 店の経験（段階C）。たまるとレベルが上がる
     recipes: startRecipes(cfg), // 知っている作り方 { pickle: { via, day, made（成功した樽の数） } }
+    claimer: { nerve: cfg.claimer.startNerve, look: 0, visits: 0, wins: 0, bannedUntil: -1, disguise: false, reformedTick: -1 }, // 難癖のお客（いつも同じ人）
+    claim: null, // 対応を待っている難癖 { tick, slot, lines, regularHere, quality }
     events: [], // 画面に知らせること（レベルが上がった・ひらめいた・あと一歩・図鑑が埋まった）。popEvents で受け取る
   };
 
@@ -129,6 +135,76 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     }
   };
   g.checkUnlocks = checkUnlocks;
+
+  // ---- 難癖のお客（クレーマー）と対策 ----
+  const defense = (k, base) => g.places.reduce((v, id) => { const c = cfg.facilities[id]?.claimer?.[k]; return c == null ? v : k === 'explain' ? v + c : v * c; }, base);
+  /** この時間帯に難癖のお客が来る確率 */
+  g.claimerChance = () => {
+    const k = g.claimer, cc = cfg.claimer;
+    if (g.tick < k.bannedUntil) return 0;
+    if (k.reformedTick >= 0 && g.tick < k.reformedTick + cc.newAfterDays * cal.ticksPerDay) return 0;
+    return Math.min(1, cc.chance * (1 + cc.nerveVisit * k.nerve) * (1 + cc.repBoost * (g.reputation / 100)) * defense('chance', 1));
+  };
+  /** 難癖の台詞（味のどこかに必ずケチをつけるか、まったく関係ない難癖） */
+  const gripeOf = (taste) => {
+    if (g.claimer.disguise) return DISGUISE;
+    if (rng() < 0.5) return ABSURD_GRIPES[Math.floor(rng() * ABSURD_GRIPES.length)];
+    const axes = Object.keys(TASTE_GRIPES), axis = axes[Math.floor(rng() * axes.length)];
+    const v = { acid: taste.acid, salt: taste.saltiness, texture: taste.texture, complexity: taste.complexity }[axis];
+    const list = TASTE_GRIPES[axis][v >= 50 ? 0 : 1];
+    return list[Math.floor(rng() * list.length)];
+  };
+  /** 今の難癖に選べる対応（選べないものは reason つき） */
+  g.claimOptions = () => {
+    const c = g.claim;
+    if (!c) return [];
+    return RESPONSES.map((r) => {
+      let reason = null;
+      if (r.needsRegular && !c.regularHere) reason = 'この時間帯は常連が来ていない';
+      else if (r.minLevel && g.level().level < r.minLevel) reason = `店のレベル${r.minLevel}から`;
+      else if (r.piece && !(g.barrels[c.slot]?.portions >= r.piece)) reason = '渡せる漬物がない';
+      else if (r.money && g.money < r.money) reason = 'お金が足りない';
+      const p = r.success ? g.explainChance() : null;
+      return { ...r, ok: !reason, reason, p };
+    });
+  };
+  /** 説明が通る確率 */
+  g.explainChance = () => {
+    const sc = RESPONSES.find((r) => r.id === 'explain').success;
+    return Math.min(0.95, Math.max(0.05, sc.base + sc.perLevel * (g.level().level - 1) + sc.perQuality * (g.claim?.quality ?? 0) + defense('explain', 0)));
+  };
+  /** 難癖に対応する。id = data/claimer.js の RESPONSES の id、または 'ignore'。 */
+  g.respondClaim = (id) => {
+    const c = g.claim;
+    if (!c) return { ok: false, error: '難癖のお客はいない' };
+    const r = id === 'ignore' ? { ...IGNORE, ok: true } : g.claimOptions().find((x) => x.id === id);
+    if (!r) return { ok: false, error: 'その対応はありません' };
+    if (!r.ok) return { ok: false, error: r.reason };
+    let rep = r.rep ?? 0, nerve = r.nerve ?? 0, win = null, lines = r.lines;
+    if (r.success) {
+      win = rng() < g.explainChance();
+      ({ rep, nerve } = win ? r.success.win : r.success.lose);
+      lines = win ? r.lines.win : r.lines.lose;
+    }
+    if (rep < 0) rep *= defense('repLoss', 1);
+    if (r.money) { g.money -= r.money; g.stats.cost += r.money; }
+    if (r.piece && g.barrels[c.slot]) { g.barrels[c.slot].portions -= r.piece; if (g.barrels[c.slot].portions <= 0) g.barrels[c.slot] = null; }
+    g.reputation = Math.min(100, Math.max(0, g.reputation + rep));
+    const k = g.claimer;
+    k.nerve = Math.min(cfg.claimer.maxNerve, Math.max(0, k.nerve + nerve));
+    if (win) k.wins++;
+    g.stats.claims = (g.stats.claims ?? 0) + 1;
+    let banned = false, reformed = false;
+    if (r.ban) { k.bannedUntil = g.tick + cfg.claimer.banDays * cal.ticksPerDay; k.disguise = true; banned = true; }
+    else if (k.nerve <= 0) { // 改心: 難癖のお客が常連になる。しばらくして別の難癖のお客が現れる
+      reformed = true;
+      if (g.regulars.length < cfg.regulars.max) g.regulars.push({ id: g.nextRegularId++, type: 'gourmet', look: k.look, visits: 1, misses: 0, since: g.day(), reformed: true });
+      g.claimer = { nerve: cfg.claimer.startNerve, look: Math.floor(rng() * 1e9), visits: 0, wins: 0, bannedUntil: -1, disguise: false, reformedTick: g.tick };
+      g.events.push({ type: 'reformed', line: REFORMED });
+    }
+    g.claim = null;
+    return { ok: true, id: r.id, name: r.name, win, rep, line: lines[Math.floor(rng() * lines.length)], banned, reformed };
+  };
 
   /** 仕込みの費用（円）。 */
   // ---- 市場（旬） ----
@@ -213,6 +289,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.advance = (ticks = 1) => {
     const dt = 1 / cal.ticksPerDay;
     for (let i = 0; i < ticks; i++) {
+      if (g.claim) { const r = g.respondClaim('ignore'); g.events.push({ type: 'claimIgnored', line: r.line, rep: r.rep }); } // 対応しないまま時間が進んだ
       g.tick++;
       if (g.tick % cal.ticksPerDay === 0) g.weather = pickWeather();
       // 白い膜は、放っておくと少しずつ広がる（手入れで取れる）
@@ -327,10 +404,26 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     }
     g.stats.visits += coming.length;
     const spoiled = coming.length > 0 && rng() * 100 < taste.spoilRisk;
+    // 難癖のお客: 傷んでいない樽を出していると、ときどき来る（並びのどこかに入る）
+    const claimAt = !spoiled && !g.claim && rng() < g.claimerChance() ? Math.floor(rng() * (coming.length + 1)) : -1;
     const visitors = [];
     let revenue = 0, sold = 0;
-    for (const { c, regular } of coming) {
-      const sat = satisfaction(taste, b.pickle, c, season, cfg);
+    let soured = false; // 難癖を聞いたあとは店の空気が悪い
+    const claimVisitor = () => {
+      const k = g.claimer;
+      if (!k.look) k.look = Math.floor(rng() * 1e9) + 1;
+      const lines = [gripeOf(taste), DEMANDS[Math.floor(rng() * DEMANDS.length)]];
+      k.visits++;
+      k.disguise = false;
+      soured = true;
+      const ratio = Math.min(1, taste.ratio / cfg.pickles[b.pickle].window.lo);
+      g.claim = { tick: g.tick, slot, lines, regularHere: coming.some((x) => x.regular), quality: Math.max(0, Math.min(1, (taste.ratio >= cfg.pickles[b.pickle].window.lo && taste.stage !== 'sour' ? 0.5 : 0) + 0.5 * ratio * (1 - taste.spoilRisk / 100) * (taste.careFactor ?? 1))) };
+      g.events.push({ type: 'claim' });
+      return { customer: CLAIMER_CUSTOMER, claimer: { look: k.look, lines }, sat: null, price: 0, bought: false, reaction: { key: 'claim', line: lines[0] } };
+    };
+    for (const [ci, { c, regular }] of coming.entries()) {
+      if (ci === claimAt) visitors.push(claimVisitor());
+      const sat = Math.max(0, satisfaction(taste, b.pickle, c, season, cfg) - (soured ? cfg.claimer.moodPenalty : 0));
       const reg = regular ? { id: regular.id, look: regular.look, visits: regular.visits + 1 } : null;
       if (spoiled) {
         visitors.push({ customer: c, regular: reg, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: ['うっ、傷んでるよ！', 'これは食べられないよ…', 'すっぱい匂いがする…'][Math.floor(rng() * 3)] } });
@@ -349,6 +442,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       if (bought) { b.portions -= qty; revenue += price; sold += qty; }
       visitors.push({ customer: c, regular: reg, sat, price, unit, qty, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
     }
+    if (claimAt === coming.length) visitors.push(claimVisitor());
     g.money += revenue;
     g.stats.revenue += revenue;
     g.stats.sold += sold;
@@ -358,11 +452,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     // 評判: 満足した客が多いと上がり、傷んだ物を出すと下がる
     const repBefore = g.reputation, rc = cfg.reputation;
     if (spoiled) g.reputation -= rc.spoiledPenalty;
-    else for (const v of visitors) if (!v.soldOut) g.reputation += (v.sat - rc.neutral) * rc.perVisitor;
+    else for (const v of visitors) if (!v.soldOut && !v.claimer) g.reputation += (v.sat - rc.neutral) * rc.perVisitor;
     g.reputation = Math.min(100, Math.max(0, g.reputation));
     // 図鑑: 傷んでいなければ、この組み合わせを記録する（最高の満足度）
     let discovery = null;
-    const rated = visitors.filter((v) => !v.soldOut);
+    const rated = visitors.filter((v) => !v.soldOut && !v.claimer);
     if (!spoiled && rated.length) {
       const key = bookKey(b);
       const avg = rated.reduce((s, v) => s + v.sat, 0) / rated.length;
@@ -386,7 +480,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     }
     // 常連: 来た常連は回数を数え、不満が続くと離れる。とても満足した客はときどき常連になる
     for (const v of visitors) {
-      if (v.soldOut) continue;
+      if (v.soldOut || v.claimer) continue;
       const r = v.regular && g.regulars.find((x) => x.id === v.regular.id);
       if (r) {
         r.visits++;
@@ -406,7 +500,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, claimer: g.claimer, claim: g.claim,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -449,6 +543,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       for (const [k, e] of Object.entries(g.book)) { const id = k.split(':')[0]; if (g.recipes[id] && e.best >= cfg.progress.successSat) g.recipes[id].made = Math.max(g.recipes[id].made, 1); }
     }
     g.events = [];
+    const k = s.claimer;
+    g.claimer = k && Number.isFinite(k.nerve) ? { ...g.claimer, ...k, nerve: Math.min(cfg.claimer.maxNerve, Math.max(0, k.nerve)) } : { ...g.claimer };
+    g.claim = s.claim && Array.isArray(s.claim.lines) && Number.isInteger(s.claim.slot) ? { ...s.claim } : null;
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };

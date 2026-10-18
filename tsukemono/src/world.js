@@ -86,7 +86,7 @@ export class World {
   /** 客1人の来店〜退店。v = { customer, bought, soldOut, reaction }。見た目は look（なければランダム）。 */
   async serve(v, { look, line, onTalk, season = null } = {}) {
     const lane = SCENE.lane;
-    const who = look ?? (v.regular ? regularLook(v.regular.look, v.customer?.id) : randomLook(Math.random, season, v.customer?.id));
+    const who = look ?? (v.claimer ? regularLook(v.claimer.look) : v.regular ? regularLook(v.regular.look, v.customer?.id) : randomLook(Math.random, season, v.customer?.id));
     const c = this.spawn('customer', who, lane.startX, lane.y, 'walk');
     const prevFree = this.standFree;
     let release;
@@ -107,6 +107,17 @@ export class World {
       c.bubble = null;
     }
     await this.keeperGreet();
+    if (v.claimer) { // 難癖のお客: 買わずに文句を言って、言うだけ言って帰る
+      this.setAnim(c, 'talk');
+      onTalk?.(v);
+      for (const l of v.claimer.lines) { c.bubble = l; await this.wait(2000); }
+      c.bubble = null;
+      release();
+      this.setAnim(c, 'walk');
+      await this.walkTo(c, lane.endX);
+      this.remove(c);
+      return;
+    }
     if (!v.soldOut) {
       await this.keeperTake();
       await this.keeperGive();

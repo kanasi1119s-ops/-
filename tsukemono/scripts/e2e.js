@@ -134,6 +134,15 @@ try {
   await G(() => window.__game.advance(1, { summary: false })); await idle();
   check('レベルが上がると知らせが出て、帳場にレベルが出る', (await page.textContent('#hud')).includes('Lv.4'));
   await closeNotices();
+  // 難癖のお客
+  await G(() => { const w = window.__game, g = w.game; g.cfg.claimer.chance = 1; g.weather = 'sunny'; g.barrels = g.barrels.map(() => null); g.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20, count: 30 }); g.advance(4); while (g.timeOfDay() !== 'noon') g.advance(1); w.renderAll(); });
+  await G(() => window.__game.doSell(0));
+  await page.waitForSelector('[data-claim]', { timeout: 60000 }).catch(() => {});
+  check('難癖のお客が来て、対応の窓が出る', !!(await page.$('[data-claim="apologize"]')));
+  await page.click('[data-claim="apologize"]').catch(() => {});
+  check('対応を選ぶと結果が出る', (await G(() => window.__game.game.claim)) === null && (await page.textContent('#winBody')).includes('評判'));
+  await G(() => { window.__game.game.cfg.claimer.chance = 0.1; });
+  await page.click('#winClose'); await idle(); await closeNotices();
   await page.click('[data-cmd="brew"]');
   check('ひらめいた作り方を仕込みの窓で選べる', (await page.textContent('#winBody')).includes('からし漬け'));
   await page.click('#winClose'); await closeNotices();

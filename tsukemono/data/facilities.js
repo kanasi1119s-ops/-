@@ -9,6 +9,7 @@
 //   offset : 置き場所の温度 = 外気温 + offset（℃）
 //   fixed  : 置き場所の温度をいつもこの値にする（℃）。offset も fixed もなければ置き場所ではなく道具
 //   note   : 説明
+//   claimer: 難癖のお客への備え（なくてもよい）。chance = 来る確率に掛ける / explain = 説明が通る確率に足す / repLoss = 評判の下がり方に掛ける
 
 export const FACILITIES = [
   { id: 'outdoor', name: '屋外', cost: 0, level: 1, offset: 3, note: '外気温 + 3℃（日なた）' }, // 【仮置き】
@@ -17,6 +18,9 @@ export const FACILITIES = [
   { id: 'muro', name: '室（むろ）', cost: 4000, level: 1, fixed: 22, note: '発酵の最良18〜22℃を保つ部屋' }, // 【出典】ザワークラウト18〜22℃。値段は【仮置き】
   { id: 'tsubo', name: '壺', cost: 2000, level: 2, note: '小さな仕込み用の陶器の壺。梅干しなどに（段階Eで使う）' }, // 【仮置き】
   { id: 'kaon', name: '加温室', cost: 12000, level: 4, fixed: 40, note: '約40℃で発酵させる部屋（すぐき漬けなど。段階Fで使う）' }, // 【出典】すぐきの室は約40℃。値段は【仮置き】
+  { id: 'fuda', name: '品質表示の札', cost: 1500, level: 1, claimer: { explain: 0.25 }, note: '塩分と漬けた日を書いた札。難癖のお客に説明が通りやすくなる' }, // 【仮置き】
+  { id: 'koenote', name: 'お客様の声ノート', cost: 800, level: 1, claimer: { repLoss: 0.5 }, note: 'ほかのお客がノートを読んで事情を察してくれる。難癖で評判が下がりにくい' }, // 【仮置き】
+  { id: 'manekineko', name: 'にらみ招き猫', cost: 5000, level: 3, claimer: { chance: 0.5 }, note: '客は招くが、なぜか難癖のお客だけ目をそらして帰っていく' }, // 【仮置き】
   { id: 'kunsei', name: '燻製小屋', cost: 15000, level: 5, note: '薪で燻す小屋（いぶりがっこなど。段階Fで使う）' }, // 【仮置き】
 ];
 

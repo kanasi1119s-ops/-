@@ -45,6 +45,7 @@ function play(strategy, seed, careful) {
       // 熟れている順（過熟・酸っぱすぎに近いもの）から1つ売る
       const ready = g.barrels.map((b, i) => ({ i, t: b && g.tasteOf(i) })).filter((x) => x.t && x.t.stage !== 'raw').sort((a, b) => b.t.ratio - a.t.ratio);
       if (ready.length) g.sell(ready[0].i);
+      if (careful && g.claim) g.respondClaim('explain'); // 難癖のお客には毅然と説明する（手入れしない人は聞こえないふり）
     }
     g.advance(1);
   }

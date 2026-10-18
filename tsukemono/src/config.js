@@ -173,6 +173,16 @@ export const CONFIG = {
   // 置き場所と道具: data/facilities.js の定義から作る（段階C）。【出典: 企画書】熟成は置き場所（冷蔵庫・土間・屋外）と日数で味が変わる
   places: FACILITY_CFG.places,
   facilities: FACILITY_CFG.facilities,
+  // 難癖のお客（クレーマー）。台詞と対応は data/claimer.js、備えの設備は data/facilities.js 【仮置き】
+  claimer: {
+    chance: 0.1, // 店を開けた時間帯ごとに来る確率（図太さ・評判で増える）
+    nerveVisit: 0.25, // 図太さ1ごとに来る確率×(1+0.25)
+    repBoost: 0.5, // 評判100で×1.5（繁盛している店ほど目をつけられる）
+    startNerve: 4, maxNerve: 6, // 図太さのはじめと上限（0まで下げると改心して常連になる）
+    moodPenalty: 5, // 難癖を聞いたあとのお客の満足度が下がる（店の空気が悪くなる）
+    banDays: 28, // 出入り禁止の日数（季節ひとつ）
+    newAfterDays: 14, // 改心したあと、新しい難癖のお客が現れるまでの日数
+  },
   // 店のレベルと、作り方の解放（段階C）。レベルの表は data/levels.js
   levels: LEVELS,
   levelAfterLast: LEVEL_AFTER_LAST,

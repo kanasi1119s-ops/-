@@ -388,6 +388,7 @@ WINS.shop = () => {
     body: `${lvBox}<div class="sec"><h3>評判</h3><div class="row">${stars(rep)}<div class="meter"><i style="width:${rep}%"></i></div><b>${rep}</b></div>
       <div class="hint">満足したお客が多いほど上がり、評判が高いほど客が来る。傷んだものを出すと大きく下がる。</div></div>
     <div class="sec"><h3>常連（${game.regulars.length}/${C.regulars.max}人）</h3><ul style="margin:0;padding-left:1.2em">${regs}</ul></div>
+    ${game.claimer.visits || game.claimer.reformedTick >= 0 ? `<div class="sec"><h3>難癖のお客</h3><div class="hint">${game.tick < game.claimer.bannedUntil ? `出入り禁止中（${Math.ceil((game.claimer.bannedUntil - game.tick) / C.calendar.ticksPerDay)}日後に戻ってくるかも）` : game.claimer.visits ? `来た回数 ${game.claimer.visits} ・ 言い負かした回数 ${game.claimer.wins} ・ 図太さ ${'●'.repeat(game.claimer.nerve)}${'○'.repeat(C.claimer.maxNerve - game.claimer.nerve)}` : 'いまは静か。'} ・ 来る確率 ${Math.round(game.claimerChance() * 100)}%（時間帯ごと）</div></div>` : ''}
     <div class="sec"><h3>投資　<span class="hint">所持金 ${yen(game.money)}</span></h3><div class="list">${items.join('')}</div></div>`,
   };
 };
@@ -446,6 +447,36 @@ function recipeBook() {
     <div class="list">${cards}</div>`;
 }
 
+// 難癖のお客（クレーマー）への対応
+WINS.claim = (w) => {
+  const k = game.claimer;
+  if (w.result) {
+    const r = w.result;
+    return {
+      title: r.win === false ? '言い負かされた…' : r.reformed ? 'まさかの展開' : r.banned ? '出入り禁止' : '難癖のお客、退散',
+      body: `<div class="idea"><p>${esc(r.line)}</p>
+        <div class="hint">評判 <span class="${r.rep > 0 ? 'pos' : r.rep < 0 ? 'neg' : ''}">${r.rep > 0 ? '+' : ''}${trim(r.rep, 1)}</span>${r.reformed ? '' : ` ・ 相手の図太さ ${'●'.repeat(k.nerve)}${'○'.repeat(C.claimer.maxNerve - k.nerve)}`}</div></div>
+        <div class="row end"><button class="btn main" data-act="closeWin">はい</button></div>`,
+    };
+  }
+  const c = game.claim;
+  if (!c) return { title: '難癖のお客', body: '<p class="hint">もう帰ったようだ。</p>' };
+  const opts = game.claimOptions().map((o) => `<button class="tile" data-claim="${o.id}" ${o.ok ? '' : 'disabled'}><b>${o.name}${o.p != null ? ` <small class="ukon">${Math.round(o.p * 100)}%</small>` : ''}</b><span>${o.ok ? o.note : o.reason}</span></button>`).join('');
+  return {
+    title: '難癖のお客がきた！',
+    body: `<div class="panel claim"><div class="ukon">難癖のお客（${k.visits}回目）</div>${c.lines.map((l) => `<p class="bubble">「${esc(l)}」</p>`).join('')}</div>
+      <div class="sec"><h3>どうする？　<span class="hint">閉じると「聞こえないふり」（評判が下がる）</span></h3><div class="tiles wide">${opts}</div></div>
+      <div class="hint">図太さ ${'●'.repeat(k.nerve)}${'○'.repeat(C.claimer.maxNerve - k.nerve)}（図太いほどよく来る。言い負かし続けると…？）。「店」で備えの品も買える。</div>`,
+  };
+};
+
+// 難癖のお客が改心した
+WINS.reformed = ({ e }) => ({
+  title: 'まさかの展開',
+  body: `<div class="idea"><div class="name">難癖のお客が常連になった</div><p>「${esc(e.line)}」</p><div class="hint">（しばらくすると、別の難癖のお客が現れるらしい）</div></div>
+    <div class="row end"><button class="btn main" data-act="closeWin">…どうも</button></div>`,
+});
+
 // ひらめいた
 WINS.idea = ({ e }) => {
   const p = C.pickles[e.pickle];
@@ -479,14 +510,17 @@ function flushEvents() {
       floatText('…？', 384, 150);
       continue;
     }
+    if (e.type === 'claimIgnored') { say(`${e.line}（評判 ${trim(e.rep, 1)}）`, '店主'); continue; }
+    if (e.type === 'claim' && !game.claim) continue; // もう片付いた
     if (e.type === 'learned') {
       sound.se('found');
       floatText('レシピ帳が埋まった！', 384, 100, 'good');
       say(`お客に「うまい！」と言わせた。${C.pickles[e.pickle].name}がレシピ帳に埋まった。`, '店主');
       continue;
     }
-    sound.se(e.type === 'levelup' ? 'regular' : 'found');
-    openWin(e.type === 'levelup' ? 'levelup' : 'idea', { e });
+    if (e.type === 'claim') { sound.se('bad'); openWin('claim', { onClose: () => { if (game.claim) { const r = game.respondClaim('ignore'); say(`${r.line}（評判 ${trim(r.rep, 1)}）`, '店主'); } } }); return; }
+    sound.se(e.type === 'levelup' || e.type === 'reformed' ? 'regular' : 'found');
+    openWin({ levelup: 'levelup', reformed: 'reformed', inspire: 'idea' }[e.type] ?? 'idea', { e });
     return;
   }
 }
@@ -550,6 +584,7 @@ WINS.help = () => ({
     <li><b class="ukon">ぬか床</b>: 毎日かき混ぜると育ち、ぬか漬けがおいしくなる。</li>
     <li><b class="ukon">店</b>: お金がたまったら、冷蔵庫・室・樽を買う。評判と常連もここで見る。</li>
     <li><b class="ukon">帳面</b>: レシピ帳（作り方の図鑑）、売った記録、見つけた組み合わせ。調味の相性は、売ってみるとわかる。</li>
+    <li><b class="ukon">難癖のお客</b>: ときどき、なんにでもケチをつけるお客が来る。平謝り・おまけ・毅然と説明・常連の助け舟・出入り禁止から対応を選ぶ（放っておくと評判が下がる）。品質表示の札・お客様の声ノート・にらみ招き猫で備えられる。言い負かし続けると…？</li>
     <li><b class="ukon">レベルとひらめき</b>: 売ると店の経験がたまり、レベルが上がると設備や樽が増やせる。野菜・調味・季節・温度・日数がある組み合わせになると、新しい作り方を<b>ひらめく</b>（レシピ帳の「？？？」の噂が手がかり）。ひらめいてもレベルが足りなければ、まだ挑めない。</li>
   </ol>
   <p class="hint">お客の好みは「あっさり・しょっぱめ・酸っぱい・食感・通」の5つ。季節で少し変わる。傷んだものを出すと評判が下がる。</p>`,
@@ -674,7 +709,7 @@ async function startSale(slot) {
   const repNote = (() => { const d = Math.round(res.reputation.after) - Math.round(res.reputation.before); return d ? ` ・ 評判 ${d > 0 ? '+' : ''}${d}` : ''; })();
   ui.log.unshift({
     day: game.day(), time: C.timeName[res.time], weather: C.weatherName[res.weather], what: (res.spoiled ? '傷んでいた！' : `${res.sold}個売れた`) + repNote,
-    rows: res.visitors.map((v) => ({ name: (v.regular ? (v.regular.joined ? '★新しい常連・' : v.regular.left ? '常連（離れた）・' : `常連${v.regular.visits}回目・`) : '') + v.customer.name, line: v.reaction.line, sat: v.soldOut || res.spoiled ? null : v.sat, price: v.price })),
+    rows: res.visitors.map((v) => (v.claimer ? { name: '難癖のお客', line: v.claimer.lines.join(' '), sat: null, price: 0 } : { name: (v.regular ? (v.regular.joined ? '★新しい常連・' : v.regular.left ? '常連（離れた）・' : `常連${v.regular.visits}回目・`) : '') + v.customer.name, line: v.reaction.line, sat: v.soldOut || res.spoiled ? null : v.sat, price: v.price })),
     revenue: res.revenue, batch: res.batch.closed ? res.batch : null,
   });
   ui.log.length = Math.min(ui.log.length, 12);
@@ -684,6 +719,7 @@ async function startSale(slot) {
   const lane = SCENE.lane;
   await world.saleScene(res.visitors, res.season, (v) => {
     if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 280, 'bad'); return; }
+    if (v.claimer) { sound.se('bad'); floatText('難癖！', lane.standX, 250, 'bad'); setTimeout(() => flushEvents(), 2000 * v.claimer.lines.length + 300); return; } // 言い終わったら対応の窓（窓が開くと時間が止まる）
     if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`${v.qty > 1 ? `${v.qty}個 ` : ''}+${yen(v.price)}`, lane.standX, 280); renderHud(); }
     else if (!v.soldOut) floatText('買わない…', lane.standX, 280, 'bad');
     if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 240, 'good'), 500); }
@@ -751,6 +787,15 @@ document.addEventListener('click', (e) => {
   if (d.salt) { sound.se('select'); ui.recipe.saltPct = Math.min(15, Math.max(1, ui.recipe.saltPct + +d.salt)); renderWin(); return; }
   if (d.care) { const r = game.nukaCare(d.care); say(r.ok ? `ぬか床：${r.care.name}。${r.care.note}。` : r.error, r.ok ? '店主' : undefined); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
   if (d.buy) { doBuy(d.buy); return; }
+  if (d.claim) {
+    const r = game.respondClaim(d.claim);
+    if (!r.ok) { sound.se('error'); say(r.error); return; }
+    sound.se(r.win === false || r.rep < 0 ? 'bad' : 'regular');
+    ui.win.result = r; ui.win.onClose = null;
+    if (r.reformed) ui.pending.unshift(...game.popEvents());
+    say(r.line, '店主');
+    renderAll(); return;
+  }
   if (d.rest) { const days = +d.rest; closeWin(); const ticks = days === 1 ? ((4 - TIMES.indexOf(game.timeOfDay())) % 4 || 4) : days * 4; advance(ticks, { summary: false }); return; }
   const act = d.act;
   if (!act) return;
