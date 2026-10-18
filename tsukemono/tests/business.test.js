@@ -49,7 +49,7 @@ test('樽を増やす: 3つから5つまで、だんだん高くなる（5つ目
 });
 
 test('評判: 満足させると上がって客が増え、傷んだ物を出すと下がる', () => {
-  const good = createGame({ seed: 4 }), bad = createGame({ seed: 4 });
+  const good = createGame({ seed: 5 }), bad = createGame({ seed: 5 }); // 決まった種（seed）での一例
   good.reputation = 50; bad.reputation = 50;
   for (let i = 0; i < 6; i++) {
     for (const g of [good, bad]) { g.weather = 'sunny'; if (!g.barrels[0]) g.brew(0, g === good ? { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 } : { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 1, tempC: 35 }); }

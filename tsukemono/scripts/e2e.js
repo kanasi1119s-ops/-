@@ -44,7 +44,7 @@ try {
   await page.evaluate(() => { window.__game.world.speed = 8; window.__game.ui.paused = true; }); // 確認のあいだ時間は止めておく
   const G = (f) => page.evaluate(f);
   // 物語・ひらめき・レベルなどの知らせの窓を閉じる（遊んでいると自然に出てくる）
-  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup', 'saga', 'story', 'reformed', 'claim', 'dayend'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
+  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup', 'saga', 'story', 'reformed', 'claim', 'dayend', 'granny', 'wisdom'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
 
   // 仕込み（コマンド → 窓 → 仕込む）
   const money0 = await G(() => window.__game.game.money);

@@ -143,6 +143,7 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     for (const [id, p] of Object.entries(cfg.pickles)) {
       if (p.starter && g.knows(id) && !(g.tane[p.starter] > 0) && g.season() === 'winter' && g.dayOfSeason() === 1 && !g.barrels.some((b) => b?.pickle === id)) { g.tane[p.starter] = 1; g.events.push({ type: 'taneArrived', pickle: id }); }
     }
+    g.wisdomMorning(); // 梅子さん（知恵袋のおばあちゃん）
     const ev = g.event();
     if (ev && ev.from === g.dayOfSeason()) g.events.push({ type: 'season', id: ev.id, name: ev.name, note: ev.note });
     if (g.peddlerOffer()) g.events.push({ type: 'peddler' });
@@ -171,6 +172,7 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
   /** 常連をとても満足させたとき: 絆が深まり、章が開くと物語と評判 */
   g.deepenBond = (r) => {
     r.bond = (r.bond ?? 0) + 1;
+    if (r.granny) { g.grannyBond(r); return null; } // 梅子さんは、物語のかわりに知恵と作り方を教えてくれる（wisdom.js）
     const ch = g.storiesOf(r).find((c) => c.bond === r.bond);
     if (!ch) return null;
     r.chapters = [...(r.chapters ?? []), ch.bond];

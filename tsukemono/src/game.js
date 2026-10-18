@@ -6,6 +6,7 @@ import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
 import { attachSaga, newStory } from './saga.js';
+import { attachWisdom } from './wisdom.js';
 import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
@@ -91,6 +92,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.weather = pickWeather();
   attachBusiness(g, { cfg, rng, cal, seed });
   attachSaga(g, { cfg, saga: cfg.saga }); // cfg.saga で物語を差し替えられる（試験用）
+  attachWisdom(g, { cfg });
 
   // ---- 店のレベルと作り方の解放（段階C） ----
   g.level = () => levelOf(g.xp, cfg);
@@ -417,6 +419,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.nukaCare = (id) => {
     const a = NUKA_CARE.find((x) => x.id === id);
     if (!a) return { ok: false, error: 'その手入れはありません' };
+    if (a.needsWisdom && !g.knowsWisdom(a.needsWisdom)) return { ok: false, error: 'まだ知らない手入れです' };
     const n = g.nuka;
     if (n.cared?.[id] === g.tick) return { ok: false, error: 'さっきしたばかりです' };
     if (a.effects.salt > 0 && n.salt >= cfg.nuka.maxSalt) return { ok: false, error: 'これ以上は塩辛くなりすぎます' };
@@ -592,7 +595,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -635,6 +638,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       for (const [k, e] of Object.entries(g.book)) { const id = k.split(':')[0]; if (g.recipes[id] && e.best >= cfg.progress.successSat) g.recipes[id].made = Math.max(g.recipes[id].made, 1); }
     }
     g.events = [];
+    const wd = s.wisdom;
+    g.wisdom = wd && Array.isArray(wd.known) ? { joined: !!wd.joined, known: wd.known.filter((id) => typeof id === 'string'), told: wd.told && typeof wd.told === 'object' ? { ...wd.told } : {} } : { joined: g.regulars.some((r) => r.granny), known: [], told: {} };
     g.regions = Array.isArray(s.regions) ? s.regions.filter((r) => g.regionList().includes(r)) : [];
     g.tane = s.tane && typeof s.tane === 'object' ? Object.fromEntries(Object.entries(s.tane).filter(([k, v]) => cfg.pickles[k] && Number.isInteger(v) && v >= 0)) : {};
     const k = s.claimer;

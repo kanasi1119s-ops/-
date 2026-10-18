@@ -8,6 +8,7 @@
 //   effects     : 床の状態の増減。sour・water・rot・film（0〜1）、salt（%）、umami（0〜1）、maturity（0〜1）
 //   resetsSute  : true なら捨て漬けを替えたことになる（傷みの進みがゼロから数え直し）
 //   note        : 窓に出す説明
+//   lore        : 伝承（段階G）。昔から言われていることで、効果は確かめられていない。遊びには効かない（演出だけ）。needsWisdom の知恵を教わると使える。line = 使ったときの一言
 
 export const NUKA_CARE = [
   // 酸っぱいとき 【出典】塩を足す／からしを大さじ1杯ほど入れる／卵の殻を入れる
@@ -24,6 +25,9 @@ export const NUKA_CARE = [
   { id: 'niboshi', name: '煮干し', when: 'umami', cost: 50, effects: { umami: 0.25 }, note: '魚の旨味' }, // 【仮置き】
   { id: 'sansho', name: '実山椒', when: 'umami', cost: 70, effects: { umami: 0.2 }, note: 'さわやかな香り' }, // 【仮置き】
   { id: 'yuzu', name: 'ゆずの皮', when: 'umami', cost: 80, effects: { umami: 0.15 }, note: '香りが立つ' }, // 【仮置き】
+  // 伝承（段階G）: 効き目はなし（演出だけ）
+  { id: 'kugi', name: '古釘を入れる', when: 'lore', cost: 10, effects: {}, lore: true, needsWisdom: 'kugi', note: 'なすの色がきれいに出ると言われている（効果は確かめられていない）', line: '古釘をそっと埋めた。…なんとなく、床の色が良くなった気がする。気のせいかもしれない。' },
+  { id: 'pachinko', name: '鉄の玉（パチンコ玉）を入れる', when: 'lore', cost: 0, effects: {}, lore: true, needsWisdom: 'pachinko', note: '鉄の玉を入れるとよいと言う人もいる（効果は確かめられていない）', line: 'パチンコ玉を三つ入れた。チーン、ジャラジャラ…という音はしなかった。ぬか床だからである。' },
 ];
 
-export const NUKA_WHEN = { sour: '酸っぱいとき', water: '水っぽいとき', rot: '傷みを防ぐ', umami: '旨味を足す' };
+export const NUKA_WHEN = { sour: '酸っぱいとき', water: '水っぽいとき', rot: '傷みを防ぐ', umami: '旨味を足す', lore: '伝承（昔から言われていること・効果は確かめられていない）' };

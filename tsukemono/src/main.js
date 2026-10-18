@@ -269,6 +269,21 @@ function storyTab() {
   return `${now}<div class="list">${list}</div><div class="hint">まだ読んでいない章: ${left}。店のレベル・ひらめき・ぬか床・難癖のお客…いろいろなことで物語が進む。</div>`;
 }
 
+// 知恵袋のおばあちゃん（段階G）
+WINS.granny = () => ({
+  title: '知恵袋のおばあちゃん',
+  body: `<div class="idea"><div class="name">${esc(game.grannyDef.name)}</div>
+    <p>「あら、新しい漬物屋さんかい。先代には、ずいぶんお世話になってねぇ。…白菜漬け、ひとつもらえるかい」</p>
+    <p class="hint">近所の${esc(game.grannyDef.title)}が常連になった。とても満足させるたびに絆が深まり、ぬか床の知恵や作り方を教えてくれる（帳面の「知恵袋」）。</p></div>
+    <div class="row end"><button class="btn main" data-act="closeWin">よろしくお願いします</button></div>`,
+});
+WINS.wisdom = ({ e }) => ({
+  title: e.lore ? '梅子さんの伝承' : '梅子さんの知恵',
+  body: `<div class="idea">${e.lore ? '<div class="stage-tag raw">伝承（昔から言われていること・効果は確かめられていない）</div>' : ''}<p>「${esc(e.text)}」</p>
+    <p class="hint">帳面の「知恵袋」に書きとめた。${e.lore ? 'ぬか床の窓の「伝承」から試せる（遊びには効かない、気分のもの）。' : 'その場面になると、思い出させてくれる。'}</p></div>
+    <div class="row end"><button class="btn main" data-act="closeWin">ありがとうございます</button></div>`,
+});
+
 // 常連の物語
 WINS.story = ({ e }) => ({
   title: `${e.name}の話`,
@@ -418,15 +433,17 @@ WINS.nuka = () => {
   const bar = (label, v, col, w) => `<div class="bar"><span>${label}</span><i><s style="width:${Math.min(100, v * 100)}%;background:${col}"></s></i><span>${w}</span></div>`;
   const sute = game.daysSinceSute(), suteLate = sute > C.nuka.suteEveryDays;
   const groups = Object.entries(NUKA_WHEN).map(([when, title]) => {
-    const btns = NUKA_CARE.filter((a) => a.when === when).map((a) => {
+    const btns = NUKA_CARE.filter((a) => a.when === when && (!a.needsWisdom || game.knowsWisdom(a.needsWisdom))).map((a) => {
       const done = n.cared?.[a.id] === game.tick, full = a.effects.salt > 0 && n.salt >= C.nuka.maxSalt;
-      return `<button class="tile" data-care="${a.id}" title="${a.note}" ${done || full || game.money < a.cost ? 'disabled' : ''}><b>${a.name}</b><span>${done ? 'した' : a.cost ? yen(a.cost) : 'ただ'}・${a.note}</span></button>`;
+      return `<button class="tile${a.lore ? ' lore' : ''}" data-care="${a.id}" title="${a.note}" ${done || full || game.money < a.cost ? 'disabled' : ''}>${a.lore ? '<i class="tag">伝承</i>' : ''}<b>${a.name}</b><span>${done ? 'した' : a.cost ? yen(a.cost) : 'ただ'}・${a.note}</span></button>`;
     }).join('');
-    return `<div class="sec"><h3>${title}</h3><div class="tiles wide">${btns}</div></div>`;
+    return btns ? `<div class="sec"><h3>${title}</h3><div class="tiles wide">${btns}</div></div>` : '';
   }).join('');
+  const wz = game.wisdomFor();
+  const granny = wz ? `<div class="panel granny"><span class="ukon">${esc(game.grannyDef.name)}の知恵</span>「${esc(wz.text)}」</div>` : '';
   return {
     title: 'ぬか床',
-    body: `<div class="panel">
+    body: `${granny}<div class="panel">
       <div>塩分 <b class="ukon">${trim(n.salt, 1)}%</b> ・ 店の中 ${game.ambientTemp()}℃（適温20〜25℃） ・ ${today ? '今日はかき混ぜた' : '<span class="warn">今日はまだかき混ぜていない</span>'} ・ 捨て漬けを替えて${Math.floor(sute)}日${suteLate ? '（<span class="warn">そろそろ替えどき</span>）' : ''}</div>
       <div class="bars">${bar('酸味', n.sour, '#d29a2c', n.sour < 0.25 ? 'ちょうどいい' : n.sour < 0.5 ? 'やや酸っぱい' : n.sour < 0.8 ? '酸っぱい' : 'かなり酸っぱい')}
       ${bar('白い膜', n.film, '#9a8f7c', filmWord(n.film))}
@@ -488,10 +505,15 @@ WINS.shop = () => {
 
 // 帳面（記録・図鑑・お客）
 WINS.book = ({ tab = 'log' }) => {
-  const tabs = [['story', '物語'], ['recipes', 'レシピ帳'], ['log', '販売の記録'], ['book', '組み合わせ'], ['guests', 'お客の好み']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
+  const tabs = [['story', '物語'], ['recipes', 'レシピ帳'], ['wisdom', '知恵袋'], ['log', '販売の記録'], ['book', '組み合わせ'], ['guests', 'お客の好み']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
   let body = '';
   if (tab === 'story') {
     body = storyTab();
+  } else if (tab === 'wisdom') {
+    const gr = game.granny(), ws = game.wisdomList();
+    body = gr ? `<div class="hint">${esc(game.grannyDef.name)}（${esc(game.grannyDef.title)}）をとても満足させるたびに絆が深まり、知恵と作り方を教えてくれる。絆 ${'♥'.repeat(Math.min(10, gr.bond ?? 0)) || 'ー'}</div>
+      <div class="list">${ws.map((w) => `<div class="item"><span class="grow">${w.lore ? '<i class="tag">伝承</i> ' : ''}「${esc(w.text)}」${w.lore ? '<br><span class="hint">昔から言われていること。効果は確かめられていない。</span>' : ''}</span></div>`).join('')}</div>
+      <div class="hint">まだ教わっていない知恵: ${C.wisdomTotal - ws.length}</div>` : '<p class="hint">まだ知恵袋のおばあちゃんに出会っていない。</p>';
   } else if (tab === 'recipes') {
     body = recipeBook();
   } else if (tab === 'log') {
@@ -618,6 +640,9 @@ function flushEvents() {
     if (e.type === 'questWon') { sound.se('found'); floatText(`${e.name} 達成！`, 384, 100, 'good'); continue; }
     if (e.type === 'questLost') { sound.se('bad'); say(`課題「${e.name}」は期限までに果たせなかった…。`, '店主'); continue; }
     if (e.type === 'affinity') { if (e.aff === 'good') { sound.se('found'); floatText(`相性◎ ${C.pickles[e.pickle].name}×${C.additives[e.additive].name}`, 384, 130, 'good'); } say(`${C.pickles[e.pickle].name}と${C.additives[e.additive].name}の相性は${{ good: '◎（よく合う）', bad: '✕（合わない）', neutral: '△（ふつう）' }[e.aff]}。レシピ帳に書いておこう。`, '店主'); continue; }
+    if (e.type === 'grannyJoin') { sound.se('regular'); openWin('granny'); return; }
+    if (e.type === 'wisdom') { sound.se('found'); openWin('wisdom', { e }); return; }
+    if (e.type === 'wisdomHint') { say(`「${e.text}」`, game.grannyDef.name); continue; }
     if (e.type === 'tane') { floatText('種を取り分けた', 384, 130, 'good'); say(`${C.pickles[e.pickle].name}の種を取り分けた（種 ${e.n}）。次の樽に使える。`, '店主'); continue; }
     if (e.type === 'taneArrived') { say(`木曽から小包。「種を絶やしたな？ 今年だけじゃぞ」…${C.pickles[e.pickle].name}の種が届いた。`, '店主'); continue; }
     if (e.type === 'season') { floatText(e.name, 384, 110, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
@@ -910,7 +935,7 @@ document.addEventListener('click', (e) => {
   if (d.region) { const r = game.openRegion(d.region); if (!r.ok) { sound.se('error'); say(r.error); return; } sound.se('found'); say(`地方の枠に「${d.region}」を入れた。この地方の漬物に挑める。`, '店主'); renderAll(); return; }
   if (d.dry || d.dryset) { const p = C.pickles[ui.recipe.pickle]; if (!p.drying) return; sound.se('select'); ui.recipe.dry = Math.min(p.drying.max, Math.max(0, d.dryset != null ? +d.dryset : (ui.recipe.dry ?? p.drying.default) + +d.dry)); renderWin(); return; }
   if (d.salt) { sound.se('select'); ui.recipe.saltPct = Math.min(SALT_MAX(), Math.max(1, ui.recipe.saltPct + +d.salt)); renderWin(); return; }
-  if (d.care) { const r = game.nukaCare(d.care); say(r.ok ? `ぬか床：${r.care.name}。${r.care.note}。` : r.error, r.ok ? '店主' : undefined); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
+  if (d.care) { const r = game.nukaCare(d.care); say(r.ok ? (r.care.line ?? `ぬか床：${r.care.name}。${r.care.note}。`) : r.error, r.ok ? '店主' : undefined); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
   if (d.buy) { doBuy(d.buy); return; }
   if (d.saga) { sound.se('select'); openWin('saga', { id: d.saga, all: true }); return; }
   if (d.stock) { const [veg, n] = d.stock.split(':'); const r = game.buyStock(veg, +n); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('buy'); say(`${C.vegetables[veg].name}を${n}個分仕入れた（${yen(r.cost)}）。`, '店主'); renderAll(); return; }

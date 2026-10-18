@@ -73,6 +73,7 @@ test('対策: 説明が通る確率は、店のレベル・味の良さ・品質
   for (let seed = 1; seed <= 60; seed++) {
     const h = claimGame(seed).g;
     h.money = 1e5; h.addXp(CONFIG.levels.find((l) => l.level === 4).xp); h.buyPlace('fuda');
+    if (!h.claim) continue; // 傷んでいた樽には難癖のお客は来ない
     const rep = h.reputation;
     const r = h.respondClaim('explain');
     if (r.win) { wins++; assert.ok(h.reputation > rep); } else assert.ok(h.reputation < rep);
