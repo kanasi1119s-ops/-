@@ -387,7 +387,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         if (b.sunDry && b.dryEnd == null) { // 天日干し: 晴れの日だけ乾く（雨・雪は止まる。冬の寒風はよく乾く）。雨に当たると質が落ちる
           const sd = cfg.sunDry;
           b.dryProg = (b.dryProg ?? 0) + (sd.weather[g.weather] ?? 1) * (g.season() === 'winter' ? sd.winter : 1) * dt;
-          if (g.weather === 'rain') b.quality *= 1 - sd.wetLoss * dt;
+          if (g.weather === 'rain') { b.quality *= 1 - sd.wetLoss * dt; g.stats.rainedDrying = (g.stats.rainedDrying ?? 0) + 1; }
           if (b.dryProg >= b.dry - 1e-9) { b.dryEnd = g.tick; g.events.push({ type: 'dried', slot: g.barrels.indexOf(b), pickle: b.pickle }); }
           continue;
         }
@@ -465,6 +465,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (b.weights.at(-1).w === lv.w) return { ok: false, error: `もう${lv.name}重石です` };
     const d = Math.round(g.fermentDays(b) * 1000) / 1000;
     if (b.weights.at(-1).d === d) b.weights[b.weights.length - 1].w = lv.w; else b.weights.push({ d, w: lv.w });
+    g.stats.weightSwitch = (g.stats.weightSwitch ?? 0) + 1;
     return { ok: true };
   };
   /** 今の重石（levels のキー） */
@@ -751,7 +752,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.xp = Number.isFinite(s.xp) && s.xp >= 0 ? s.xp : 0;
     g.recipes = startRecipes(cfg);
     if (s.recipes && typeof s.recipes === 'object') {
-      for (const [id, r] of Object.entries(s.recipes)) if (cfg.pickles[id] && r) g.recipes[id] = { via: r.via ?? 'start', day: r.day ?? 1, made: Number.isInteger(r.made) && r.made >= 0 ? r.made : 0 };
+      for (const [id, r] of Object.entries(s.recipes)) if (cfg.pickles[id] && r) g.recipes[id] = { via: r.via ?? 'start', day: r.day ?? 1, made: Number.isInteger(r.made) && r.made >= 0 ? r.made : 0, ...(r.starterReady ? { starterReady: true } : {}) };
     } else {
       for (const [k, e] of Object.entries(g.book)) { const id = k.split(':')[0]; if (g.recipes[id] && e.best >= cfg.progress.successSat) g.recipes[id].made = Math.max(g.recipes[id].made, 1); }
     }

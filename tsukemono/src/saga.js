@@ -15,6 +15,10 @@ export function attachSaga(g, { cfg, saga = SAGA }) {
     if (w.learnedAny && !Object.values(g.recipes).some((r) => r.made > 0)) return false;
     if (w.nukaMaturity != null && g.nuka.maturity < w.nukaMaturity - 1e-9) return false;
     if (w.reformed && !((g.stats.reformed ?? 0) > 0)) return false;
+    if (w.letterLearned && !Object.values(g.recipes).some((r) => r.via === 'letter')) return false;
+    if (w.ordersDone != null && (g.orders?.done ?? 0) < w.ordersDone) return false;
+    if (w.weightSwitched != null && (g.stats.weightSwitch ?? 0) < w.weightSwitched) return false;
+    if (w.rainedDrying && !((g.stats.rainedDrying ?? 0) > 0)) return false;
     if (w.questWon && !g.story.won.includes(w.questWon)) return false;
     if (w.questLost && !g.story.lostPending.includes(w.questLost)) return false;
     return true;

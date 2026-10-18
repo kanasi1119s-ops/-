@@ -122,3 +122,32 @@ test('物語の章はすべて、語りと条件がそろっている', () => {
     if (c.after) assert.ok(ids.has(c.after), `${c.id}: after ${c.after}`);
   }
 });
+
+test('幕間: 便り・はじめての納品・重石・雨の干しで、笑える幕間が始まる。終章で看板の名前が決まる', () => {
+  const g = late(9);
+  g.recipes.asazuke.made = 1; g.addXp(lv(7));
+  upTo(g, 'rival');
+  const seen = () => g.story.seen;
+  g.checkStory(); g.checkStory();
+  for (const id of ['tegami', 'chumon', 'omoshi', 'ame']) assert.ok(!seen().includes(id), id);
+  g.openRegion('関東'); g.learn('bettarazuke', 'letter');
+  g.orders.done = 1;
+  g.stats.weightSwitch = 3;
+  g.stats.rainedDrying = 1;
+  for (let i = 0; i < 10; i++) g.checkStory();
+  for (const id of ['tegami', 'chumon', 'omoshi', 'ame']) assert.ok(seen().includes(id), id);
+  const end = SAGA.find((c) => c.id === 'ending');
+  assert.ok(end.lines.some((l) => l.text.includes('俺の漬物！')));
+  assert.ok(SAGA.find((c) => c.id === 'prologue').lines.some((l) => l.text.includes('○○')));
+});
+
+test('重石を替えた回数と、干している野菜に雨が降ったことを数える', () => {
+  const g = createGame({ seed: 1 });
+  g.money = 1e6;
+  g.brew(0, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, weight: 'heavy' });
+  g.setWeight(0, 'light');
+  assert.equal(g.stats.weightSwitch, 1);
+  g.brew(1, { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 15, dry: 5 });
+  g.weather = 'rain'; g.advance(1);
+  assert.ok(g.stats.rainedDrying > 0);
+});
