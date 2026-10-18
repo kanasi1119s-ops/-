@@ -203,15 +203,23 @@ export class SceneRenderer {
       const pw = body.kind === 'poses' ? body.poses[f.pose].w : getImage(body.img).width;
       this.groundShadow(a.x, a.y, Math.max(16, Math.round(pw * 0.62)));
     }
+    const umb = a.kind === 'customer' && theme.weather !== 'sunny' && !a.look.ownUmbrella;
+    const UMB_Y = 22; // 傘のてっぺんは頭のてっぺんのこれだけ上（すそが頭の少し上に来る）
+    if (umb) { // 傘の柄は人の後ろに（頭の後ろを通って手のほうへ下りる）
+      const t0 = this.personTop(a, body, f, flip);
+      const sh = getSprite('umbrella_shaft');
+      this.ctx.drawImage(sh, Math.round(t0.cx) - 1, t0.y - UMB_Y + 4);
+    }
     const top = body.kind === 'poses' ? this.drawPose(a, body, f, flip, outfit) : this.drawShift(a, body, f, flip, outfit);
     // 雨・雪の日の傘
     let headTop = top.y;
-    if (a.kind === 'customer' && theme.weather !== 'sunny' && !a.look.ownUmbrella) {
-      const u = getSprite('umbrella', { pal: { u: a.look.umbrella, U: mix(a.look.umbrella, '#000000', 0.3) } });
-      const ux = Math.round(top.cx - u.width / 2), uy = top.y - 12;
+    if (umb) {
+      const c = a.look.umbrella;
+      const u = getSprite('umbrella', { pal: { u: c, v: mix(c, '#ffffff', 0.22), U: mix(c, '#000000', 0.22), Q: mix(c, '#000000', 0.36), P: mix(c, '#000000', 0.55), O: mix(c, '#000000', 0.72) } });
+      const ux = Math.round(top.cx - u.width / 2), uy = top.y - UMB_Y;
       this.ctx.drawImage(u, ux, uy);
       if (theme.weather === 'snow') this.ctx.drawImage(getSprite('umbrella_snow'), ux, uy);
-      headTop -= 12;
+      headTop -= UMB_Y;
     }
     a.headTop = headTop;
   }
@@ -233,6 +241,18 @@ export class SceneRenderer {
     g.fillRect(x0 + 2, footY - 2, w - 4, 2);
     g.fillRect(x0, footY, w, 2);
     g.fillRect(x0 + 4, footY + 2, w - 8, 2);
+  }
+
+  /** 描く前に、頭のてっぺんの高さと体のまん中を求める（drawPose / drawShift と同じ計算） */
+  personTop(a, body, f, flip) {
+    if (body.kind !== 'poses') {
+      const im = getImage(body.img);
+      return { y: Math.round(a.y - im.height) + (f.up?.[1] ?? 0), cx: Math.round(a.x - im.width / 2) + im.width / 2 };
+    }
+    const pose = f.walk != null ? WALK[a.look.body][f.walk] : body.poses[f.pose];
+    const ax = flip ? pose.w - 1 - pose.ax : pose.ax;
+    const X = Math.round(a.x - ax), Y = Math.round(a.y - pose.h + (pose.below ?? 0) + (f.dy ?? 0));
+    return { y: Y + Math.min(0, f.up ?? 0), cx: X + pose.w / 2 };
   }
 
   drawPose(a, body, f, flip, outfit) {
