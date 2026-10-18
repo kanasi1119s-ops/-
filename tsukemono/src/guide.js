@@ -16,6 +16,8 @@ export function nextStep(g, ui = {}) {
   if (!g.isOpen() && (ready.length || late.length)) return shown ? '夜は閉店。朝になれば店先の樽で店が開く（「とばす」で朝へ）。' : '夜は閉店。食べ頃の樽を「店先に出す」と、朝から売れる。';
   if (g.isOpen() && !soldNow && late.length) return `${late.map(n).join('・')}は酸っぱくなりかけ。早めに店先に出すか、捨てて仕込み直そう。`;
   if (g.isOpen() && !soldNow && ready.length) return `${ready.map(n).join('・')}が食べ頃。味見して「店先に出す」。`;
+  const shelvable = ready.filter((x) => x.i !== ui.display);
+  if (soldNow && !shown && empty < 0 && shelvable.length && g.shelfFree() >= 0) return `樽が全部ふさがっている。食べ頃の${n(shelvable[0])}を「棚に移す」と、樽が空いて次を仕込める（棚の漬物も店先に出せる）。`;
   if (soldNow && (ready.length || late.length)) return shown ? 'この時間帯のお客はもう来た。次の時間帯を待とう（「とばす」で先へ）。' : '食べ頃の樽を「店先に出す」と、次の時間帯からお客に売れる。';
   const filmy = items.filter((x) => !cfg.pickles[x.b.pickle].usesNukaBed && x.t.filmVisible && x.b.lastCareTick !== g.tick);
   if (filmy.length) return `${filmy.map(n).join('・')}に白い膜が出ている。「手入れ」で取ろう。`;

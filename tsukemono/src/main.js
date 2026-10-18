@@ -1,7 +1,7 @@
 // 画面（DOM）とゲームをつなぐ。計算は model.js / sales.js / game.js、見た目は render.js / world.js、音は audio.js。
 // 画面の作り: 上に帳場（日付・お金・評判）、真ん中に店先、下に会話窓とコマンド。操作は「窓」を開いて行う。
 import { CONFIG } from './config.js';
-import { createGame, bookTotal } from './game.js';
+import { createGame, bookTotal, SHELF } from './game.js';
 import { simulate, daysToRipe, ripeRangeDays, applyCare, affinityOf } from './model.js';
 import { SceneRenderer } from './render.js';
 import { World } from './world.js';
@@ -120,6 +120,8 @@ function kanjiNum(n) {
   return s + (n ? D[n] : '');
 }
 const barrelName = (b) => (C.pickles[b.pickle].name.includes(C.vegetables[b.veg].name) ? C.pickles[b.pickle].name : `${C.vegetables[b.veg].name}の${C.pickles[b.pickle].name}`); // 梅の梅干し → 梅干し
+/** 樽か棚の呼び名 */
+const vname = (slot) => (slot >= SHELF ? `棚${slot - SHELF + 1}` : `樽${slot + 1}`);
 const stageOfSlot = (i) => (game.barrels[i] ? game.tasteOf(i).stage : null);
 const canSellNow = () => game.isOpen() && game.lastSaleTick !== game.tick;
 const filmOf = (b) => (C.pickles[b.pickle].usesNukaBed ? game.nuka.film : (b.film ?? 0));
@@ -198,7 +200,7 @@ function renderCommands() {
   const cmd = (id, label, sub, dot = '') => `<button class="cmd" data-cmd="${id}" ${dis}>${label}${sub ? `<small>${sub}</small>` : ''}${dot ? `<span class="dot">${dot}</span>` : ''}</button>`;
   $('commands').innerHTML = [
     cmd('brew', '仕込む', '樽に漬ける', empty ? '空' : ''),
-    cmd('sell', '売る', ui.display != null && game.barrels[ui.display] ? `樽${ui.display + 1}を出し中` : '店先に出す', anyRipe && (ui.display == null || !game.barrels[ui.display]) ? '◎' : ''),
+    cmd('sell', '売る', ui.display != null && game.vessel(ui.display) ? `${vname(ui.display)}を出し中` : '店先に出す', anyRipe && (ui.display == null || !game.vessel(ui.display)) ? '◎' : ''),
     cmd('barrels', '樽', '味見など', anyCare ? '!' : ''),
     cmd('market', '仕入れ', '野菜を買う', game.saleVeg() ? '特' : ''),
     cmd('nuka', 'ぬか床', 'かき混ぜる', nukaTodo ? '!' : ''),
@@ -314,6 +316,22 @@ WINS.story = ({ e }) => ({
 });
 
 // 樽（1つずつ見る）
+// 棚に移した漬物の窓
+function shelfWin(slot) {
+  const b = game.vessel(slot);
+  if (!b) return { title: vname(slot), body: '<p>空いています。</p>' };
+  const p = C.pickles[b.pickle], t = game.tasteOf(slot), on = ui.display === slot, disc = ui.confirm === `discard${slot}`, tasted = b.tastedTick === game.tick;
+  return {
+    title: `${vname(slot)}　${barrelName(b)}`,
+    body: `<div class="panel"><div><span class="stage-tag ${t.stage}">${t.stageLabel}</span>　残り${b.portions}個${agingFactor(p, t.ratio) > 1 ? ` ・ <span class="ukon">熟成もの（売り値 ×${trim(agingFactor(p, t.ratio), 2)}）</span>` : ''}</div>
+      <div class="hint">棚に移して${trim((game.tick - b.shelvedTick) / C.calendar.ticksPerDay, 1)}日。棚では漬かりも傷みもゆっくり進む（${Math.round(1 / C.shelf.slow)}分の1）。</div></div>
+      ${b.tastedTaste ? `<div class="panel">${bars(b.tastedTaste)}</div>` : ''}
+      <div class="row"><button class="btn" data-act="taste" data-slot="${slot}" ${tasted ? 'disabled' : ''}>${tasted ? '味見した' : '味見'}</button>
+      ${on ? `<button class="btn" data-act="hideSlot" data-slot="${slot}">店先から下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${slot}">店先に出す</button>`}
+      <button class="btn ghost" data-act="discard" data-slot="${slot}">${disc ? '本当に捨てる' : '捨てる'}</button></div>`,
+  };
+}
+
 // 重石と工程（樽の窓）
 const waterWord = (u) => (u >= 1 ? '上がった' : u >= 0.5 ? '上がりかけ' : 'まだ上がっていない');
 const TIMING = { good: 'ちょうど良い日にやった', early: '早すぎた（味が少し浅い）', late: '遅れた（食感が少し落ちた）' };
@@ -333,6 +351,7 @@ function handworkBox(slot, b, p, t) {
 }
 
 WINS.barrel = ({ slot }) => {
+  if (slot >= SHELF) return shelfWin(slot);
   const b = game.barrels[slot];
   const nav = game.barrels.length > 1 ? `<div class="row">${game.barrels.map((x, i) => `<button class="tile${i === slot ? ' on' : ''}" style="flex:1;text-align:center" data-goto="${i}">樽${i + 1}${x ? '' : '（空）'}</button>`).join('')}</div>` : '';
   if (!b) {
@@ -369,6 +388,7 @@ WINS.barrel = ({ slot }) => {
       ${p.film && !p.usesNukaBed ? `<button class="btn" data-act="care" data-slot="${slot}" ${cared || fv < 0.05 ? 'disabled' : ''}>${cared ? '手入れした' : p.umezu ? '清潔なスプーンでカビを取る' : '手入れ（膜を取る）'}</button>` : ''}
       ${p.usesNukaBed ? '<button class="btn" data-act="openNuka">ぬか床を見る</button>' : ''}
       ${onDisplay ? `<button class="btn" data-act="hideSlot" data-slot="${slot}">店先から下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${slot}">店先に出す</button>`}
+      ${t.ratio >= p.window.lo && !t.drying ? `<button class="btn" data-act="shelve" data-slot="${slot}" ${game.shelfFree() < 0 ? 'disabled' : ''}>${game.shelfFree() < 0 ? '棚がいっぱい' : '棚に移す（樽を空ける）'}</button>` : ''}
       ${game.barrelUpgrade(slot) ? '' : `<button class="btn" data-upgrade="sugioke" data-uslot="${slot}" ${game.level().level < C.upgrades.sugioke.level || game.money < C.upgrades.sugioke.cost ? 'disabled' : ''}>杉の木桶に替える（${yen(C.upgrades.sugioke.cost)}）</button>`}
       <button class="btn ghost" data-act="discard" data-slot="${slot}">${disc ? '本当に捨てる' : '捨てる'}</button>
     </div>
@@ -382,8 +402,15 @@ WINS.barrels = () => ({
   body: `<div class="list">${game.barrels.map((b, i) => {
     if (!b) return `<button class="item" data-goto="${i}"><span class="grow">樽${i + 1}　<span class="hint">空き樽</span></span><span>＋</span></button>`;
     const t = game.tasteOf(i);
-    return `<button class="item${t.stage === 'ripe' ? ' ok' : ''}" data-goto="${i}"><span class="grow">樽${i + 1}　${barrelName(b)}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個${needsCare(b) ? ' ・ <span class="warn">白い膜！</span>' : ''}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span></button>`;
-  }).join('')}</div>`,
+    return `<button class="item${t.stage === 'ripe' ? ' ok' : ''}" data-goto="${i}"><span class="grow">樽${i + 1}${i >= C.barrelsInvest.max ? '（蔵）' : ''}　${barrelName(b)}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個${needsCare(b) ? ' ・ <span class="warn">白い膜！</span>' : ''}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span></button>`;
+  }).join('')}</div>
+  <div class="sec"><h3>棚　<span class="hint">${game.shelf.filter(Boolean).length} / ${game.shelfSlots()} ・ 食べ頃になった樽を移すと、樽が空いて次を仕込める。棚では漬かりも傷みもゆっくり（${Math.round(1 / C.shelf.slow)}分の1）</span></h3>
+  <div class="list">${Array.from({ length: game.shelfSlots() }, (_, i) => {
+    const b = game.shelf[i];
+    if (!b) return `<div class="item"><span class="grow">棚${i + 1}　<span class="hint">空き</span></span></div>`;
+    const t = game.tasteOf(SHELF + i);
+    return `<button class="item${t.stage === 'ripe' ? ' ok' : ''}" data-goto="${SHELF + i}"><span class="grow">棚${i + 1}　${barrelName(b)}<br><span class="hint">残り${b.portions}個${ui.display === SHELF + i ? ' ・ <span class="ukon">店先に出し中</span>' : ''}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span></button>`;
+  }).join('')}</div></div>`,
 });
 
 // 仕込み
@@ -472,15 +499,15 @@ WINS.brew = () => {
 
 // 売る
 WINS.sell = () => {
-  const filled = game.barrels.map((b, i) => (b ? i : null)).filter((i) => i != null);
+  const filled = [...game.barrels.map((b, i) => (b ? i : null)), ...game.shelf.map((b, i) => (b ? SHELF + i : null))].filter((i) => i != null);
   if (!filled.length) return { title: '売る', body: '<p>売れる樽がありません。まず「仕込む」。</p>' };
   const now = !game.isOpen() ? '夜は閉店。出しておけば朝に店が開く。' : game.lastSaleTick === game.tick ? 'この時間帯のお客はもう来た。出しておけば次の時間帯から売れる。' : '出すとすぐ店が開き、この時間帯のお客が順に来る。';
   return {
     title: '店先に出す',
     body: `<div class="hint">店先に出した樽は、店が開いている朝・昼・夕に、お客が来るたびに売れる（来る客は天気と評判しだい。時間帯ごとに入れ替わる）。${now}</div>
     <div class="list">${filled.map((i) => {
-      const b = game.barrels[i], t = game.tasteOf(i), on = ui.display === i;
-      return `<div class="item${t.stage === 'ripe' ? ' ok' : ''}${on ? ' on' : ''}"><span class="grow">樽${i + 1}　${barrelName(b)}${on ? ' <span class="ukon">出し中</span>' : ''}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個 ・ 定価 ${yen(C.pickles[b.pickle].price)}${agingFactor(C.pickles[b.pickle], t.ratio) > 1 ? ` ・ <span class="ukon">熟成もの ×${trim(agingFactor(C.pickles[b.pickle], t.ratio), 2)}</span>` : ''}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span>${on ? `<button class="btn" data-act="hideSlot" data-slot="${i}">下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${i}">店先に出す</button>`}</div>`;
+      const b = game.vessel(i), t = game.tasteOf(i), on = ui.display === i;
+      return `<div class="item${t.stage === 'ripe' ? ' ok' : ''}${on ? ' on' : ''}"><span class="grow">${vname(i)}　${barrelName(b)}${on ? ' <span class="ukon">出し中</span>' : ''}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個 ・ 定価 ${yen(C.pickles[b.pickle].price)}${agingFactor(C.pickles[b.pickle], t.ratio) > 1 ? ` ・ <span class="ukon">熟成もの ×${trim(agingFactor(C.pickles[b.pickle], t.ratio), 2)}</span>` : ''}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span>${on ? `<button class="btn" data-act="hideSlot" data-slot="${i}">下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${i}">店先に出す</button>`}</div>`;
     }).join('')}</div>`,
   };
 };
@@ -902,7 +929,7 @@ function tickClock(dtMs) {
 function tryOpenShop() {
   const d = ui.display;
   if (d == null) return;
-  if (!game.barrels[d]) { ui.display = null; renderCommands(); return; }
+  if (!game.vessel(d)) { ui.display = null; renderCommands(); return; }
   if (!game.isOpen() || game.lastSaleTick === game.tick) return;
   startSale(d);
 }
@@ -915,9 +942,9 @@ async function doBrew() {
   ui.shownMoney = game.money;
   closeWin();
   sound.se('brew');
-  const s = slotPos(slot);
+  const s = slotPos(slot) ?? { cx: SCENE.w / 2 }; // 蔵の樽は店先の絵に出ない
   floatText(`-${yen(r.cost)}`, s.cx, SCENE.labelY - 60, 'bad');
-  say(`樽${slot + 1}に${barrelName(game.barrels[slot])}を仕込んだ。`, '店主');
+  say(`樽${slot + 1}${slot >= C.barrelsInvest.max ? '（蔵）' : ''}に${barrelName(game.barrels[slot])}を仕込んだ。`, '店主');
   ui.busy = true; renderAll();
   await world.brewScene(slot);
   ui.busy = false; renderAll();
@@ -925,19 +952,19 @@ async function doBrew() {
 
 /** 樽を店先に出す。店が開いていてまだこの時間帯の客が来ていなければ、すぐ店を開ける。 */
 function doSell(slot) {
-  if (!game.barrels[slot]) { sound.se('error'); say('その樽は空です。'); return; }
+  if (!game.vessel(slot)) { sound.se('error'); say('そこは空です。'); return; }
   ui.display = slot;
   closeWin();
   if (game.isOpen() && game.lastSaleTick !== game.tick) { startSale(slot); return; }
   sound.se('select');
-  say(game.isOpen() ? `樽${slot + 1}を店先に出した。この時間帯のお客はもう来たので、次の時間帯から売れる。` : `樽${slot + 1}を店先に出した。朝になったら店が開く。`, '店主');
+  say(game.isOpen() ? `${vname(slot)}を店先に出した。この時間帯のお客はもう来たので、次の時間帯から売れる。` : `${vname(slot)}を店先に出した。朝になったら店が開く。`, '店主');
   renderAll();
 }
 function hideSlot(slot) {
   if (ui.display !== slot) return;
   ui.display = null;
   sound.se('select');
-  say(`樽${slot + 1}を店先から下げた。`, '店主');
+  say(`${vname(slot)}を店先から下げた。`, '店主');
   renderAll();
 }
 /** この時間帯の客を引いて、時間帯のあいだに散らして来させる（結果は先に確定。見た目だけ時間をかける）。 */
@@ -1078,8 +1105,9 @@ document.addEventListener('click', (e) => {
   if (act === 'care') { const r = game.care(slot); if (!r.ok) { say(r.error); return; } sound.se('care'); say(C.pickles[game.barrels[slot]?.pickle]?.umezu ? `樽${slot + 1}のカビを清潔なスプーンで取った。` : `樽${slot + 1}の白い膜を取った。`, '店主'); world.careScene(); renderAll(); return; }
   if (act === 'discard') {
     if (ui.confirm !== `discard${slot}`) { ui.confirm = `discard${slot}`; renderWin(); return; }
-    game.discard(slot); sound.se('discard'); say(`樽${slot + 1}を空にした。`); ui.confirm = null; renderAll(); return;
+    game.discard(slot); if (ui.display === slot) ui.display = null; sound.se('discard'); say(`${vname(slot)}を空にした。`); ui.confirm = null; if (slot >= SHELF) closeWin(); renderAll(); return;
   }
+  if (act === 'shelve') { const r = game.shelve(slot); if (!r.ok) { say(r.error); return; } if (ui.display === slot) ui.display = r.shelf; sound.se('care'); say(`樽${slot + 1}の漬物を${vname(r.shelf)}に移した。樽が空いた。`, '店主'); renderAll(); return; }
   if (act === 'stir') { const r = game.stirNuka(); if (!r.ok) { say(r.error); return; } sound.se('stir'); say('ぬか床をかき混ぜた。いい香りだ。', '店主'); world.careScene(); renderAll(); return; }
   if (act === 'saltNuka') { const r = game.saltNuka(); say(r.ok ? 'ぬか床に塩を足した。酸味が和らいだ。' : r.error); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
   if (act === 'closeWin') { closeWin(); return; }

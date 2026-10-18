@@ -38,6 +38,9 @@ export const BARREL_COUNT = CONFIG.barrelsInvest.start; // 最初の樽の数（
 export const bookKey = (b) => [b.pickle, b.veg, ...[...(b.additives ?? [])].sort()].join(':');
 
 /** 図鑑に載りうる組み合わせの数（調味は additiveMax 個まで）。 */
+/** 棚の番号のはじまり（樽は 0〜、棚は SHELF〜） */
+export const SHELF = 100;
+
 export function bookTotal(cfg = CONFIG) {
   const n = Object.keys(cfg.additives).length;
   let combos = 0, c = 1;
@@ -58,6 +61,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     tick: 0, // 0 = 1日目の朝。1日 = ticksPerDay 区切り。
     money: cfg.sales.startMoney,
     barrels: Array.from({ length: BARREL_COUNT }, () => null),
+    shelf: [], // 棚（樽から移した漬物。null は空き）
     weather: 'sunny',
     stats: { revenue: 0, cost: 0, sold: 0, visits: 0, spoiled: 0 },
     lastSaleTick: -1, // 販売は1つの時間帯（区切り）に1回まで
@@ -90,7 +94,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.season = () => cal.seasons[Math.floor((g.day() - 1) / cal.daysPerSeason) % cal.seasons.length];
   g.ambientTemp = () => cfg.season[g.season()].ambientTemp;
   g.isOpen = () => cal.storeOpen[g.timeOfDay()];
-  g.barrelAge = (b) => (g.tick - b.startTick) / cal.ticksPerDay; // 日
+  // 棚に移したあとは、漬かり（と傷み・熟成）がゆっくり進む（cfg.shelf.slow 倍）
+  g.barrelAge = (b) => (b.shelvedTick == null ? g.tick - b.startTick : b.shelvedTick - b.startTick + (g.tick - b.shelvedTick) * cfg.shelf.slow) / cal.ticksPerDay; // 日
   g.weather = pickWeather();
   attachBusiness(g, { cfg, rng, cal, seed });
   attachSaga(g, { cfg, saga: cfg.saga }); // cfg.saga で物語を差し替えられる（試験用）
@@ -187,7 +192,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       let reason = null;
       if (r.needsRegular && !c.regularHere) reason = 'この時間帯は常連が来ていない';
       else if (r.minLevel && g.level().level < r.minLevel) reason = `店のレベル${r.minLevel}から`;
-      else if (r.piece && !(g.barrels[c.slot]?.portions >= r.piece)) reason = '渡せる漬物がない';
+      else if (r.piece && !(g.vessel(c.slot)?.portions >= r.piece)) reason = '渡せる漬物がない';
       else if (r.money && g.money < r.money) reason = 'お金が足りない';
       const p = r.success ? g.explainChance() : null;
       return { ...r, ok: !reason, reason, p };
@@ -213,7 +218,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     }
     if (rep < 0) rep *= defense('repLoss', 1);
     if (r.money) { g.money -= r.money; g.stats.cost += r.money; }
-    if (r.piece && g.barrels[c.slot]) { g.barrels[c.slot].portions -= r.piece; if (g.barrels[c.slot].portions <= 0) g.barrels[c.slot] = null; }
+    if (r.piece && g.vessel(c.slot)) { g.vessel(c.slot).portions -= r.piece; if (g.vessel(c.slot).portions <= 0) g.setVessel(c.slot, null); }
     g.reputation = Math.min(100, Math.max(0, g.reputation + rep));
     const k = g.claimer;
     k.nerve = Math.min(cfg.claimer.maxNerve, Math.max(0, k.nerve + nerve));
@@ -289,11 +294,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.buyFacility = g.buyPlace;
   g.nextBarrelCost = () => cfg.barrelsInvest.addCost[g.barrels.length - cfg.barrelsInvest.start] ?? null;
   /** 今のレベルで置ける樽の数 */
-  g.barrelMax = () => Math.min(cfg.barrelsInvest.max, g.level().barrels ?? cfg.barrelsInvest.max);
+  g.barrelMax = () => Math.min(cfg.barrelsInvest.max, g.level().barrels ?? cfg.barrelsInvest.max) + Math.min(cfg.barrelsInvest.backMax, g.upgradeAdd('barrels')); // 店先5つ＋蔵の樽
   g.buyBarrel = () => {
     const cost = g.nextBarrelCost();
-    if (cost == null || g.barrels.length >= cfg.barrelsInvest.max) return { ok: false, error: 'これ以上は置けません' };
-    if (g.barrels.length >= g.barrelMax()) return { ok: false, error: '店のレベルが上がると、もっと置けます' };
+    if (cost == null || g.barrels.length >= cfg.barrelsInvest.max + cfg.barrelsInvest.backMax) return { ok: false, error: 'これ以上は置けません' };
+    if (g.barrels.length >= g.barrelMax()) return { ok: false, error: g.barrels.length >= cfg.barrelsInvest.max ? '蔵を建てると、もっと置けます' : '店のレベルが上がると、もっと置けます' };
     if (g.money < cost) return { ok: false, error: 'お金が足りません' };
     g.money -= cost; g.stats.cost += cost; g.stats.invest = (g.stats.invest ?? 0) + cost;
     g.barrels.push(null);
@@ -398,7 +403,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   };
 
   g.tasteOf = (slot) => {
-    const b = g.barrels[slot];
+    const b = g.vessel(slot);
     if (!b) return null;
     const p = cfg.pickles[b.pickle];
     const left = g.dryingLeft(b);
@@ -409,10 +414,29 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     // 作り方を磨くと品質が上がる（腕前 0〜1）
     const m = g.mastery(b.pickle), pr = cfg.progress;
     let u = m > 0 ? { ...t, complexity: Math.min(100, t.complexity * (1 + pr.masterComplexity * m)), texture: Math.min(100, t.texture * (1 + pr.masterTexture * m)), mastery: m } : t;
-    const grade = g.barrelUpgrade(slot)?.effects.complexity; // 杉の木桶は木の香りが移る
+    const grade = (slot >= SHELF ? cfg.upgrades[b.grade] : g.barrelUpgrade(slot))?.effects.complexity; // 杉の木桶は木の香りが移る（棚に移しても残る）
     if (grade) u = { ...u, complexity: Math.min(100, u.complexity * grade) };
     u = applyWork(u, p.work, b.work, g.fermentDays(b), cfg); // 工程（漬け替え・汁を捨てる など）
     return applySpecials(u, b.specials, cfg); // 特別な食材
+  };
+  // ---- 棚（できた漬物を樽から移して保管する。樽が空いて次を仕込める） ----
+  /** 樽（0〜）か棚（SHELF〜）の中身 */
+  g.vessel = (slot) => (slot >= SHELF ? g.shelf[slot - SHELF] : g.barrels[slot]);
+  g.setVessel = (slot, v) => { if (slot >= SHELF) g.shelf[slot - SHELF] = v; else g.barrels[slot] = v; };
+  g.shelfSlots = () => cfg.shelf.base + g.upgradeAdd('shelf');
+  g.shelfFree = () => { for (let i = 0; i < g.shelfSlots(); i++) if (!g.shelf[i]) return i; return -1; };
+  /** 食べ頃になった樽を棚に移す（樽は空になる）。棚では漬かりも傷みもゆっくり進む */
+  g.shelve = (slot) => {
+    const b = g.barrels[slot];
+    if (!b) return { ok: false, error: '樽が空です' };
+    if (g.dryingLeft(b) > 0) return { ok: false, error: 'まだ干しています' };
+    const t = g.tasteOf(slot), p = cfg.pickles[b.pickle];
+    if (t.ratio < p.window.lo) return { ok: false, error: 'まだ食べ頃になっていません（食べ頃になってから移す）' };
+    const i = g.shelfFree();
+    if (i < 0) return { ok: false, error: '棚がいっぱいです（売り切るか、店で棚を足す）' };
+    g.shelf[i] = { ...b, film: 0, shelvedTick: g.tick, grade: g.barrelGrade[slot] ?? null }; // 膜は取ってから移す
+    g.barrels[slot] = null;
+    return { ok: true, shelf: SHELF + i };
   };
   /** 漬けて何日目か（干している日は数えない） */
   g.fermentDays = (b) => Math.max(0, g.barrelAge(b) - (b.dry ?? 0));
@@ -508,7 +532,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
    * 2回目以降は新しい結果を出さず、前回の味見結果を返す。
    */
   g.tasteTest = (slot) => {
-    const b = g.barrels[slot];
+    const b = g.vessel(slot);
     if (!b) return { ok: false, error: '樽が空です' };
     if (b.tastedTick === g.tick) return { ok: true, already: true, taste: b.tastedTaste };
     b.tastedTick = g.tick;
@@ -517,14 +541,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   };
 
   /** 樽を捨てる（損切り）。 */
-  g.discard = (slot) => { g.barrels[slot] = null; };
+  g.discard = (slot) => { g.setVessel(slot, null); };
 
   /**
    * 樽の漬物を販売する。来店する客を引き、満足度・支払額・一言を返す。
    * 傷みは樽ごとに1回判定する（傷んでいたら全員が買わず、樽は空になる）。
    */
   g.sell = (slot) => {
-    const b = g.barrels[slot];
+    const b = g.vessel(slot);
     if (!b) return { ok: false, error: '樽が空です' };
     if (!g.isOpen()) return { ok: false, error: '夜は閉店です' };
     if (g.lastSaleTick === g.tick) return { ok: false, error: 'この時間帯はもう店を開けました。時間を進めてください' };
@@ -652,7 +676,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         v.regular = { id: nr.id, look: nr.look, visits: 1, joined: true };
       }
     }
-    if (closed) g.barrels[slot] = null;
+    if (closed) g.setVessel(slot, null);
     // 樽の収支（空になったときだけ確定）
     const batch = { pickle: b.pickle, cost: b.cost, earned: b.earned, profit: b.earned - b.cost, closed };
     const res = { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay(), reputation: { before: repBefore, after: g.reputation }, discovery, learned, xp };
@@ -663,7 +687,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -678,11 +702,12 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   const restoreInner = (s) => {
     const okBarrel = (b) => b === null || (b && cfg.vegetables[b.veg] && cfg.pickles[b.pickle] && Number.isFinite(b.saltPct) && Number.isFinite(b.tempC) && Number.isFinite(b.startTick) && Number.isFinite(b.portions));
     if (!s || s.v !== SAVE_VERSION || !Number.isInteger(s.tick) || s.tick < 0 || !Number.isFinite(s.money)
-      || !Array.isArray(s.barrels) || s.barrels.length < BARREL_COUNT || s.barrels.length > cfg.barrelsInvest.max || !s.barrels.every(okBarrel)
+      || !Array.isArray(s.barrels) || s.barrels.length < BARREL_COUNT || s.barrels.length > cfg.barrelsInvest.max + cfg.barrelsInvest.backMax || !s.barrels.every(okBarrel)
       || !cal.weathers.includes(s.weather) || !s.stats) return false;
     g.tick = s.tick;
     g.money = s.money;
     g.barrels = s.barrels.map((b) => (b ? { ...b } : null));
+    g.shelf = Array.isArray(s.shelf) ? s.shelf.map((b) => (b && okBarrel(b) && Number.isFinite(b.shelvedTick) ? { ...b } : null)) : [];
     g.weather = s.weather;
     g.stats = { ...g.stats, ...s.stats };
     g.lastSaleTick = Number.isInteger(s.lastSaleTick) ? s.lastSaleTick : -1;
@@ -698,7 +723,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (s.book && typeof s.book === 'object') {
       g.book = Object.fromEntries(Object.entries(s.book).filter(([, e]) => e && Number.isFinite(e.best)).map(([k, e]) => [k, { best: e.best, day: e.day ?? 1, n: e.n ?? 1 }]));
     }
-    for (const b of g.barrels) if (b) b.additives = Array.isArray(b.additives) ? b.additives.filter((a) => cfg.additives[a]) : [];
+    for (const b of [...g.barrels, ...g.shelf]) if (b) b.additives = Array.isArray(b.additives) ? b.additives.filter((a) => cfg.additives[a]) : [];
     if (Array.isArray(s.regulars)) {
       g.regulars = s.regulars.filter((r) => r && Number.isInteger(r.id) && cfg.customers.some((c) => c.id === r.type) && Number.isFinite(r.look))
         .slice(0, cfg.regulars.max).map((r) => ({ ...r, visits: r.visits ?? 0, misses: r.misses ?? 0, since: r.since ?? 1 }));
