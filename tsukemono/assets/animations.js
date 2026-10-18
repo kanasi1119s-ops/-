@@ -35,6 +35,8 @@
 //            ほうきは 歩く・見る・財布 で持ち、受け取る・話す では置いている
 // 悪魔:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 import { WALK as WALK_FRAMES } from './walk.js';
+import { TRACE } from './trace.js';
+import { SURPRISE_BASE } from './faces.js';
 
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, up: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
@@ -289,6 +291,12 @@ export const POSE_ANIMS = {
 const fr = (ms, o = {}) => ({ ms, up: [0, 0], head: [0, 0], legs: [0, 0], props: [], ...o });
 const WALK = [fr(140), fr(140, { up: [0, -2], legs: [2, -2] }), fr(140), fr(140, { up: [0, -2], legs: [-2, 2] })];
 const BASKET = [{ s: 'basket', at: 'hand', dx: -8, dy: -3 }];
+
+// 驚いた顔（オーバーリアクション）: ぴょんと2回跳ねて、驚いた顔のまま止まる。絵の番号はポーズ集のいちばん後ろ（assets/faces.js）
+for (const name of Object.keys(SURPRISE_BASE)) {
+  const s = TRACE.poses[name].length;
+  if (POSE_ANIMS[name]) POSE_ANIMS[name].surprise = { loop: false, frames: [p(90, s, { dy: -7 }), p(90, s, { dy: -3 }), p(120, s), p(90, s, { dy: -4 }), p(90, s, { dy: -1 }), p(2600, s)] };
+}
 
 export const PERSON_ANIMS = {
   walk: { loop: true, frames: WALK },

@@ -185,7 +185,7 @@ const OVER_WORDS = { great: ['うまーい！！', 'ズキューン！', 'バー
 function overEffect(v) {
   const good = v.reaction.key === 'great', words = OVER_WORDS[good ? 'great' : 'bad'];
   sound.se(good ? 'found' : 'bad');
-  floatText(words[Math.floor(Math.random() * words.length)], SCENE.lane.standX - 150, 70, `over ${good ? 'good' : 'bad'}`); // 吹き出しに隠れないよう、左上に
+  floatText(words[Math.floor(Math.random() * words.length)], SCENE.lane.standX - 240, 60, `over ${good ? 'good' : 'bad'}`); // 吹き出しに隠れないよう、左上に
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const st = $('stageWrap'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
     setTimeout(() => st.classList.remove('shake'), 600);
@@ -1302,10 +1302,17 @@ function renderBubbles() {
     if (!el) { el = document.createElement('div'); el.className = 'say'; layer.appendChild(el); bubbleEls.set(a, el); }
     if (el.textContent !== a.bubble) el.textContent = a.bubble;
     el.classList.toggle('over', !!a.over);
-    const x = Math.min(SCENE.w - 100, Math.max(100, a.x));
-    el.style.left = `${(x / SCENE.w) * 100}%`;
+    if (a.over) { // 大げさな吹き出しは、お客の右寄りに（左の店主の驚いた顔を隠さない）
+      const sw = $('stageWrap').clientWidth || 1, w = (el.offsetWidth / sw) * SCENE.w;
+      const left = Math.max(8, Math.min(a.x - w * 0.22, SCENE.w - w - 8));
+      el.style.left = `${(left / SCENE.w) * 100}%`;
+      el.style.setProperty('--tail', `${Math.max(8, Math.min(92, ((a.x - left) / w) * 100))}%`);
+    } else {
+      const x = Math.min(SCENE.w - 100, Math.max(100, a.x));
+      el.style.left = `${(x / SCENE.w) * 100}%`;
+      el.style.setProperty('--tail', `${50 + ((a.x - x) / 2)}%`);
+    }
     el.style.top = `${(((a.headTop ?? a.y - 120) - 6) / SCENE.h) * 100}%`;
-    el.style.setProperty('--tail', `${50 + ((a.x - x) / 2)}%`);
   }
   for (const [a, el] of bubbleEls) if (!live.has(a)) { el.remove(); bubbleEls.delete(a); }
 }

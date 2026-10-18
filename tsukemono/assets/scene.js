@@ -1,5 +1,6 @@
 // 店先の配置（768×432 のドット座標。tools/trace.py の SC=2）。絵は参考画像をトレースしたもの（assets/img/、tools/trace.py）。
 // 背景は人のいない絵、人物は人のいる絵から切り抜いたもの。
+import { SURPRISE_BASE } from './faces.js';
 import { VEGETABLES } from '../data/vegetables.js'; // 野菜を足すと、樽の中身の絵（slot{0..2}_{id}.png）も読みこむ
 import { TRACE } from './trace.js';
 import { WALK } from './walk.js';
@@ -42,6 +43,7 @@ export const IMAGES = [
   'bg', 'basket', 'cloud_0', 'cloud_1',
   'char_kid1', 'char_kid2', 'char_kid3',
   ...Object.entries(TRACE.poses).flatMap(([n, ps]) => ps.map((_, i) => `pose_${n}_${i}`)),
+  ...Object.keys(SURPRISE_BASE).map((n) => `surprise_${n}`), // 驚いた顔（assets/faces.js）
   ...Object.values(WALK).flatMap((fs) => fs.map((f) => f.img)), // 描き直した歩くコマ（tools/walk_frames.py）
   'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
   ...[0, 1, 2].flatMap((i) => ['empty', 'takuan', ...VEGETABLES.filter((v) => !v.img).map((v) => v.id)].map((v) => `slot${i}_${v}`)),

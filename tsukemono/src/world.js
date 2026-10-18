@@ -1,7 +1,8 @@
 // 店先の人の動かし方（段取り）。ゲームの結果を受けて、客と店主を動かすだけ。
 // 状態は一切書き換えない。止めても遊びは進む（結果は game.js が先に確定している）。
 import { SCENE } from '../assets/scene.js';
-import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES } from '../assets/characters.js';
+import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES, BODIES } from '../assets/characters.js';
+import { POSE_ANIMS } from '../assets/animations.js';
 
 const WALK_SPEED = 96; // px/秒 【仮置き】歩くコマ（150ms×2で1歩）と合う速さ
 
@@ -27,6 +28,8 @@ export class World {
   }
   remove(a) { this.actors = this.actors.filter((x) => x !== a); }
   setAnim(a, name) { if (a.anim !== name) { a.anim = name; a.animT0 = this.now(); } }
+  /** その人にその動きがあるか（子どもには驚いた顔がない） */
+  hasAnim(a, name) { return BODIES[a.look?.body]?.kind === 'poses' && !!POSE_ANIMS[a.look.body]?.[name]; }
 
   /** dt(ms) ぶん進める。 */
   update(dtMs) {
@@ -123,11 +126,13 @@ export class World {
       await this.keeperGive();
     }
     if (v.bought) { this.setAnim(c, 'buy'); await this.wait(1100); }
-    this.setAnim(c, v.bought ? 'talk_basket' : 'talk');
+    c.over = !!v.reaction?.over; // オーバーリアクション（大きな吹き出しで、長めに。驚いた顔でぴょんと跳ねる）
+    this.setAnim(c, c.over && this.hasAnim(c, 'surprise') ? 'surprise' : v.bought ? 'talk_basket' : 'talk');
+    if (c.over && v.reaction.key === 'great') this.setAnim(this.keeper, 'surprise'); // 店主もびっくり
     c.bubble = line ?? v.reaction.line;
-    c.over = !!v.reaction?.over; // オーバーリアクション（大きな吹き出しで、長めに）
     onTalk?.(v);
     await this.wait(c.over ? 3600 : 1900);
+    if (c.over) this.setAnim(this.keeper, 'idle');
     c.over = false;
     const after = v.regular?.joined ? REGULAR_LINES.joined : v.regular?.left ? REGULAR_LINES.left : null;
     if (after) { c.bubble = after; await this.wait(1200); }
