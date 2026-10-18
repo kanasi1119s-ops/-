@@ -36,7 +36,7 @@
 // 悪魔:       0歩く 1歩く 2話す 3笑う 4歩く 5指さす 6財布を出す 7受け取る
 import { WALK as WALK_FRAMES } from './walk.js';
 import { TRACE } from './trace.js';
-import { SURPRISE_BASE } from './faces.js';
+import { SURPRISE_BASE, ANGRY_BASE } from './faces.js';
 
 const p = (ms, pose, o = {}) => ({ ms, pose, dy: 0, up: 0, props: [], ...o });
 const SALT = (s, dy) => ({ s, at: 'hand', dx: 0, dy });
@@ -296,6 +296,12 @@ const BASKET = [{ s: 'basket', at: 'hand', dx: -8, dy: -3 }];
 for (const name of Object.keys(SURPRISE_BASE)) {
   const s = TRACE.poses[name].length;
   if (POSE_ANIMS[name]) POSE_ANIMS[name].surprise = { loop: false, frames: [p(90, s, { dy: -7 }), p(90, s, { dy: -3 }), p(120, s), p(90, s, { dy: -4 }), p(90, s, { dy: -1 }), p(2600, s)] };
+}
+// 怒った顔: どんと足を踏みならして、ぷるぷる震え続ける（驚いた顔の次の番号）
+for (const name of Object.keys(ANGRY_BASE)) {
+  const a = TRACE.poses[name].length + (SURPRISE_BASE[name] != null ? 1 : 0);
+  const shake = Array.from({ length: 8 }, (_, i) => p(70, a, { dy: i % 2 ? -1 : 0 }));
+  if (POSE_ANIMS[name]) POSE_ANIMS[name].angry = { loop: true, frames: [p(80, a, { dy: -3 }), p(160, a), ...shake, p(500, a)] };
 }
 
 export const PERSON_ANIMS = {

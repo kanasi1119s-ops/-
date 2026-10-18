@@ -6,5 +6,12 @@ export const SURPRISE_BASE = {
   knight: 2, alien: 2, centaur: 2, witch: 2, demon: 2,
 };
 
+// 怒った顔（assets/img/angry_<名前>.png。tools/face_surprise.py --angry → tools/editor_touch.mjs）。元にした姿勢は驚いた顔と同じ
+export const ANGRY_BASE = SURPRISE_BASE;
+// ポーズ集のいちばん後ろに足す顔の順番（番号 = 元のポーズの数 + この順番）
+export const EXTRA_FACES = [['surprise', SURPRISE_BASE], ['angry', ANGRY_BASE]];
+/** 怒る味（とてもがっかりしたときのうち、怒りの顔になるもの。ほかは驚いた顔） */
+export const ANGRY_KEYS = ['salt_high', 'acid_high', 'texture_high', 'acid_low', 'rotten'];
+
 // オーバーリアクションの描き文字（ドットの文字の爆発吹き出し。assets/img/over_<名前>.png。tools/over_words.py → tools/editor_touch.mjs）
 export const OVER_WORDS = { great: ['umai', 'zukyun', 'ban', 'don', 'uooo'], bad: ['gan', 'zun', 'gya'] };

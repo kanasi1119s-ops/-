@@ -6,12 +6,12 @@
 //     hipY: ここから下が脚 / legX: 左脚と右脚の境目 / headY: ここから上が頭 / hand: かごを持つ位置
 // faces: 絵の向き。'right' / 'left' / 'front'。進む向きに合わせて左右反転する。
 import { TRACE } from './trace.js';
-import { SURPRISE_BASE } from './faces.js';
+import { EXTRA_FACES } from './faces.js';
 
-// ポーズ集の絵。驚いた顔（エディタで描いた絵）があれば、いちばん後ろの番号に足す（assets/faces.js）
+// ポーズ集の絵。驚いた顔・怒った顔（エディタで描いた絵）があれば、いちばん後ろの番号に足す（assets/faces.js）
 const posesOf = (name) => [
   ...TRACE.poses[name].map((p, i) => ({ ...p, img: `pose_${name}_${i}` })),
-  ...(SURPRISE_BASE[name] != null ? [{ ...TRACE.poses[name][SURPRISE_BASE[name]], img: `surprise_${name}` }] : []),
+  ...EXTRA_FACES.filter(([, base]) => base[name] != null).map(([kind, base]) => ({ ...TRACE.poses[name][base[name]], img: `${kind}_${name}` })),
 ];
 
 export const BODIES = {

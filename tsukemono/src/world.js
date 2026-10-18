@@ -3,6 +3,7 @@
 import { SCENE } from '../assets/scene.js';
 import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES, BODIES } from '../assets/characters.js';
 import { POSE_ANIMS } from '../assets/animations.js';
+import { ANGRY_KEYS } from '../assets/faces.js';
 
 const WALK_SPEED = 96; // px/秒 【仮置き】歩くコマ（150ms×2で1歩）と合う速さ
 
@@ -118,7 +119,7 @@ export class World {
     }
     await this.keeperGreet();
     if (v.claimer) { // 難癖のお客: 買わずに文句を言って、言うだけ言って帰る
-      this.setAnim(c, 'talk');
+      this.setAnim(c, this.hasAnim(c, 'angry') ? 'angry' : 'talk'); // 怒った顔で、ぷるぷる震えながら
       onTalk?.(v);
       for (const l of v.claimer.lines) { c.bubble = l; await this.wait(2000); }
       c.bubble = null;
@@ -134,13 +135,16 @@ export class World {
     }
     if (v.bought) { this.setAnim(c, 'buy'); await this.wait(1100); }
     c.over = !!v.reaction?.over; // オーバーリアクション（大きな吹き出しで、長めに。驚いた顔でぴょんと跳ねる）
-    this.setAnim(c, c.over && this.hasAnim(c, 'surprise') ? 'surprise' : v.bought ? 'talk_basket' : 'talk');
-    if (c.over && v.reaction.key === 'great') this.setAnim(this.keeper, 'surprise'); // 店主もびっくり
+    // 傷んでいた・しょっぱすぎる・すっぱすぎる…は怒った顔（assets/faces.js の ANGRY_KEYS）
+    const mad = ANGRY_KEYS.includes(v.reaction?.key) && (c.over || v.reaction.key === 'rotten') && this.hasAnim(c, 'angry');
+    this.setAnim(c, mad ? 'angry' : c.over && this.hasAnim(c, 'surprise') ? 'surprise' : v.bought ? 'talk_basket' : 'talk');
+    if (c.over) this.setAnim(this.keeper, 'surprise'); // 店主もびっくり（ほめられても、怒られても）
     c.bubble = line ?? v.reaction.line;
     onTalk?.(v);
     await this.wait(c.over ? 3600 : 1900);
     if (c.over) this.setAnim(this.keeper, 'idle');
     c.over = false;
+    if (mad) this.setAnim(c, v.bought ? 'talk_basket' : 'talk');
     const after = v.regular?.joined ? REGULAR_LINES.joined : v.regular?.left ? REGULAR_LINES.left : null;
     if (after) { c.bubble = after; await this.wait(1200); }
     c.bubble = null;
