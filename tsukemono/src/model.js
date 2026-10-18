@@ -205,3 +205,23 @@ export function applyCare(taste, care, cfg = CONFIG) {
   }
   return out;
 }
+
+/**
+ * 特別な食材（data/specials.js）の効き目。風味は漬かるほど効き、食感・塩味・傷みは掛け算。
+ * priceMult は売り値に掛ける（お客は良い材料に払う）。
+ */
+export function applySpecials(t, ids, cfg = CONFIG) {
+  if (!ids?.length) return t;
+  const m = Math.sqrt(Math.min(1, Math.max(0, t.ratio ?? 1)));
+  let { complexity, texture, saltiness, spoilRisk } = t, priceMult = 1;
+  for (const id of ids) {
+    const e = cfg.specials[id]?.effects;
+    if (!e) continue;
+    complexity += (e.complexity ?? 0) * m;
+    texture *= e.texture ?? 1;
+    saltiness *= e.saltiness ?? 1;
+    spoilRisk *= e.spoil ?? 1;
+    priceMult *= e.price ?? 1;
+  }
+  return { ...t, complexity: clamp(complexity, 0, 100), texture: clamp(texture, 0, 100), saltiness, spoilRisk, priceMult };
+}

@@ -8,6 +8,8 @@ import { FACILITIES, facilitiesFrom } from '../data/facilities.js';
 import { LEVELS, LEVEL_AFTER_LAST } from '../data/levels.js';
 import { VEGETABLES, vegetablesFrom } from '../data/vegetables.js';
 import { WISDOM } from '../data/wisdom.js';
+import { SPECIALS } from '../data/specials.js';
+import { UPGRADES } from '../data/upgrades.js';
 
 const PICKLE_CFG = picklesFrom(PICKLES);
 const FACILITY_CFG = facilitiesFrom(FACILITIES);
@@ -66,6 +68,10 @@ export const CONFIG = {
   water: { base: 0.93, saltDilution: 1.5 },
   // 干す（たくあんなど。段階E）: 干した日数だけ水分が抜け、食感・塩味が締まり、傷みにくくなる 【仮置き】
   drying: { waterLossPerDay: 0.03, crispPerDay: 0.03, crispMax: 1.3, spoilDropPerDay: 0.05, spoilMin: 0.5 },
+  // 買えるもの: 特別な食材（data/specials.js）と店の格上げ（data/upgrades.js）
+  specials: Object.fromEntries(SPECIALS.map(({ id, ...x }) => [id, x])),
+  specialMax: 2, // 【仮置き】1つの樽に2つまで
+  upgrades: Object.fromEntries(UPGRADES.map(({ id, ...x }) => [id, x])),
   wisdomTotal: WISDOM.length, // 知恵袋の知恵の数（段階G。中身は data/wisdom.js）
   // 燻す（いぶりがっこ。段階F）: 目安の日数まで燻すと風味の深さが最大 ×1.5、目安を過ぎると1日ごとに −12%（えぐい）【仮置き】
   smoking: { bonusMax: 0.5, overPenalty: 0.12 },

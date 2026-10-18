@@ -96,6 +96,34 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     return { ok: true, cost: c.cost };
   };
 
+  // ---- 店の格上げ・樽の木桶・宣伝（data/upgrades.js） ----
+  g.upgrades = []; // 買った店の格上げ
+  g.barrelGrade = {}; // 樽ごとの格上げ { 樽の番号: id }
+  g.campaigns = []; // いま効いている宣伝 [{ id, until（この区切りまで） }]
+  const activeUps = () => [...g.upgrades, ...g.campaigns.filter((c) => c.until > g.tick).map((c) => c.id)].map((id) => cfg.upgrades[id]).filter(Boolean);
+  /** 店の格上げと宣伝の効き目（掛け算のもの） */
+  g.upgradeMult = (k) => activeUps().reduce((a, u) => a * (u.effects[k] ?? 1), 1);
+  /** 足し算のもの（満足度・説明の通りやすさ） */
+  g.upgradeAdd = (k) => activeUps().reduce((a, u) => a + (u.effects[k] ?? 0), 0);
+  g.barrelUpgrade = (slot) => cfg.upgrades[g.barrelGrade[slot]] ?? null;
+  g.campaignLeft = (id) => { const c = g.campaigns.find((x) => x.id === id && x.until > g.tick); return c ? (c.until - g.tick) / cal.ticksPerDay : 0; };
+  /** 買う。barrel は slot（樽の番号）を選ぶ */
+  g.buyUpgrade = (id, slot = null) => {
+    const u = cfg.upgrades[id];
+    if (!u) return { ok: false, error: 'それは売っていません' };
+    if (g.level().level < u.level) return { ok: false, error: `店のレベル${u.level}で買えます` };
+    if (u.requires && !g.upgrades.includes(u.requires)) return { ok: false, error: `先に「${cfg.upgrades[u.requires].name}」が要ります` };
+    if (u.group === 'shop' && g.upgrades.includes(id)) return { ok: false, error: 'もう済んでいます' };
+    if (u.group === 'barrel' && (g.barrels[slot] === undefined || g.barrelGrade[slot] === id)) return { ok: false, error: g.barrels[slot] === undefined ? '樽がありません' : 'もう替えてあります' };
+    if (u.group === 'campaign' && g.campaignLeft(id) > 0) return { ok: false, error: 'まだ効いています' };
+    if (g.money < u.cost) return { ok: false, error: 'お金が足りません' };
+    g.money -= u.cost; g.stats.cost += u.cost; g.stats.invest = (g.stats.invest ?? 0) + u.cost;
+    if (u.group === 'shop') g.upgrades.push(id);
+    else if (u.group === 'barrel') g.barrelGrade[slot] = id;
+    else g.campaigns = [...g.campaigns.filter((c) => c.until > g.tick && c.id !== id), { id, until: g.tick + u.days * cal.ticksPerDay }];
+    return { ok: true, cost: u.cost, upgrade: u };
+  };
+
   // ---- 従業員 ----
   g.staffDef = (id) => STAFF.find((s) => s.id === id);
   g.staffDoes = (k) => g.staff.map(g.staffDef).filter(Boolean).map((s) => s.does[k]).filter((v) => v != null);

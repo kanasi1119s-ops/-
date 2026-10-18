@@ -155,6 +155,18 @@ try {
   await page.click('[data-act="brew"]'); await idle(); await closeNotices();
   check('干す日数を選んでたくあんを仕込める', (await G(() => window.__game.game.barrels.find((b) => b?.pickle === 'takuan')?.dry)) === 10);
 
+  // 買えるもの: 特別な食材を足して仕込む・店の格上げ
+  await G(() => { const g = window.__game.game; g.money = 200000; g.addXp(200); g.barrels = g.barrels.map(() => null); window.__game.ui.slot = 0; window.__game.renderAll(); });
+  await closeNotices(); await page.click('[data-cmd="brew"]');
+  await page.click('[data-pickle="hakusaizuke"]');
+  await page.click('[data-special="moshio"]');
+  await page.click('[data-act="brew"]'); await idle(); await closeNotices();
+  check('特別な食材を足して仕込める', JSON.stringify(await G(() => window.__game.game.barrels[0]?.specials)) === '["moshio"]');
+  await closeNotices(); await page.click('[data-cmd="shop"]');
+  await page.click('[data-upgrade="noren"]');
+  check('店の格上げを買える', await G(() => window.__game.game.upgrades.includes('noren')));
+  await page.click('#winClose'); await closeNotices();
+
   // 段階D: 仕入れ・店の経営
   await G(() => { window.__game.game.money = 50000; window.__game.renderAll(); });
   await closeNotices(); await page.click('[data-cmd=\"market\"]');

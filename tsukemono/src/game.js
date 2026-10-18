@@ -1,7 +1,7 @@
 // ゲームの進行（画面なし）。仕込み→熟成→販売の1周を管理する。
 // 乱数は seed 付きで差し替え可能にして、テストで結果を固定できるようにする。
 import { CONFIG } from './config.js';
-import { simulate, filmPerDay, nukaStep, nukaApply, applyCare, affinityOf } from './model.js';
+import { simulate, filmPerDay, nukaStep, nukaApply, applyCare, affinityOf, applySpecials } from './model.js';
 import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
@@ -195,7 +195,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   /** 説明が通る確率 */
   g.explainChance = () => {
     const sc = RESPONSES.find((r) => r.id === 'explain').success;
-    return Math.min(0.95, Math.max(0.05, sc.base + sc.perLevel * (g.level().level - 1) + sc.perQuality * (g.claim?.quality ?? 0) + defense('explain', 0) + (g.staffDoes?.('claimDefense') ?? []).reduce((a, v) => a + v, 0)));
+    return Math.min(0.95, Math.max(0.05, sc.base + sc.perLevel * (g.level().level - 1) + sc.perQuality * (g.claim?.quality ?? 0) + defense('explain', 0) + (g.staffDoes?.('claimDefense') ?? []).reduce((a, v) => a + v, 0) + (g.upgradeAdd?.('explain') ?? 0)));
   };
   /** 難癖に対応する。id = data/claimer.js の RESPONSES の id、または 'ignore'。 */
   g.respondClaim = (id) => {
@@ -243,14 +243,29 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   /** 標準の個数（漬物ごと。個数を選ばなければこの数で、仕入れ値はこの数ぶん）。 */
   g.standardCount = (pickle) => cfg.pickles[pickle]?.portions ?? cfg.sales.portionsPerBatch;
   /** 仕込みの費用（円）。count を選ぶと、野菜と塩の代金は標準の個数に対する比で増減する（調味は樽ごとに1回）。 */
-  g.brewCost = ({ veg, saltPct, additives = [], count, pickle }) => {
+  g.brewCost = ({ veg, saltPct, additives = [], count, pickle, specials = [] }) => {
     const std = g.standardCount(pickle);
     const n = count ?? std;
+    const special = Math.round(specials.reduce((a, id) => a + (cfg.specials[id]?.cost ?? 0), 0) * n / std / 10) * 10; // 特別な食材は個数に比例
     const fromStock = g.useStock(veg, n, true).used; // 仕入れてある分は野菜代がかからない
     const vegPart = g.vegCost(veg), saltPart = Math.round(saltPct * cfg.sales.saltCostPerPct);
     const scaled = fromStock ? Math.round((vegPart * (n - fromStock) + saltPart * n) / std / 10) * 10
       : n !== std ? Math.round(((vegPart + saltPart) * n) / std / 10) * 10 : vegPart + saltPart;
-    return scaled + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
+    return scaled + special + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
+  };
+  /** 特別な食材を使えるか（店のレベル・使える漬物・同じ種類は1つ・数） */
+  g.checkSpecials = (pickle, specials = []) => {
+    if (specials.length > cfg.specialMax) return { ok: false, error: `特別な食材は${cfg.specialMax}つまでです` };
+    const kinds = new Set();
+    for (const id of specials) {
+      const sp = cfg.specials[id];
+      if (!sp) return { ok: false, error: 'その食材はありません' };
+      if (g.level().level < sp.level) return { ok: false, error: `${sp.name}は店のレベル${sp.level}から` };
+      if (sp.pickles && !sp.pickles.includes(pickle)) return { ok: false, error: `${sp.name}は${sp.pickles.map((x) => cfg.pickles[x].name).join('・')}にだけ使えます` };
+      if (kinds.has(sp.kind)) return { ok: false, error: '同じ種類の食材は1つまでです' };
+      kinds.add(sp.kind);
+    }
+    return { ok: true };
   };
 
   // ---- 置き場所 ----
@@ -283,7 +298,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return { ok: true, cost };
   };
 
-  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry, smoke, kaonTemp }) => {
+  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry, smoke, kaonTemp, specials = [] }) => {
+    specials = [...new Set(specials)];
     if (cfg.pickles[pickle]?.place) place = cfg.pickles[pickle].place; // すぐき漬けは加温室で
     additives = [...new Set(additives)];
     count = count ?? g.standardCount(pickle);
@@ -317,10 +333,12 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       dry = smoke.days;
     } else smoke = null;
     if (p.saltFree) saltPct = 0; // すんき: 塩を使わない
+    const spOk = g.checkSpecials(pickle, specials);
+    if (!spOk.ok) return spOk;
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
     if (g.barrels[slot]) return { ok: false, error: '樽が空いていません' };
     if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
-    const cost = g.brewCost({ veg, saltPct: p.usesNukaBed ? 0 : saltPct, additives, count, pickle });
+    const cost = g.brewCost({ veg, saltPct: p.usesNukaBed ? 0 : saltPct, additives, count, pickle, specials });
     if (cost > g.money) return { ok: false, error: 'お金が足りません' };
     g.money -= cost;
     g.stats.cost += cost;
@@ -331,7 +349,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (p.starter) g.tane[p.starter]--; // 種を使う
     const st = g.useStock(veg, count); // 在庫を古い順に使う（鮮度が品質に響く）。足りない分は今日の相場で買う
     const quality = g.vegQuality(veg) * ((st.used * st.quality + (count - st.used)) / count);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, specials, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -354,7 +372,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         // 梅干し: 梅が梅酢から出てくると、カビ（膜）がつきやすい（段階E）
         let mold = 1;
         if (pk.umezu) { b.exposed = Math.min(1, (b.exposed ?? 0) + cfg.umezu.exposePerDay * dt); mold = b.exposed > cfg.umezu.safe ? cfg.umezu.moldExposed : cfg.umezu.moldInBrine; }
-        if (pk.film && !pk.usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * mold * dt);
+        const grade = g.barrelUpgrade(g.barrels.indexOf(b))?.effects.film ?? 1; // 杉の木桶は膜が張りにくい
+        if (pk.film && !pk.usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * mold * grade * dt);
       }
       // ぬか床は店の中（外気温）。放っておくと 膜 → 酸っぱい → 傷む の順に進む（model.js の nukaStep）
       g.nuka = nukaStep(g.nuka, g.ambientTemp(), dt, (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay, cfg);
@@ -374,7 +393,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const t = applyCare(base, { film, bed: p.usesNukaBed ? g.nuka : null }, cfg);
     // 作り方を磨くと品質が上がる（腕前 0〜1）
     const m = g.mastery(b.pickle), pr = cfg.progress;
-    return m > 0 ? { ...t, complexity: Math.min(100, t.complexity * (1 + pr.masterComplexity * m)), texture: Math.min(100, t.texture * (1 + pr.masterTexture * m)), mastery: m } : t;
+    let u = m > 0 ? { ...t, complexity: Math.min(100, t.complexity * (1 + pr.masterComplexity * m)), texture: Math.min(100, t.texture * (1 + pr.masterTexture * m)), mastery: m } : t;
+    const grade = g.barrelUpgrade(slot)?.effects.complexity; // 杉の木桶は木の香りが移る
+    if (grade) u = { ...u, complexity: Math.min(100, u.complexity * grade) };
+    return applySpecials(u, b.specials, cfg); // 特別な食材
   };
 
   /** 干し終わるまでの日数（0 = 漬かりはじめている） */
@@ -468,9 +490,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const rep = cfg.reputation;
     const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()]
       * (rep.visitMin + (rep.visitMax - rep.visitMin) * (g.reputation / 100)) // 評判が高いほど客が来る
-      * (g.event()?.visitors ?? 1) * g.staffMult('visitors'); // 行事の特需・看板店員（段階D）
+      * (g.event()?.visitors ?? 1) * g.staffMult('visitors') * g.upgradeMult('visitors'); // 行事の特需・看板店員（段階D）・店の格上げと宣伝
     const ev = g.event();
-    const priceMult = (ev?.price ?? 1) * agingFactor(cfg.pickles[b.pickle], taste.ratio); // 行事の値段・寝かせた値打ち
+    const aged = agingFactor(cfg.pickles[b.pickle], taste.ratio);
+    const priceMult = (ev?.price ?? 1) * (1 + (aged - 1) * g.upgradeMult('aging')) * (taste.priceMult ?? 1) * g.upgradeMult('price'); // 行事・寝かせた値打ち（蔵で上乗せ）・特別な食材・店の格
     // 名前のない客がランダムに来る。来た客の好みのタイプもランダム
     const rc0 = cfg.regulars;
     const coming = [];
@@ -506,7 +529,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       // 年代（常連は決まった年代。ほかは今年の割合で）と減塩の流れで、好む塩味がずれる
       const age = regular?.age ?? (() => { let r = hash01(g.seed, g.tick, ci, 'age'); for (const [k, v] of Object.entries(g.ageShares())) { r -= v; if (r < 0) return k; } return 'middle'; })();
       const likeEv = ev?.likes?.includes(b.pickle) ? cfg.sales.likeBonus : 0; // 行事で人気の漬物
-      const sat = Math.min(100, Math.max(0, satisfaction(taste, b.pickle, g.customerFor(c, age), season, cfg) + likeEv - (soured ? cfg.claimer.moodPenalty : 0)));
+      const sat = Math.min(100, Math.max(0, satisfaction(taste, b.pickle, g.customerFor(c, age), season, cfg) + likeEv + g.upgradeAdd('sat') - (soured ? cfg.claimer.moodPenalty : 0)));
       const reg = regular ? { id: regular.id, look: regular.look, visits: regular.visits + 1 } : null;
       if (spoiled) {
         visitors.push({ customer: c, regular: reg, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: ['うっ、傷んでるよ！', 'これは食べられないよ…', 'すっぱい匂いがする…'][Math.floor(rng() * 3)] } });
@@ -596,7 +619,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -646,6 +669,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       for (const [k, e] of Object.entries(g.book)) { const id = k.split(':')[0]; if (g.recipes[id] && e.best >= cfg.progress.successSat) g.recipes[id].made = Math.max(g.recipes[id].made, 1); }
     }
     g.events = [];
+    g.upgrades = Array.isArray(s.upgrades) ? s.upgrades.filter((id) => cfg.upgrades[id]?.group === 'shop') : [];
+    g.barrelGrade = s.barrelGrade && typeof s.barrelGrade === 'object' ? Object.fromEntries(Object.entries(s.barrelGrade).filter(([k, id]) => cfg.upgrades[id] && +k < g.barrels.length)) : {};
+    g.campaigns = Array.isArray(s.campaigns) ? s.campaigns.filter((c) => c && cfg.upgrades[c.id] && Number.isFinite(c.until)) : [];
+    for (const b of g.barrels) if (b) b.specials = Array.isArray(b.specials) ? b.specials.filter((id) => cfg.specials[id]) : [];
     const wd = s.wisdom;
     g.wisdom = wd && Array.isArray(wd.known) ? { joined: !!wd.joined, known: wd.known.filter((id) => typeof id === 'string'), told: wd.told && typeof wd.told === 'object' ? { ...wd.told } : {} } : { joined: g.regulars.some((r) => r.granny), known: [], told: {} };
     g.regions = Array.isArray(s.regions) ? s.regions.filter((r) => g.regionList().includes(r)) : [];
