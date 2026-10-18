@@ -314,6 +314,24 @@ WINS.story = ({ e }) => ({
 });
 
 // 樽（1つずつ見る）
+// 重石と工程（樽の窓）
+const waterWord = (u) => (u >= 1 ? '上がった' : u >= 0.5 ? '上がりかけ' : 'まだ上がっていない');
+const TIMING = { good: 'ちょうど良い日にやった', early: '早すぎた（味が少し浅い）', late: '遅れた（食感が少し落ちた）' };
+function handworkBox(slot, b, p, t) {
+  if (!p.weight && !p.work.length) return '';
+  const cur = game.weightOf(b), heavy = (b.weights?.at(-1)?.w ?? 1) > 1;
+  const wRow = p.weight ? `<div>水: <b class="${t.waterUp >= 1 && heavy ? 'warn' : 'ukon'}">${waterWord(t.waterUp ?? 0)}</b>${t.waterUp >= 1 && heavy ? '（重いままだと野菜がつぶれる。軽くする頃）' : t.waterUp < 1 && !heavy ? '（重石が軽いと、水が上がるまで傷みやすい）' : ''}</div>
+    <div class="row">${Object.entries(C.weight.levels).map(([k, l]) => `<button class="btn${cur === k ? ' main' : ''}" data-weight="${k}" data-wslot="${slot}" ${cur === k || t.drying ? 'disabled' : ''}>重石: ${l.name}</button>`).join('')}</div>` : '';
+  const days = game.fermentDays(b);
+  const wk = p.work.map((w) => {
+    const st = t.work?.find((x) => x.id === w.id), done = b.work?.[w.id];
+    const late = days > w.window[1] + C.workGrace;
+    const info = done != null ? `<span class="ukon">済み</span>（${TIMING[st?.timing] ?? ''}）` : late ? '<span class="warn">やらなかった</span>' : st?.state === 'skipped' ? '<span class="warn">目安を過ぎた（まだ間に合う）</span>' : st?.state === 'now' ? '<span class="ukon">今が目安</span>' : `<span class="hint">あと${trim(w.window[0] - days, 1)}日で目安</span>`;
+    return `<div class="item"><span class="grow">${w.label}（${w.window[0]}〜${w.window[1]}日目） ${info}<br><span class="hint">${w.note}</span></span>${done == null && !late ? `<button class="btn" data-work="${w.id}" data-wslot="${slot}" ${t.drying ? 'disabled' : ''}>${w.label}</button>` : ''}</div>`;
+  }).join('');
+  return `<div class="panel"><div class="ukon">重石と工程</div>${wRow}${wk ? `<div class="list">${wk}</div>` : ''}</div>`;
+}
+
 WINS.barrel = ({ slot }) => {
   const b = game.barrels[slot];
   const nav = game.barrels.length > 1 ? `<div class="row">${game.barrels.map((x, i) => `<button class="tile${i === slot ? ' on' : ''}" style="flex:1;text-align:center" data-goto="${i}">樽${i + 1}${x ? '' : '（空）'}</button>`).join('')}</div>` : '';
@@ -343,6 +361,7 @@ WINS.barrel = ({ slot }) => {
       ${game.barrelUpgrade(slot) || b.specials?.length ? `<div class="hint">${game.barrelUpgrade(slot) ? '<span class="ukon">杉の木桶</span> ' : ''}${b.specials?.length ? `特別な食材: ${b.specials.map((id) => C.specials[id].name).join('・')}` : ''}</div>` : ''}
       <div class="hint">塩${trim(b.saltPct, 1)}% ・ ${b.place ? C.places[b.place].name : ''} ${b.tempC}℃${adds ? ` ・ ${adds}` : ''}${p.film ? ` ・ 白い膜: <span class="${fv >= C.care.filmVisible ? 'warn' : ''}">${filmWord(fv)}${p.usesNukaBed ? '（ぬか床）' : ''}</span>` : ''}</div>
     </div>
+    ${handworkBox(slot, b, p, t)}
     ${tasteBox}
     <div class="row">
       <button class="btn" data-act="taste" data-slot="${slot}" ${tasted ? 'disabled' : ''}>${tasted ? '味見した' : '味見'}</button>
@@ -374,6 +393,7 @@ const effRecipe = () => {
   const r = { ...ui.recipe, tempC: C.facilities[ui.recipe.place]?.adjustable ? kaonT() : game.placeTemp(ui.recipe.place) };
   if (p.saltFree) r.saltPct = 0;
   if (p.smoking) r.smoke = { days: ui.recipe.smoke?.days ?? p.smoking.default, wood: ui.recipe.smoke?.wood ?? Object.keys(p.smoking.woods)[0] };
+  if (p.weight) r.weights = [{ d: 0, w: C.weight.levels[ui.recipe.weight ?? 'normal'].w }]; // 見立て用
   return p.usesNukaBed ? { ...r, saltPct: game.nuka.salt } : r;
 };
 const brewCostOf = (r) => game.brewCost({ ...r, saltPct: C.pickles[r.pickle].usesNukaBed || C.pickles[r.pickle].saltFree ? 0 : r.saltPct });
@@ -438,6 +458,8 @@ WINS.brew = () => {
     ${p.umezu ? '<div class="hint">梅は梅酢に浸かっていればカビにくい。毎日「樽」から重石を直して沈めよう。カビが出たら清潔なスプーンで取る。</div>' : ''}
     <div class="sec"><h3>調味（${C.additiveMax}つまで）　<span class="hint">◎合う △ふつう ✕合わない ？まだわからない</span></h3><div class="tiles">${adds}</div></div>
     <div class="sec"><h3>特別な食材（${C.specialMax}つまで）　<span class="hint">値段は今の個数ぶん。良い材料には、お客も高く払う</span></h3><div class="tiles wide">${specialTiles(r)}</div></div>
+    ${p.weight ? `<div class="sec"><h3>重石　<span class="hint">重いほど水が早く上がって傷みにくい。水が上がったあとも重いままだと野菜がつぶれる（樽の窓で替えられる）</span></h3><div class="tiles">${Object.entries(C.weight.levels).map(([k, l]) => `<button class="tile${(r.weight ?? 'normal') === k ? ' on' : ''}" data-wsel="${k}"><b>${l.name}</b><span>野菜の${l.w}倍</span></button>`).join('')}</div></div>` : ''}
+    ${p.work.length ? `<div class="sec"><h3>工程</h3><div class="hint">${p.work.map((w) => `${w.label}（${w.window[0]}〜${w.window[1]}日目）: ${w.note}`).join('<br>')}</div></div>` : ''}
     <div class="sec"><h3>置き場所　<span class="hint">外は今 ${game.ambientTemp()}℃${p.place ? ` ・ ${C.places[p.place].name}で漬ける` : ''}</span></h3><div class="tiles">${places}</div>
       ${C.facilities[r.place]?.adjustable ? `<div class="count"><span class="hint">${C.facilities[r.place].name}の温度</span><button class="stepper" data-kaon="-1" aria-label="1℃下げる">－</button><output class="ukon" style="min-width:4em;text-align:center">${kaonT()}℃</output><button class="stepper" data-kaon="1" aria-label="1℃上げる">＋</button>${p.bestTemp ? `<span class="hint">いちばん良いのは${p.bestTemp[0]}〜${p.bestTemp[1]}℃</span>` : ''}</div>` : ''}</div>
     <div class="sec"><h3>個数　<span class="hint">標準 ${game.standardCount(r.pickle)}個 ・ 1樽に最大 ${CAP()}個。多く仕込むほど材料代が増え、売れ残ると酸っぱくなる</span></h3>
@@ -726,6 +748,7 @@ function flushEvents() {
     if (e.type === 'wisdom') { sound.se('found'); openWin('wisdom', { e }); return; }
     if (e.type === 'wisdomHint') { say(`「${e.text}」`, game.grannyDef.name); continue; }
     if (e.type === 'tane') { floatText('種を取り分けた', 384, 130, 'good'); say(`${C.pickles[e.pickle].name}の種を取り分けた（種 ${e.n}）。次の樽に使える。`, '店主'); continue; }
+    if (e.type === 'waterUp') { if (e.heavy) say(`樽${e.slot + 1}（${C.pickles[e.pickle].name}）の水が上がった。重石を軽くする頃だ。`, '店主'); continue; }
     if (e.type === 'starterReady') { say(`寝かせておいた${C.pickles[e.pickle].name}の床が、いい香りになった。もう漬けられる。`, '店主'); continue; }
     if (e.type === 'taneArrived') { say(`木曽から小包。「種を絶やしたな？ 今年だけじゃぞ」…${C.pickles[e.pickle].name}の種が届いた。`, '店主'); continue; }
     if (e.type === 'season') { floatText(e.name, 384, 110, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
@@ -1014,6 +1037,9 @@ document.addEventListener('click', (e) => {
   if (d.veg) { sound.se('select'); ui.recipe.veg = d.veg; renderWin(); return; }
   if (d.add) { sound.se('select'); const a = ui.recipe.additives; ui.recipe.additives = a.includes(d.add) ? a.filter((x) => x !== d.add) : [...a, d.add].slice(0, C.additiveMax); renderWin(); return; }
   if (d.place) { sound.se('select'); ui.recipe.place = d.place; renderWin(); return; }
+  if (d.wsel) { sound.se('select'); ui.recipe.weight = d.wsel; renderWin(); return; }
+  if (d.weight) { const r = game.setWeight(+d.wslot, d.weight); if (!r.ok) { say(r.error); return; } sound.se('care'); say(`樽${+d.wslot + 1}の重石を${C.weight.levels[d.weight].name}にした。`, '店主'); renderAll(); return; }
+  if (d.work) { const r = game.doWork(+d.wslot, d.work); if (!r.ok) { say(r.error); return; } sound.se('care'); const w = C.pickles[game.barrels[+d.wslot].pickle].work.find((x) => x.id === d.work); say(`樽${+d.wslot + 1}: ${w.label}。${TIMING[r.timing]}。`, '店主'); world.careScene(); renderAll(); return; }
   if (d.bslot) { sound.se('select'); ui.slot = +d.bslot; renderWin(); renderChips(); return; }
   if (d.special) { sound.se('select'); const a = ui.recipe.specials ?? []; ui.recipe.specials = a.includes(d.special) ? a.filter((x) => x !== d.special) : [...a, d.special]; if (!game.checkSpecials(ui.recipe.pickle, ui.recipe.specials).ok) ui.recipe.specials = a; renderWin(); return; }
   if (d.upgrade) { const r = game.buyUpgrade(d.upgrade, d.uslot != null ? +d.uslot : null); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('buy'); say(`${r.upgrade.name}（${yen(r.cost)}）。${r.upgrade.note}。`, '店主'); renderAll(); return; }

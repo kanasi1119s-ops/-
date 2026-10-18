@@ -1,7 +1,7 @@
 // ゲームの進行（画面なし）。仕込み→熟成→販売の1周を管理する。
 // 乱数は seed 付きで差し替え可能にして、テストで結果を固定できるようにする。
 import { CONFIG } from './config.js';
-import { simulate, filmPerDay, nukaStep, nukaApply, applyCare, affinityOf, applySpecials } from './model.js';
+import { simulate, filmPerDay, nukaStep, nukaApply, applyCare, affinityOf, applySpecials, applyWork } from './model.js';
 import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
@@ -302,7 +302,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** いっしょに要る食材と個数 [[食材, 個数], ...]（個数あたりの割合から） */
   g.withNeeds = (pickle, count) => Object.entries(cfg.pickles[pickle]?.with ?? {}).map(([m, r]) => [m, Math.max(1, Math.ceil(count * r))]);
-  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry, smoke, kaonTemp, specials = [] }) => {
+  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry, smoke, kaonTemp, specials = [], weight = 'normal' }) => {
     specials = [...new Set(specials)];
     if (cfg.pickles[pickle]?.place) place = cfg.pickles[pickle].place; // すぐき漬けは加温室で
     additives = [...new Set(additives)];
@@ -337,6 +337,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       dry = smoke.days;
     } else smoke = null;
     if (p.saltFree) saltPct = 0; // すんき: 塩を使わない
+    if (p.weight && !cfg.weight.levels[weight]) return { ok: false, error: 'その重石はありません' };
     const spOk = g.checkSpecials(pickle, specials);
     if (!spOk.ok) return spOk;
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
@@ -358,7 +359,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (p.starter) g.tane[p.starter]--; // 種を使う
     const st = g.useStock(veg, count); // 在庫を古い順に使う（鮮度が品質に響く）。足りない分は今日の相場で買う
     const quality = g.vegQuality(veg) * ((st.used * st.quality + (count - st.used)) / count);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, specials, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, specials, weights: p.weight ? [{ d: 0, w: cfg.weight.levels[weight].w }] : undefined, work: p.work.length ? {} : undefined, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -383,6 +384,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         if (pk.umezu) { b.exposed = Math.min(1, (b.exposed ?? 0) + cfg.umezu.exposePerDay * dt); mold = b.exposed > cfg.umezu.safe ? cfg.umezu.moldExposed : cfg.umezu.moldInBrine; }
         const grade = g.barrelUpgrade(g.barrels.indexOf(b))?.effects.film ?? 1; // 杉の木桶は膜が張りにくい
         if (pk.film && !pk.usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * mold * grade * dt);
+        // 水が上がったら知らせる（重石を軽くする頃）
+        if (pk.weight && !b.waterUpNoted && (simulate({ ...b, days: g.fermentDays(b) }, cfg).waterUp ?? 0) >= 1) {
+          b.waterUpNoted = true;
+          g.events.push({ type: 'waterUp', slot: g.barrels.indexOf(b), pickle: b.pickle, heavy: (b.weights?.at(-1)?.w ?? 1) > 1 });
+        }
       }
       // ぬか床は店の中（外気温）。放っておくと 膜 → 酸っぱい → 傷む の順に進む（model.js の nukaStep）
       g.nuka = nukaStep(g.nuka, g.ambientTemp(), dt, (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay, cfg);
@@ -405,7 +411,36 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     let u = m > 0 ? { ...t, complexity: Math.min(100, t.complexity * (1 + pr.masterComplexity * m)), texture: Math.min(100, t.texture * (1 + pr.masterTexture * m)), mastery: m } : t;
     const grade = g.barrelUpgrade(slot)?.effects.complexity; // 杉の木桶は木の香りが移る
     if (grade) u = { ...u, complexity: Math.min(100, u.complexity * grade) };
+    u = applyWork(u, p.work, b.work, g.fermentDays(b), cfg); // 工程（漬け替え・汁を捨てる など）
     return applySpecials(u, b.specials, cfg); // 特別な食材
+  };
+  /** 漬けて何日目か（干している日は数えない） */
+  g.fermentDays = (b) => Math.max(0, g.barrelAge(b) - (b.dry ?? 0));
+  /** 重石を替える（重石と工程）。level = light / normal / heavy */
+  g.setWeight = (slot, level) => {
+    const b = g.barrels[slot];
+    if (!b || !cfg.pickles[b.pickle].weight) return { ok: false, error: '重石を使う漬物ではありません' };
+    const lv = cfg.weight.levels[level];
+    if (!lv) return { ok: false, error: 'その重石はありません' };
+    b.weights = b.weights?.length ? b.weights : [{ d: 0, w: 1 }];
+    if (b.weights.at(-1).w === lv.w) return { ok: false, error: `もう${lv.name}重石です` };
+    const d = Math.round(g.fermentDays(b) * 1000) / 1000;
+    if (b.weights.at(-1).d === d) b.weights[b.weights.length - 1].w = lv.w; else b.weights.push({ d, w: lv.w });
+    return { ok: true };
+  };
+  /** 今の重石（levels のキー） */
+  g.weightOf = (b) => { const w = b.weights?.at(-1)?.w ?? 1; return Object.entries(cfg.weight.levels).find(([, l]) => l.w === w)?.[0] ?? 'normal'; };
+  /** 工程をやる（本漬けに漬け替える・汁を捨てる など）。目安の日より早い・遅いと少し落ちる */
+  g.doWork = (slot, id) => {
+    const b = g.barrels[slot];
+    const s = b && cfg.pickles[b.pickle].work.find((x) => x.id === id);
+    if (!s) return { ok: false, error: 'その工程はありません' };
+    if (g.dryingLeft(b) > 0) return { ok: false, error: 'まだ干しています' };
+    if (b.work?.[id] != null) return { ok: false, error: 'もうやりました' };
+    const d = g.fermentDays(b);
+    if (d > s.window[1] + cfg.workGrace) return { ok: false, error: 'もう遅すぎます（目安を大きく過ぎた）' };
+    (b.work ??= {})[id] = Math.round(d * 1000) / 1000;
+    return { ok: true, timing: d < s.window[0] ? 'early' : d > s.window[1] ? 'late' : 'good' };
   };
 
   /** 干し終わるまでの日数（0 = 漬かりはじめている） */

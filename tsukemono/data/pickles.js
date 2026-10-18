@@ -35,6 +35,8 @@
 //   affinity    : 調味との相性（good / bad。書いてなければふつう）
 //   そのほか    : portions（標準の個数）、usesNukaBed（ぬか床を使う）、saltUptake、acidHalfProgress、film（白い膜が出る）、top（樽の中身の絵）
 
+import { workFrom } from './work.js';
+
 export const PICKLES = [
   {
     id: 'asazuke',
@@ -67,6 +69,7 @@ export const PICKLES = [
     complexityMax: 85, // 【仮置き】調味（昆布など）でさらに深くなる余地を残す
     price: 500, // 【仮置き】
     film: true, // 白い膜が出る（浅漬けは冷蔵で短期なので対象外）
+    weight: true, // 重石を選ぶ（重石と工程）。水が上がったら軽くするのが良い
     level: 1,
     unlock: null,
     affinity: { kombu: 'good', togarashi: 'good', yuzu: 'good', shoga: 'good', sakekasu: 'bad' },
@@ -96,6 +99,7 @@ export const PICKLES = [
     name: 'たくあん',
     vegetables: ['daikon'],
     steps: ['大根を干す', '米ぬか・塩・ざらめと漬ける', '重石をして数週間〜数か月'],
+    weight: true, // 大根はかたいので、重いままでもつぶれにくい
     saltHint: '4〜8%（長く置くなら多め）', // 【仮置き】出典は「干し日数と出荷時期で塩を変える」のみ
     salt: { lo: 4, hi: 8 }, // 【仮置き】
     tempHint: '寒い時期（5〜15℃）', // 【仮置き】冬の仕込み
@@ -120,6 +124,7 @@ export const PICKLES = [
     name: '野沢菜漬',
     vegetables: ['nozawana'],
     steps: ['野沢菜を洗う', '塩と唐辛子で漬ける', '重石をして寒い所で2〜3週間'],
+    weight: true, // 【出典】資料 p20-1「重石の付け替えと水上がりの判断」
     saltHint: '2.5〜3%', // 【出典】野菜40kgに塩1〜1.3kg
     salt: { lo: 2.5, hi: 3 }, // 【出典】
     tempHint: '寒い所（0〜10℃）', // 【仮置き】出典は「寒い時期」
@@ -190,7 +195,8 @@ export const PICKLES = [
     ref: 'p26-2', // 資料の京都のしば漬け
     name: '柴漬け',
     vegetables: ['nasu', 'kyuri', 'myoga'],
-    steps: ['なすときゅうりを刻む', '赤しそと塩で漬ける', '重石をして乳酸発酵させる'],
+    steps: ['なすときゅうりを刻む', '赤しそと塩で漬ける', '重石をして乳酸発酵させる', '黒い汁を捨てる'],
+    work: [['drain', 2, 4]], // 【出典】資料 p26-2「黒い汁を捨てる判断」。日は【仮置き】
     saltHint: '3〜5%', // 【仮置き】
     salt: { lo: 3, hi: 5 }, // 【仮置き】
     tempHint: '15〜25℃（夏）', // 【仮置き】夏の仕込み
@@ -393,7 +399,7 @@ export function picklesFrom(defs) {
       if (!u.hint) throw new Error(`漬物の定義 ${d.id}: unlock.hint がない`);
     }
     const { id, affinity: aff = {}, ...rest } = d;
-    pickles[id] = { level: 1, unlock: null, steps: [], needs: [], ...rest };
+    pickles[id] = { level: 1, unlock: null, steps: [], needs: [], ...rest, work: workFrom(rest.work, id) };
     affinity[id] = { ...aff };
   }
   return { pickles, affinity };

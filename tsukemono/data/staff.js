@@ -7,6 +7,7 @@
 //   level : 雇える店のレベル
 //   does  : 効き目。stir = 毎朝ぬか床をかき混ぜる / film = 毎朝、樽の白い膜を取る / visitors = 来るお客×
 //           / mastery = 成功したときの腕前の伸び× / claimDefense = 難癖のお客に説明が通る確率に足す
+//           / handwork = 毎朝、水が上がった樽の重石を軽くし、目安の日になった工程をやる
 //   hello : 雇ったときの一言 / quit : 辞めるときの一言
 
 export const STAFF = [
@@ -23,8 +24,8 @@ export const STAFF = [
     quit: '声が出なくなりました（お給料的な意味で）',
   }, // 【仮置き】
   {
-    id: 'deshi', name: '職人の弟子', hire: 5000, wage: 800, level: 4, does: { mastery: 2, claimDefense: 0.1 },
-    note: '一緒に漬けると腕前の伸びが2倍。難癖のお客にも理屈で言い返す',
+    id: 'deshi', name: '職人の弟子', hire: 5000, wage: 800, level: 4, does: { mastery: 2, claimDefense: 0.1, handwork: true },
+    note: '一緒に漬けると腕前の伸びが2倍。水が上がったら重石を軽くし、漬け替えなどの工程も目安の日にやってくれる。難癖のお客にも理屈で言い返す',
     hello: '師匠！ 塩加減のひみつ、いつか教えてください！（メモ帳10冊持参）',
     quit: '修行の旅に出ます。…お給料がもらえる店で。',
   }, // 【仮置き】

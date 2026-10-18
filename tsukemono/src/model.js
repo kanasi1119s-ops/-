@@ -97,9 +97,12 @@ export function simulate(p, cfg = CONFIG) {
   const absorbed = 1 - Math.exp(-(days * uptake) / t.saltAbsorbTauDays);
   const saltiness = (100 * p.saltPct * (pickle.saltUptake ?? 1) * uptake * waterF * absorbed) / t.saltFullPct;
 
-  const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * Math.max(dr.spoilMin, 1 - dr.spoilDropPerDay * dry) * days));
+  // 重石（重石と工程）: 水が上がるまでは傷みやすく、水が上がったあとも重いままだと野菜がつぶれる
+  const wt = pickle.weight ? weightEffects(p, veg, days, cfg) : null;
+  const spoilDays = Math.max(0, days + (wt?.extraSpoilDays ?? 0));
+  const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * Math.max(dr.spoilMin, 1 - dr.spoilDropPerDay * dry) * spoilDays));
 
-  const crisp = veg.crisp0 * (p.quality ?? 1) * Math.min(dr.crispMax, 1 + dr.crispPerDay * dry) * Math.exp(-progress / veg.crispTau); // quality = 旬の品質
+  const crisp = veg.crisp0 * (p.quality ?? 1) * Math.min(dr.crispMax, 1 + dr.crispPerDay * dry) * Math.exp(-progress / veg.crispTau) * (wt?.textureMult ?? 1); // quality = 旬の品質
   const texture = crisp * (1 - cfg.texture.spoilPenalty * (spoilRisk / 100));
 
   const maturity = Math.sqrt(Math.min(1, ratio));
@@ -110,8 +113,67 @@ export function simulate(p, cfg = CONFIG) {
     complexity *= Math.max(0.3, 1 + cfg.smoking.bonusMax * Math.min(1, d / sm.ideal[0]) * wood - cfg.smoking.overPenalty * Math.max(0, d - sm.ideal[1]));
   }
 
-  const base = { progress, ratio, stage, stageLabel: STAGE_LABEL[stage], acid, saltiness, texture, complexity, spoilRisk, rate };
+  const base = { progress, ratio, stage, stageLabel: STAGE_LABEL[stage], acid, saltiness, texture, complexity, spoilRisk, rate, ...(wt ? { waterUp: wt.waterUp, weight: wt.weight } : {}) };
   return p.additives?.length ? withAdditives(base, p, maturity, absorbed, cfg) : base;
+}
+
+/** 水の上がる速さ（1日あたり。1で上がりきる）。重石が重く、塩が多く、野菜の水分が多いほど早い */
+export function waterRise(w, saltPct, veg, cfg = CONFIG) {
+  const W = cfg.weight;
+  return W.riseBase * w * Math.sqrt(Math.max(0.5, saltPct) / 3) * ((veg.water ?? cfg.water.base) / cfg.water.base) ** 2;
+}
+
+/**
+ * 重石の効き目。weights = [{ d: 漬けて何日目から, w: 重さ（野菜の重さの何倍か） }]（なければ「ふつう」のまま）。
+ * 水が上がるまでの「水の上がっていない時間」が、ふつうの重石より長いと傷みやすく、短いと傷みにくい。
+ * 水が上がったあと重いままの時間だけ野菜がつぶれ、軽くしておくと少しシャキッとする。
+ */
+export function weightEffects(p, veg, days, cfg = CONFIG) {
+  const W = cfg.weight;
+  const segs = (p.weights?.length ? p.weights : [{ d: 0, w: 1 }]).slice().sort((a, b) => a.d - b.d);
+  let up = 0, unUp = 0, heavy = 0, light = 0;
+  for (let i = 0; i < segs.length; i++) {
+    const t0 = Math.min(days, segs[i].d), t1 = Math.min(days, segs[i + 1]?.d ?? Infinity), w = segs[i].w;
+    let dt = t1 - t0;
+    if (dt <= 0) continue;
+    if (up < 1) { // 水が上がりきるまで
+      const r = waterRise(w, p.saltPct, veg, cfg), need = (1 - up) / r, run = Math.min(dt, need);
+      unUp += (1 - up) * run - (r * run * run) / 2;
+      up = Math.min(1, up + r * run); dt -= run;
+    }
+    if (dt > 0) { heavy += Math.max(0, w - 1) * dt; light += Math.max(0, 1 - w) * dt; }
+  }
+  const r1 = waterRise(1, p.saltPct, veg, cfg), run1 = Math.min(days, 1 / r1), ref = run1 - (r1 * run1 * run1) / 2;
+  const crushVeg = Math.min(2, Math.max(0.25, 20 / veg.crispTau)); // やわらかい野菜ほどつぶれやすい
+  return {
+    waterUp: up,
+    weight: segs.at(-1).w,
+    extraSpoilDays: W.unUpSpoil * (unUp - ref),
+    textureMult: Math.exp(-W.crush * crushVeg * heavy) * Math.min(W.lightMax, 1 + W.lightBonus * light),
+  };
+}
+
+/**
+ * 工程（下漬け→本漬けの漬け替え・汁を捨てる・粕を替える など）の効き目。
+ * work = 漬物の工程の定義、done = { 工程id: やった日（漬けて何日目） }、days = 今、漬けて何日目か。
+ * 目安の日のうちにやると done の効き目、早すぎ・遅すぎは少し落ちる。やらずに目安を過ぎると skip の効き目。
+ */
+export function applyWork(t, work, done, days, cfg = CONFIG) {
+  if (!work?.length) return t;
+  const k = cfg.work;
+  let u = { ...t };
+  const mul = (eff) => { for (const [key, f] of Object.entries(eff ?? {})) { const field = key === 'spoil' ? 'spoilRisk' : key === 'acid' ? 'acid' : key; if (u[field] != null) u[field] = Math.min(100, u[field] * f); } };
+  const status = [];
+  for (const s of work) {
+    const d = done?.[s.id];
+    if (d != null) {
+      const timing = d < s.window[0] ? 'early' : d > s.window[1] ? 'late' : 'good';
+      mul(s.done); if (timing !== 'good') mul(k[timing]);
+      status.push({ id: s.id, state: 'done', timing });
+    } else if (days > s.window[1]) { mul(s.skip); status.push({ id: s.id, state: 'skipped' }); }
+    else status.push({ id: s.id, state: days >= s.window[0] ? 'now' : 'wait' });
+  }
+  return { ...u, work: status };
 }
 
 /** 漬物と調味の相性。'good' / 'bad' / 'neutral' */

@@ -170,6 +170,12 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     if (g.staffDoes('stir').length && g.nuka.lastStirDay !== g.day()) g.stirNuka();
     if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].umezu && (b.exposed ?? 0) > 0.1) g.sink(i); }); // 梅も沈めておいてくれる
     if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed && b.film >= cfg.care.filmHarmless) g.care(i); });
+    if (g.staffDoes('handwork').length) g.barrels.forEach((b, i) => { // 職人の弟子: 重石と工程
+      if (!b || g.dryingLeft(b) > 0) return;
+      const p = cfg.pickles[b.pickle], t = g.tasteOf(i);
+      if (p.weight && t.waterUp >= 1 && (b.weights?.at(-1)?.w ?? 1) > 1) g.setWeight(i, 'light');
+      for (const s of p.work) if (b.work?.[s.id] == null && g.fermentDays(b) >= s.window[0]) g.doWork(i, s.id);
+    });
     // 種が絶えても、冬のはじめには木曽から種が届く（すんき。段階F）
     for (const [id, p] of Object.entries(cfg.pickles)) {
       if (p.starterAfter && g.knows(id) && !g.recipes[id].starterReady && g.day() - g.recipes[id].day >= p.starterAfter) { g.recipes[id].starterReady = true; g.tane[p.starter] = Math.max(1, g.tane[p.starter] ?? 0); g.events.push({ type: 'starterReady', pickle: id }); continue; }
