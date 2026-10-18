@@ -3,6 +3,7 @@
 import { CONFIG } from './config.js';
 import { simulate, filmPerDay, nukaStep, nukaApply, applyCare } from './model.js';
 import { NUKA_CARE } from '../data/nuka.js';
+import { unmet, levelOf, masteryOf } from './unlock.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
 export function createRng(seed = 1) {
@@ -36,6 +37,9 @@ export function bookTotal(cfg = CONFIG) {
 }
 
 /** まっさらなぬか床。water=水っぽさ・rot=傷み・umami=足した旨味（0〜1）、suteTick=捨て漬けを替えた時、cared=手入れごとの最後の時 */
+/** はじめから知っている作り方（unlock のないもの） */
+export const startRecipes = (cfg = CONFIG) => Object.fromEntries(Object.entries(cfg.pickles).filter(([, p]) => !p.unlock).map(([id]) => [id, { via: 'start', day: 1, made: 0 }]));
+
 export const newBed = (cfg = CONFIG) => ({ salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0, water: 0, rot: 0, umami: 0, suteTick: 0, cared: {} });
 
 export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {}) {
@@ -54,7 +58,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     book: {}, // 図鑑: 売った組み合わせ（漬物・野菜・調味）ごとの最高の満足度 { key: { best, day, n } }
     regulars: [], // 常連客 { id, type, look, visits, misses, since }
     nextRegularId: 1,
-    places: Object.keys(cfg.places).filter((k) => cfg.places[k].cost === 0), // 使える置き場所
+    places: Object.keys(cfg.facilities).filter((k) => cfg.facilities[k].cost === 0), // 持っている設備（置き場所と道具）
+    xp: 0, // 店の経験（段階C）。たまるとレベルが上がる
+    recipes: startRecipes(cfg), // 知っている作り方 { pickle: { via, day, made（成功した樽の数） } }
+    events: [], // 画面に知らせること（レベルが上がった・ひらめいた・あと一歩・図鑑が埋まった）。popEvents で受け取る
   };
 
   const pickWeather = () => {
@@ -72,6 +79,56 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.isOpen = () => cal.storeOpen[g.timeOfDay()];
   g.barrelAge = (b) => (g.tick - b.startTick) / cal.ticksPerDay; // 日
   g.weather = pickWeather();
+
+  // ---- 店のレベルと作り方の解放（段階C） ----
+  g.level = () => levelOf(g.xp, cfg);
+  g.popEvents = () => g.events.splice(0);
+  g.addXp = (n) => {
+    const before = g.level().level;
+    g.xp += n;
+    const now = g.level();
+    if (now.level > before) g.events.push({ type: 'levelup', level: now.level, title: now.title, line: now.line, opens: now.extra ? [] : now.opens });
+  };
+  g.knows = (id) => !!g.recipes[id];
+  /** 作り方の段階: 'learned'（成功した。図鑑が埋まる）/ 'known'（知っているがまだ成功していない）/ 'unknown' */
+  g.recipeState = (id) => (!g.recipes[id] ? 'unknown' : g.recipes[id].made > 0 ? 'learned' : 'known');
+  g.mastery = (id) => masteryOf(g.recipes[id]?.made, cfg);
+  /** 仕込めるか（知っている・レベルが足りる・設備がある）。 */
+  g.canBrew = (id) => {
+    const p = cfg.pickles[id];
+    if (!p) return { ok: false, error: 'その漬物はありません' };
+    if (!g.knows(id)) return { ok: false, error: 'まだ作り方を知りません' };
+    if (g.level().level < p.level) return { ok: false, error: `店のレベル${p.level}で挑めます`, needLevel: p.level };
+    const lack = (p.needs ?? []).filter((f) => !g.places.includes(f));
+    if (lack.length) return { ok: false, error: `${lack.map((f) => cfg.facilities[f].name).join('・')}がいります` };
+    return { ok: true };
+  };
+  /** 作り方を覚える（ひらめき・失敗から・教わる、のどれでも）。新しく覚えたら true。 */
+  g.learn = (id, via = 'condition', line = null) => {
+    if (!cfg.pickles[id] || g.knows(id)) return false;
+    g.recipes[id] = { via, day: g.day(), made: 0 };
+    const p = cfg.pickles[id];
+    g.events.push({ type: 'inspire', pickle: id, via, line: line ?? p.unlock?.line ?? '', tooEarly: g.level().level < p.level ? p.level : 0 });
+    g.addXp(cfg.progress.xpInspire);
+    return true;
+  };
+  /** 樽の中身がひらめきの条件に合うか調べる（あと一歩なら、樽ごとに1回だけ知らせる）。 */
+  const checkUnlocks = (b, stage = null) => {
+    let ctx = null;
+    for (const [id, p] of Object.entries(cfg.pickles)) {
+      const u = p.unlock;
+      if (!u || g.knows(id) || u.via === 'taught') continue;
+      if (!ctx) ctx = { pickle: b.pickle, veg: b.veg, additives: b.additives ?? [], saltPct: b.saltPct, place: b.place, tempC: b.tempC, season: g.season(), days: g.barrelAge(b), owned: g.places, stage };
+      if (u.when.stage && !ctx.stage) ctx.stage = g.tasteOf(g.barrels.indexOf(b))?.stage ?? null;
+      const miss = unmet(u.when, ctx);
+      if (!miss.length) { g.learn(id, u.via); continue; }
+      if (u.via === 'condition' && miss.length === 1 && miss[0] !== 'days' && g.level().level >= (u.hintLevel ?? 1) && !b.almost?.[id]) {
+        b.almost = { ...(b.almost ?? {}), [id]: true };
+        g.events.push({ type: 'almost', pickle: id, missing: miss[0] });
+      }
+    }
+  };
+  g.checkUnlocks = checkUnlocks;
 
   /** 仕込みの費用（円）。 */
   // ---- 市場（旬） ----
@@ -94,10 +151,12 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   // ---- 置き場所 ----
   /** 置き場所の温度（℃）。 */
   g.placeTemp = (id) => { const pl = cfg.places[id]; return pl.fixed ?? g.ambientTemp() + pl.offset; };
+  /** 設備（置き場所・道具）を買う。店のレベルが足りないと買えない。 */
   g.buyPlace = (id) => {
-    const pl = cfg.places[id];
-    if (!pl) return { ok: false, error: 'その置き場所はありません' };
+    const pl = cfg.facilities[id];
+    if (!pl) return { ok: false, error: 'その設備はありません' };
     if (g.places.includes(id)) return { ok: false, error: 'もう持っています' };
+    if (g.level().level < pl.level) return { ok: false, error: `店のレベル${pl.level}で買えます` };
     if (g.money < pl.cost) return { ok: false, error: 'お金が足りません' };
     g.money -= pl.cost; g.stats.cost += pl.cost; g.stats.invest = (g.stats.invest ?? 0) + pl.cost;
     g.places.push(id);
@@ -105,10 +164,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   };
 
   // ---- 樽を増やす ----
+  g.buyFacility = g.buyPlace;
   g.nextBarrelCost = () => cfg.barrelsInvest.addCost[g.barrels.length - cfg.barrelsInvest.start] ?? null;
+  /** 今のレベルで置ける樽の数 */
+  g.barrelMax = () => Math.min(cfg.barrelsInvest.max, g.level().barrels ?? cfg.barrelsInvest.max);
   g.buyBarrel = () => {
     const cost = g.nextBarrelCost();
     if (cost == null || g.barrels.length >= cfg.barrelsInvest.max) return { ok: false, error: 'これ以上は置けません' };
+    if (g.barrels.length >= g.barrelMax()) return { ok: false, error: '店のレベルが上がると、もっと置けます' };
     if (g.money < cost) return { ok: false, error: 'お金が足りません' };
     g.money -= cost; g.stats.cost += cost; g.stats.invest = (g.stats.invest ?? 0) + cost;
     g.barrels.push(null);
@@ -129,6 +192,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const v = cfg.vegetables[veg], p = cfg.pickles[pickle];
     if (!v || !p) return { ok: false, error: '野菜か漬物が不正です' };
     if (!p.vegetables.includes(veg)) return { ok: false, error: `${p.name}に${v.name}は使えません` };
+    const can = g.canBrew(pickle);
+    if (!can.ok) return can;
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
     if (g.barrels[slot]) return { ok: false, error: '樽が空いていません' };
     if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
@@ -156,6 +221,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       }
       // ぬか床は店の中（外気温）。放っておくと 膜 → 酸っぱい → 傷む の順に進む（model.js の nukaStep）
       g.nuka = nukaStep(g.nuka, g.ambientTemp(), dt, (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay, cfg);
+      for (const b of g.barrels) if (b) checkUnlocks(b); // ひらめき
     }
   };
 
@@ -165,7 +231,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const p = cfg.pickles[b.pickle];
     const base = simulate({ ...b, days: g.barrelAge(b) }, cfg);
     const film = Math.max(b.film ?? 0, p.usesNukaBed ? g.nuka.film : 0);
-    return applyCare(base, { film, bed: p.usesNukaBed ? g.nuka : null }, cfg);
+    const t = applyCare(base, { film, bed: p.usesNukaBed ? g.nuka : null }, cfg);
+    // 作り方を磨くと品質が上がる（腕前 0〜1）
+    const m = g.mastery(b.pickle), pr = cfg.progress;
+    return m > 0 ? { ...t, complexity: Math.min(100, t.complexity * (1 + pr.masterComplexity * m)), texture: Math.min(100, t.texture * (1 + pr.masterTexture * m)), mastery: m } : t;
   };
 
   // ---- 手入れ ----
@@ -285,7 +354,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.stats.sold += sold;
     b.earned += revenue;
     const closed = spoiled || b.portions <= 0;
-    if (spoiled) g.stats.spoiled++;
+    if (spoiled) { g.stats.spoiled++; checkUnlocks(b, 'spoiled'); }
     // 評判: 満足した客が多いと上がり、傷んだ物を出すと下がる
     const repBefore = g.reputation, rc = cfg.reputation;
     if (spoiled) g.reputation -= rc.spoiledPenalty;
@@ -300,6 +369,20 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       const prev = g.book[key];
       discovery = { key, avg, isNew: !prev, best: !prev || avg > prev.best };
       g.book[key] = { best: Math.max(prev?.best ?? 0, avg), day: prev?.day ?? g.day(), n: (prev?.n ?? 0) + 1 };
+      if (!prev) g.addXp(cfg.progress.xpNewBook);
+    }
+    // 経験: 売れた数（とても満足されたぶんは多め）
+    const pg = cfg.progress;
+    const xp = visitors.reduce((s, v) => s + (v.bought ? v.qty * pg.xpPerPiece * (v.sat >= pg.xpGreatSat ? pg.xpGreatMult : 1) : 0), 0);
+    if (xp) g.addXp(xp);
+    // 成功（樽ごとに1回）: 図鑑が埋まり、作り方が磨かれる
+    let learned = null;
+    const top = Math.max(0, ...visitors.filter((v) => v.bought).map((v) => v.sat));
+    if (discovery && top >= pg.successSat && !b.succeeded) {
+      b.succeeded = true;
+      const rec = g.recipes[b.pickle] ?? (g.recipes[b.pickle] = { via: 'start', day: g.day(), made: 0 });
+      rec.made++;
+      if (rec.made === 1) { learned = b.pickle; g.events.push({ type: 'learned', pickle: b.pickle }); g.addXp(pg.xpFirstSuccess); }
     }
     // 常連: 来た常連は回数を数え、不満が続くと離れる。とても満足した客はときどき常連になる
     for (const v of visitors) {
@@ -318,12 +401,12 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (closed) g.barrels[slot] = null;
     // 樽の収支（空になったときだけ確定）
     const batch = { pickle: b.pickle, cost: b.cost, earned: b.earned, profit: b.earned - b.cost, closed };
-    return { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay(), reputation: { before: repBefore, after: g.reputation }, discovery };
+    return { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay(), reputation: { before: repBefore, after: g.reputation }, discovery, learned, xp };
   };
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -347,7 +430,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     }
     for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; b.quality ??= 1; }
     if (Number.isFinite(s.reputation)) g.reputation = Math.min(100, Math.max(0, s.reputation));
-    if (Array.isArray(s.places)) g.places = [...new Set([...g.places, ...s.places.filter((k) => cfg.places[k])])];
+    if (Array.isArray(s.places)) g.places = [...new Set([...g.places, ...s.places.filter((k) => cfg.facilities[k])])];
     if (s.book && typeof s.book === 'object') {
       g.book = Object.fromEntries(Object.entries(s.book).filter(([, e]) => e && Number.isFinite(e.best)).map(([k, e]) => [k, { best: e.best, day: e.day ?? 1, n: e.n ?? 1 }]));
     }
@@ -357,6 +440,15 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         .slice(0, cfg.regulars.max).map((r) => ({ ...r, visits: r.visits ?? 0, misses: r.misses ?? 0, since: r.since ?? 1 }));
       g.nextRegularId = Math.max(Number.isInteger(s.nextRegularId) ? s.nextRegularId : 1, ...g.regulars.map((r) => r.id + 1));
     }
+    // 段階C: 経験と作り方。古いセーブには無いので、図鑑で成功した漬物を「成功済み」にしておく
+    g.xp = Number.isFinite(s.xp) && s.xp >= 0 ? s.xp : 0;
+    g.recipes = startRecipes(cfg);
+    if (s.recipes && typeof s.recipes === 'object') {
+      for (const [id, r] of Object.entries(s.recipes)) if (cfg.pickles[id] && r) g.recipes[id] = { via: r.via ?? 'start', day: r.day ?? 1, made: Number.isInteger(r.made) && r.made >= 0 ? r.made : 0 };
+    } else {
+      for (const [k, e] of Object.entries(g.book)) { const id = k.split(':')[0]; if (g.recipes[id] && e.best >= cfg.progress.successSat) g.recipes[id].made = Math.max(g.recipes[id].made, 1); }
+    }
+    g.events = [];
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };

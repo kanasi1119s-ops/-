@@ -69,6 +69,8 @@ export function reactionOf(taste, pickle, customer, sat, season = 'spring', cfg 
   if (taste.spoilRisk >= 60 && sat < cfg.sales.buyThreshold) return { key: 'rotten', line: pick('rotten', variant) };
   const target = targetFor(customer, season, cfg);
   if (taste.filmVisible && sat < 60) return { key: 'film', line: pick('film', variant) };
+  const praise = cfg.pickles[pickle]?.praise; // 漬物ごとのほめ言葉（data/pickles.js。あれば半分の確率で）
+  if (sat >= 60 && praise?.length && variant % 2 === 0) return { key: sat >= 80 ? 'great' : 'good', line: praise[(variant + Math.floor(sat)) % praise.length] };
   if (sat >= 80) return { key: 'great', line: pick('great', variant) };
   if (sat >= 60) return { key: 'good', line: pick('good', variant) };
   let worst = null, worstD = 0;

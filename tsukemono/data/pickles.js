@@ -12,8 +12,17 @@
 //   window      : 進み/ripeAt の比。lo未満=まだ早い、lo〜hi=食べ頃、hi〜sour=過熟、sour超=酸っぱすぎ
 //   complexityMax: 風味の複雑さの上限
 //   price       : 1個の定価（円）
-//   level       : 挑むのに必要な店のレベル（段階Cで使う。1 = はじめから）
-//   unlock      : 解放の条件（段階Cで使う。null = 条件なし）
+//   level       : 挑むのに必要な店のレベル（1 = はじめから）。ひらめいても、レベルが足りなければ仕込めない（二重の鍵）
+//   unlock      : 解放の条件（null = はじめから知っている）。段階C:
+//                   via   : 'condition'（条件の組み合わせでひらめく）/ 'failure'（失敗から気づく）/ 'taught'（人から教わる。中身は段階G）
+//                   hint  : 噂（答えは言わず、ほのめかす）。図鑑の「？？？」の欄に出る
+//                   hintLevel: 噂が聞こえてくる店のレベル（省略で1）
+//                   when  : 条件（src/unlock.js）。樽の中身がこの組み合わせになると、ひらめく
+//                           pickle / veg / additives（全部入っている）/ salt {min,max} / facility（持っている）/ place
+//                           season / temp {min,max} / days {min,max} / stage（'raw' 'ripe' 'over' 'sour' 'spoiled'）
+//                   line  : ひらめいたときの一言
+//   needs       : 仕込むのに要る設備（data/facilities.js の id の配列）
+//   praise      : お客のほめ言葉（なくてもよい。満足したお客がときどき言う）
 //   affinity    : 調味との相性（good / bad。書いてなければふつう）
 //   そのほか    : portions（標準の個数）、usesNukaBed（ぬか床を使う）、saltUptake、acidHalfProgress、film（白い膜が出る）、top（樽の中身の絵）
 
@@ -112,6 +121,102 @@ export const PICKLES = [
     unlock: null,
     affinity: { togarashi: 'good', kombu: 'good', zarame: 'bad', shoga: 'good', sakekasu: 'bad' },
   },
+
+  // ---- ここから下は、はじめは知らない作り方（段階C）。図鑑に「？？？」で載り、条件が合うとひらめく ----
+  {
+    id: 'karashizuke',
+    name: 'からし漬け',
+    vegetables: ['nasu', 'kyuri', 'kabu'],
+    steps: ['小なすを塩で下漬けする', 'からし・砂糖・酒を合わせた床に漬ける', '数日でツンとくる'],
+    saltHint: '2〜4%', // 【仮置き】
+    salt: { lo: 2, hi: 4 }, // 【仮置き】
+    tempHint: '5〜20℃', // 【仮置き】
+    temp: { lo: 5, hi: 20 }, // 【仮置き】
+    ripeAt: 2, // 【仮置き】数日
+    window: { lo: 0.7, hi: 2.5, sour: 4 }, // 【仮置き】
+    complexityMax: 60, // 【仮置き】
+    price: 400, // 【仮置き】
+    level: 2,
+    unlock: {
+      via: 'condition',
+      hint: '「ツンとくる黄色いのと、なすを合わせた漬物があるらしい。鼻にくるけど飯が止まらんとか」— 常連のおじいさん（なぜか涙目）',
+      when: { veg: ['nasu'], additives: ['karashi'], days: { min: 1 } },
+      line: 'ツーン！…鼻に抜けるこの辛さ。なすとからし、これは合う！（涙が止まらない）',
+    },
+    praise: ['ツーン！…でも、もうひと口！', '鼻にきた！ 目にもきた！ うまい！', 'ご飯が足りなくなるやつだ'],
+    affinity: { karashi: 'good', zarame: 'good', sakekasu: 'good', yuzu: 'bad', akajiso: 'bad' },
+  },
+  {
+    id: 'shibazuke',
+    name: '柴漬け',
+    vegetables: ['nasu', 'kyuri'],
+    steps: ['なすときゅうりを刻む', '赤しそと塩で漬ける', '重石をして乳酸発酵させる'],
+    saltHint: '3〜5%', // 【仮置き】
+    salt: { lo: 3, hi: 5 }, // 【仮置き】
+    tempHint: '15〜25℃（夏）', // 【仮置き】夏の仕込み
+    temp: { lo: 15, hi: 25 }, // 【仮置き】
+    ripeAt: 6, // 【仮置き】乳酸発酵で1週間ほど
+    window: { lo: 0.8, hi: 2.5, sour: 4 }, // 【仮置き】
+    complexityMax: 75, // 【仮置き】
+    price: 550, // 【仮置き】
+    level: 2,
+    unlock: {
+      via: 'condition',
+      hint: '「山里では、夏のなすが赤い葉っぱと一緒に寝ると、紫に染まって酸っぱくなるそうだ」— 八百屋のおやじ（その山里には行ったことがない）',
+      when: { veg: ['nasu'], additives: ['akajiso'], season: ['summer'], days: { min: 2 } },
+      line: 'なすが赤しそで紫に染まっていく…。この色、この香り。ひらめいた！',
+    },
+    praise: ['わあ、きれいな紫色！', 'このすっぱさ、夏って感じ', 'お茶漬けにのせたい'],
+    affinity: { akajiso: 'good', shoga: 'good', zarame: 'bad', sakekasu: 'bad' },
+  },
+  {
+    id: 'furuzuke',
+    name: '古漬け',
+    vegetables: ['hakusai', 'nozawana', 'daikon', 'kyuri'],
+    steps: ['しっかり塩で漬ける', '酸っぱくなるまで長く置く', '刻んで生姜と和える（かくや）'],
+    saltHint: '4〜7%', // 【仮置き】
+    salt: { lo: 4, hi: 7 }, // 【仮置き】
+    tempHint: '0〜15℃', // 【仮置き】
+    temp: { lo: 0, hi: 15 }, // 【仮置き】
+    ripeAt: 10, // 【仮置き】
+    window: { lo: 0.8, hi: 5, sour: 8 }, // 【仮置き】酸っぱいのが持ち味なので長く置ける
+    acidHalfProgress: 3, // 【仮置き】早く酸っぱくなる（食べ頃で酸味が強い）
+    complexityMax: 70, // 【仮置き】
+    price: 350, // 【仮置き】
+    level: 2,
+    unlock: {
+      via: 'failure',
+      hint: '「酸っぱくなった漬物を捨てるうちは、まだ半人前」— 知らないおばあさん（言うだけ言って帰った）',
+      when: { stage: ['sour'] },
+      line: '酸っぱくなりすぎた…。捨てようとしたら、どこからか「刻んで生姜と和えなされ」という声が。…うまい！',
+    },
+    praise: ['この酸っぱさ、ばあちゃんの味だ…', '刻んで生姜で…わかってるねぇ', '捨てなくてよかったねぇ'],
+    affinity: { shoga: 'good', togarashi: 'good', kombu: 'good', zarame: 'bad', yuzu: 'bad' },
+  },
+  {
+    id: 'kasuzuke',
+    name: '粕漬け',
+    vegetables: ['kyuri', 'daikon', 'ninjin', 'kabu'],
+    steps: ['野菜を塩で下漬けして水を抜く', '酒粕に漬け替える', '涼しい所でじっくり数週間'],
+    saltHint: '3〜6%（下漬け）', // 【仮置き】
+    salt: { lo: 3, hi: 6 }, // 【仮置き】
+    tempHint: '涼しい所（5〜15℃）', // 【仮置き】
+    temp: { lo: 5, hi: 15 }, // 【仮置き】
+    ripeAt: 14, // 【仮置き】
+    window: { lo: 0.9, hi: 4, sour: 6 }, // 【仮置き】
+    acidHalfProgress: 20, // 【仮置き】酸っぱくなりにくい
+    complexityMax: 90, // 【仮置き】
+    price: 800, // 【仮置き】
+    level: 3,
+    unlock: {
+      via: 'condition',
+      hint: '「酒蔵の残り物に野菜を涼しい所で長〜く寝かせると、大人の味になるんだって」— 酒屋の奥さん（ほんのり赤い顔）',
+      when: { additives: ['sakekasu'], temp: { max: 15 }, days: { min: 10 } },
+      line: '樽を開けたら、ふわっと酒の香り…（ちょっと酔った）。これは大人の漬物だ！',
+    },
+    praise: ['これは晩酌が進んじゃう', 'ふわっと酒の香り…（運転はしません）', '大人の味だねぇ'],
+    affinity: { sakekasu: 'good', zarame: 'good', kombu: 'good', yuzu: 'bad', akajiso: 'bad' },
+  },
 ];
 
 /** 定義の一覧から、設定（CONFIG.pickles と CONFIG.affinity）の形を作る。id がかぶったり、必須の項目が抜けていればエラー。 */
@@ -122,8 +227,14 @@ export function picklesFrom(defs) {
       if (d[k] == null) throw new Error(`漬物の定義 ${d.id ?? '?'}: ${k} がない`);
     }
     if (pickles[d.id]) throw new Error(`漬物の定義 ${d.id}: id がかぶっている`);
+    const u = d.unlock;
+    if (u) {
+      if (!['condition', 'failure', 'taught'].includes(u.via)) throw new Error(`漬物の定義 ${d.id}: unlock.via は condition / failure / taught`);
+      if (u.via !== 'taught' && !u.when) throw new Error(`漬物の定義 ${d.id}: unlock.when がない`);
+      if (!u.hint) throw new Error(`漬物の定義 ${d.id}: unlock.hint がない`);
+    }
     const { id, affinity: aff = {}, ...rest } = d;
-    pickles[id] = { level: 1, unlock: null, steps: [], ...rest };
+    pickles[id] = { level: 1, unlock: null, steps: [], needs: [], ...rest };
     affinity[id] = { ...aff };
   }
   return { pickles, affinity };

@@ -25,14 +25,16 @@ export function nextStep(g, ui = {}) {
   if (usesBed && g.nuka.sour >= 0.5) return 'ぬか床が酸っぱくなっている。塩・からし・卵の殻で和らぐ。';
   if (usesBed && (g.nuka.water ?? 0) >= 0.5) return 'ぬか床が水っぽい。ぬかと塩を足すと床がしまる。';
   if (usesBed && g.daysSinceSute() > cfg.nuka.suteEveryDays) return '捨て漬けを替えてから日がたった。キャベツの芯やにんじんの皮に替えると床が傷みにくい。';
+  const fresh = Object.entries(g.recipes ?? {}).find(([id, r]) => r.via !== 'start' && r.made === 0 && g.canBrew(id).ok && !g.barrels.some((x) => x?.pickle === id));
+  if (empty >= 0 && fresh && g.money >= cheapest) return `ひらめいた「${cfg.pickles[fresh[0]].name}」をまだ試していない。樽${empty + 1}で仕込んでみよう。`;
   if (empty >= 0 && g.money >= cheapest) return `樽${empty + 1}が空いている。塩分と置き場所を決めて仕込もう。`;
   if (empty >= 0 && !items.length) return 'お金が足りず仕込めない…「確認用の操作」から最初からやり直せます。';
   // 手元に余裕があれば投資をすすめる（仕込み代を残しておく）
   const buffer = cheapest * g.barrels.length * 2;
   const offers = [];
   const nb = g.nextBarrelCost();
-  if (nb != null) offers.push({ cost: nb, text: '樽を増やす' });
-  for (const [id, pl] of Object.entries(cfg.places)) if (pl.cost > 0 && !g.places.includes(id)) offers.push({ cost: pl.cost, text: `${pl.name}を買う` });
+  if (nb != null && g.barrels.length < g.barrelMax()) offers.push({ cost: nb, text: '樽を増やす' });
+  for (const [id, pl] of Object.entries(cfg.facilities)) if (pl.cost > 0 && pl.level <= g.level().level && !g.places.includes(id)) offers.push({ cost: pl.cost, text: `${pl.name}を買う` });
   const afford = offers.filter((o) => g.money - o.cost >= buffer).sort((a, b) => a.cost - b.cost)[0];
   if (afford) return `お金に余裕がある。「店」の欄で${afford.text}と、売り上げや季節の幅が広がる。`;
   if (items.length) {

@@ -4,8 +4,11 @@
 // 仮置きの一覧は tsukemono/README.md にもまとめてある。
 
 import { PICKLES, picklesFrom } from '../data/pickles.js';
+import { FACILITIES, facilitiesFrom } from '../data/facilities.js';
+import { LEVELS, LEVEL_AFTER_LAST } from '../data/levels.js';
 
 const PICKLE_CFG = picklesFrom(PICKLES);
+const FACILITY_CFG = facilitiesFrom(FACILITIES);
 
 export const CONFIG = {
   // ---------------------------------------------------------------
@@ -167,12 +170,23 @@ export const CONFIG = {
     spoiledPenalty: 6, // 傷んだ樽を出すと
     visitMin: 0.6, visitMax: 1.4, // 評判0 → 来店率×0.6、評判100 → ×1.4
   },
-  // 置き場所: 【出典: 企画書】熟成は置き場所（冷蔵庫・土間・屋外）と日数で味が変わる。温度・値段は【仮置き】
-  places: {
-    outdoor: { name: '屋外', offset: 3, cost: 0 }, // 外気温 + 3℃（日なた）
-    doma: { name: '土間', offset: -2, cost: 0 }, // 外気温 − 2℃
-    fridge: { name: '冷蔵庫', fixed: 4, cost: 3000 },
-    muro: { name: '室（むろ）', fixed: 22, cost: 4000 }, // 発酵の最良18〜22℃（出典: ザワークラウト）を保つ部屋
+  // 置き場所と道具: data/facilities.js の定義から作る（段階C）。【出典: 企画書】熟成は置き場所（冷蔵庫・土間・屋外）と日数で味が変わる
+  places: FACILITY_CFG.places,
+  facilities: FACILITY_CFG.facilities,
+  // 店のレベルと、作り方の解放（段階C）。レベルの表は data/levels.js
+  levels: LEVELS,
+  levelAfterLast: LEVEL_AFTER_LAST,
+  progress: {
+    xpPerPiece: 1, // 【仮置き】1個売るごとの経験
+    xpGreatSat: 70, // 【仮置き】この満足度以上で買われた分は
+    xpGreatMult: 2, // 【仮置き】経験×2
+    xpNewBook: 5, // 【仮置き】図鑑に新しい組み合わせが載ったとき
+    xpInspire: 20, // 【仮置き】ひらめいたとき
+    xpFirstSuccess: 30, // 【仮置き】作り方を初めて成功させたとき（図鑑が埋まる）
+    successSat: 60, // 【仮置き】1つの樽で、買ったお客の誰か1人でもこの満足度以上なら「成功」（うまいと言わせた）
+    masterAfter: 10, // 【仮置き】成功10樽で腕前が最大
+    masterComplexity: 0.15, // 【仮置き】腕前が最大なら風味の深さ×1.15（作り方を磨くと品質が上がる）
+    masterTexture: 0.05, // 【仮置き】腕前が最大なら食感×1.05（扱いが上手になる）
   },
   // 樽を増やす投資 【仮置き】
   // 常連客: とても満足した客がときどき常連になり、決まった見た目でまた来る 【仮置き】

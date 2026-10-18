@@ -33,9 +33,10 @@ test('置き場所: 屋外・土間は最初から、冷蔵庫と室は買うと
   assert.equal(g.money, 10000 - CONFIG.places.fridge.cost - g.barrels[0].cost);
 });
 
-test('樽を増やす: 3つから5つまで、だんだん高くなる', () => {
+test('樽を増やす: 3つから5つまで、だんだん高くなる（5つ目は店のレベル2から）', () => {
   const g = createGame({ seed: 3 });
   g.money = 100000;
+  g.xp = CONFIG.levels[1].xp;
   const c1 = g.nextBarrelCost();
   assert.equal(g.buyBarrel().ok, true);
   assert.ok(g.nextBarrelCost() > c1);

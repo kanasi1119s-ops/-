@@ -30,12 +30,16 @@ const STRATEGIES = {
 function play(strategy, seed, careful) {
   const g = createGame({ seed });
   const start = g.money;
+  const lvDay = {};
   while (g.day() <= DAYS) {
+    for (const e of g.popEvents()) if (e.type === 'levelup') lvDay[e.level] ??= g.day();
     g.barrels.forEach((b, i) => { if (!b) g.brew(i, strategy(g, i)); });
-    if (careful) { // 手入れする人: 膜が見えたら取る、ぬか床は毎朝かき混ぜ、酸っぱければ塩を足す
+    if (careful) { // 手入れする人: 膜が見えたら取る、ぬか床は毎朝かき混ぜ、酸っぱければ塩、水っぽければぬか、捨て漬けも替える
       g.barrels.forEach((b, i) => { if (b && g.tasteOf(i).filmVisible) g.care(i); });
       if (g.timeOfDay() === 'morning') g.stirNuka();
       if (g.nuka.sour > 0.5) g.saltNuka();
+      if ((g.nuka.water ?? 0) > 0.5) g.nukaCare('nuka'); // 水っぽければぬかと塩を足す（段階B）
+      if (g.daysSinceSute() > g.cfg.nuka.suteEveryDays - 1) g.nukaCare('sute'); // 捨て漬けを替える
     }
     if (g.isOpen()) {
       // 熟れている順（過熟・酸っぱすぎに近いもの）から1つ売る
@@ -44,17 +48,19 @@ function play(strategy, seed, careful) {
     }
     g.advance(1);
   }
-  return { profit: g.money - start, sold: g.stats.sold, spoiled: g.stats.spoiled };
+  const known = Object.keys(g.recipes).filter((id) => g.cfg.pickles[id].unlock).length;
+  return { profit: g.money - start, sold: g.stats.sold, spoiled: g.stats.spoiled, level: g.level().level, lv3: lvDay[3] ?? DAYS + 1, lv5: lvDay[5] ?? DAYS + 1, known };
 }
 
 console.log(`■ ${DAYS}日遊んだときのもうけ（${SEEDS}回の平均）`);
-console.log('作戦                          利益/日（手入れする / しない）  売れた個数/日  傷んだ樽');
+console.log('作戦                          利益/日（手入れする / しない）  売れた個数/日  傷んだ樽   店Lv  Lv3の日 Lv5の日 ひらめき');
 for (const [name, s] of Object.entries(STRATEGIES)) {
   const run = (careful) => {
     const rs = Array.from({ length: SEEDS }, (_, i) => play(s, i + 1, careful));
     return (k) => rs.reduce((a, r) => a + r[k], 0) / rs.length;
   };
   const a = run(true), b = run(false);
-  console.log(`${name.padEnd(16, '　')} ${String(Math.round(a('profit') / DAYS)).padStart(6)}円 / ${String(Math.round(b('profit') / DAYS)).padStart(5)}円  ${(a('sold') / DAYS).toFixed(1).padStart(10)}個  ${a('spoiled').toFixed(1).padStart(6)}`);
+  console.log(`${name.padEnd(16, '　')} ${String(Math.round(a('profit') / DAYS)).padStart(6)}円 / ${String(Math.round(b('profit') / DAYS)).padStart(5)}円  ${(a('sold') / DAYS).toFixed(1).padStart(10)}個  ${a('spoiled').toFixed(1).padStart(6)}  ${a('level').toFixed(1).padStart(6)} ${a('lv3').toFixed(0).padStart(7)} ${a('lv5').toFixed(0).padStart(7)} ${a('known').toFixed(1).padStart(6)}`);
 }
+console.log(`（店Lv・Lvの日・ひらめきは手入れする場合。届かなければ ${DAYS + 1}日。ひらめきは隠れた作り方を覚えた数。作戦は決まった作り方しか仕込まない）`);
 console.log(`\n（価格: 浅漬け ${CONFIG.pickles.asazuke.price}円 / 白菜漬け ${CONFIG.pickles.hakusaizuke.price}円、仕入れ: 白菜 ${CONFIG.vegetables.hakusai.cost}円 / きゅうり ${CONFIG.vegetables.kyuri.cost}円）`);

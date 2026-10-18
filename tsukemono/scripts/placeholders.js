@@ -7,6 +7,7 @@ let n = 0;
 for (const file of FILES) {
 const src = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').split('\n');
 const stack = [];
+if (!src.some((l) => l.includes('【仮置き】') && !/^\s*\/\//.test(l))) continue; // 仮置きのない定義はのせない
 out.push(`## ${file}`, '', '| 行 | 項目 | 値 | 理由・メモ |', '| --- | --- | --- | --- |');
 src.forEach((line, i) => {
   if (/^\s*\/\//.test(line)) return; // コメントだけの行（説明）はとばす

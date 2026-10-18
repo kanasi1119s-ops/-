@@ -117,6 +117,26 @@ try {
   const d0 = await G(() => window.__game.game.day());
   await page.click('[data-cmd="rest"]'); await page.click('[data-rest="3"]'); await idle();
   check('休むと日が進む', (await G(() => window.__game.game.day())) === d0 + 3);
+  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
+  await closeNotices();
+
+  // 段階C: レシピ帳・ひらめき・レベル
+  await page.click('[data-cmd="book"]'); await page.click('[data-tab="recipes"]');
+  check('レシピ帳に「？？？」と噂が出る', (await page.textContent('#winBody')).includes('？？？') && (await page.textContent('#winBody')).includes('噂'));
+  await page.click('#winClose'); await closeNotices();
+  await G(() => { const g = window.__game.game; g.money = 50000; g.barrels = g.barrels.map(() => null); g.brew(0, { veg: 'nasu', pickle: 'asazuke', saltPct: 2.5, tempC: 15, additives: ['karashi'] }); window.__game.renderAll(); });
+  await G(() => window.__game.advance(4, { summary: false })); await idle();
+  await page.waitForSelector('.idea', { timeout: 5000 }).catch(() => {});
+  const ideaText = await page.textContent('#winBody').catch(() => '');
+  check('条件がそろうと、ひらめきの窓が出る', ideaText.includes('からし漬け'), ideaText.slice(0, 60));
+  await closeNotices();
+  await G(() => { window.__game.game.addXp(400); window.__game.renderAll(); });
+  await G(() => window.__game.advance(1, { summary: false })); await idle();
+  check('レベルが上がると知らせが出て、帳場にレベルが出る', (await page.textContent('#hud')).includes('Lv.4'));
+  await closeNotices();
+  await page.click('[data-cmd="brew"]');
+  check('ひらめいた作り方を仕込みの窓で選べる', (await page.textContent('#winBody')).includes('からし漬け'));
+  await page.click('#winClose'); await closeNotices();
   await page.click('[data-cmd="settings"]');
   await page.fill('#vBgm', '0.3');
   check('設定で音量を変えられる', (await G(() => window.__game.settings.bgm)) === 0.3);
