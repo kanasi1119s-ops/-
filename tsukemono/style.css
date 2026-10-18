@@ -90,17 +90,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
   animation: rise 1.4s steps(14) forwards; white-space: nowrap }
 .float.good { color: #c9ec9a }
 .float.bad { color: #ff9a85 }
-/* オーバーリアクション: 漫画の爆発吹き出し（ギザギザの白い吹き出しに黒い縁、中に赤い描き文字） */
-.float.over { z-index: 3; --burst: polygon(50.0% 0.0%, 55.0% 15.4%, 64.1% 2.0%, 64.1% 19.1%, 78.7% 5.4%, 71.6% 25.1%, 87.8% 17.3%, 81.1% 30.0%, 98.2% 28.0%, 84.5% 39.9%, 99.5% 42.9%, 85.0% 50.0%, 100.0% 57.5%, 82.6% 59.6%, 95.5% 70.8%, 77.8% 67.8%, 90.1% 84.7%, 74.2% 78.0%, 77.0% 92.1%, 65.0% 82.7%, 64.9% 100.0%, 55.0% 84.6%, 50.0% 100.0%, 45.2% 83.7%, 35.1% 100.0%, 36.3% 80.0%, 23.0% 92.1%, 25.8% 78.0%, 9.9% 84.7%, 19.7% 69.5%, 4.5% 70.8%, 16.4% 59.9%, 0.0% 57.5%, 16.0% 50.0%, 0.5% 42.9%, 18.3% 40.7%, 1.8% 28.0%, 18.9% 30.0%, 12.2% 17.3%, 26.4% 22.8%, 21.3% 5.4%, 35.5% 18.2%, 35.9% 2.0%, 45.2% 16.3%); isolation: isolate; padding: 1.1em 1.5em; rotate: -7deg;
-  font: 900 clamp(20px, 5.6cqw, 46px)/1 var(--brush); color: #e3341f; letter-spacing: .02em;
-  -webkit-text-stroke: 2px var(--sumi); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--sumi);
-  animation: burst 1.5s steps(15) forwards }
-.float.over::before, .float.over::after { content: ""; position: absolute; z-index: -1; clip-path: var(--burst) }
-.float.over::before { inset: -6px; background: var(--sumi) }
-.float.over::after { inset: 0; background: #fffef6 }
-.float.over.bad { color: #2b4f8c; rotate: 5deg }
-.float.over.bad::after { background: #dfe9f7 }
-@keyframes burst { from { opacity: 0; scale: .2 } 12% { opacity: 1; scale: 1.3 } 24% { scale: .95 } 34% { scale: 1.05 } 44% { scale: 1 } 80% { opacity: 1 } to { opacity: 0; scale: 1.1 } }
 .say.over { font-size: clamp(14px, 3.4cqw, 24px); background: #fff3c4; border-width: 3px; border-color: var(--shu); max-width: 40cqw; box-shadow: 4px 4px 0 var(--shu); transform: translate(0, -100%) }
 .stage.shake { animation: shake .5s steps(10) }
 @keyframes shake { 0%, 100% { translate: 0 0 } 20% { translate: -6px 3px } 40% { translate: 5px -4px } 60% { translate: -4px 2px } 80% { translate: 3px -1px } }

@@ -1,6 +1,7 @@
 // 人の絵の手直しを、ドット絵エディタ（tools/pixel-editor.html）のえんぴつで1ドットずつ描いて書き出す。
 //   node tools/editor_touch.mjs <設計図.json> [絵の名前...]
 // 設計図: { "<元の絵の名前>": [{ x, y, color }...] } または { "<新しい絵の名前>": { "from": "<元の絵>", "touch": [...] } }
+//   または { "<新しい絵の名前>": { "size": [幅, 高さ], "touch": [...] } }（まっさらなキャンバスから描く）
 //   color が null なら消しゴムで消す。
 // エディタでの手順（絵ごと）:
 //   1. 元の絵（assets/img/<名前>.png）を、色の表つきの作品にして「作品を開く」で開く
@@ -46,7 +47,7 @@ let bad = 0;
 for (const [name, spec] of Object.entries(design)) {
   if (only.length && !only.includes(name)) continue;
   const from = Array.isArray(spec) ? name : spec.from, touch = Array.isArray(spec) ? spec : spec.touch;
-  const base = await readPng(png64(from));
+  const base = spec.size ? { w: spec.size[0], h: spec.size[1], px: Array(spec.size[0] * spec.size[1]).fill(null) } : await readPng(png64(from));
   const colors = [...new Set([...base.px.filter(Boolean), ...touch.map((t) => t.color).filter(Boolean)])];
   if (colors.length > SYMS.length) throw new Error(`${name}: 色が多すぎる（${colors.length}）`);
   const symOf = Object.fromEntries(colors.map((c, i) => [c, SYMS[i]]));
@@ -60,20 +61,30 @@ for (const [name, spec] of Object.entries(design)) {
   await modalAction('読み込む');
   if (await page.isChecked('#symmetry')) await page.click('#symmetry');
   if (await page.isChecked('#symmetryV')) await page.click('#symmetryV');
-  await setRange('#zoom', 8);
+  await setRange('#zoom', base.w > 90 ? 6 : 8);
   await setRange('#brushSize', 1);
   await page.keyboard.press('Escape');
   let B;
   const measure = async () => { B = await page.$eval('#gridCanvas', (c) => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }); };
   const at = (y, x) => ({ x: B.x + (x + 0.5) * (B.w / base.w), y: B.y + (y + 0.5) * (B.h / base.h) });
-  const dot = async (t) => { const a = at(t.y, t.x); await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.up(); };
+  // 横に並んだドットは1回のドラッグで描く
+  const runs = (list) => {
+    const set = new Set(list.map((t) => t.y * base.w + t.x)), out = [];
+    for (const t of [...list].sort((a, b) => a.y - b.y || a.x - b.x)) {
+      if (set.has(t.y * base.w + t.x - 1)) continue;
+      let e = t.x; while (set.has(t.y * base.w + e + 1)) e++;
+      out.push([t.y, t.x, e]);
+    }
+    return out;
+  };
+  const stroke = async ([y, x0, x1]) => { const a = at(y, x0), b = at(y, x1); await page.mouse.move(a.x, a.y); await page.mouse.down(); if (x1 > x0) await page.mouse.move(b.x, b.y, { steps: Math.max(1, x1 - x0) }); await page.mouse.up(); };
   // 2. 色ごとにえんぴつ、消すドットは消しゴム
   for (const col of [...new Set(touch.map((t) => t.color).filter(Boolean))]) {
     await tool('pencil'); await pickColor(symOf[col]); await measure();
-    for (const t of touch.filter((t) => t.color === col)) await dot(t);
+    for (const r of runs(touch.filter((t) => t.color === col))) await stroke(r);
   }
   const erase = touch.filter((t) => !t.color);
-  if (erase.length) { await tool('eraser'); await measure(); for (const t of erase) await dot(t); }
+  if (erase.length) { await tool('eraser'); await measure(); for (const r of runs(erase)) await stroke(r); }
   // 3. 書き出し
   await page.click('#exPngBtn');
   await page.selectOption('#exScale', '1');
@@ -90,7 +101,7 @@ for (const [name, spec] of Object.entries(design)) {
   const diff = want.reduce((n, c, i) => n + (c !== got.px[i] ? 1 : 0), 0);
   if (diff || got.w !== base.w || got.h !== base.h) { bad++; console.log(`${name}: ${diff}ドット違う（書き出さない）`); continue; }
   dataUrlToFile(url, path.join(root, 'assets/img', `${name}.png`));
-  console.log(`${name}: ${touch.length}ドット描いた（${from} から）`);
+  console.log(`${name}: ${touch.length}ドット描いた（${spec.size ? 'まっさらなキャンバス' : from} から）`);
 }
 await browser.close();
 if (bad) process.exit(1);

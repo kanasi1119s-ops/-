@@ -11,6 +11,7 @@ export class World {
     this.now = nowFn;
     this.speed = 1;
     this.actors = [];
+    this.effects = []; // 画面の上に出す絵（オーバーリアクションの描き文字）{ img, x, y, t0, dur }
     this.waits = [];
     this.moves = [];
     this.busy = 0; // 実行中の場面の数
@@ -27,6 +28,12 @@ export class World {
     return a;
   }
   remove(a) { this.actors = this.actors.filter((x) => x !== a); }
+  /** 描き文字（ドットの絵）を、店先の (x, y) を中心に dur ミリ秒だけ出す */
+  burst(img, x, y, dur = 1500) {
+    const now = this.now();
+    this.effects = this.effects.filter((e) => now - e.t0 < e.dur);
+    this.effects.push({ img, x, y, t0: now, dur });
+  }
   setAnim(a, name) { if (a.anim !== name) { a.anim = name; a.animT0 = this.now(); } }
   /** その人にその動きがあるか（子どもには驚いた顔がない） */
   hasAnim(a, name) { return BODIES[a.look?.body]?.kind === 'poses' && !!POSE_ANIMS[a.look.body]?.[name]; }

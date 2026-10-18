@@ -5,3 +5,6 @@ export const SURPRISE_BASE = {
   suit: 2, shades: 2, volley: 2, soccer: 2, racer: 2, karate: 2, samurai: 2, beach: 2, parasol: 2, angler: 3, hiker: 2,
   knight: 2, alien: 2, centaur: 2, witch: 2, demon: 2,
 };
+
+// オーバーリアクションの描き文字（ドットの文字の爆発吹き出し。assets/img/over_<名前>.png。tools/over_words.py → tools/editor_touch.mjs）
+export const OVER_WORDS = { great: ['umai', 'zukyun', 'ban', 'don', 'uooo'], bad: ['gan', 'zun', 'gya'] };

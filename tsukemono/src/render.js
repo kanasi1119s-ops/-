@@ -163,7 +163,20 @@ export class SceneRenderer {
     g.fillRect(0, 0, SCENE.w, SCENE.h);
     g.restore();
     if (theme.lampOn) this.glow(SCENE.doorLight.x, SCENE.doorLight.y, theme.time === 'night' ? 1 : 0.6);
+    this.drawEffects(view.effects ?? [], tMs); // 描き文字（夜でも暗くしない）
     if (this.drawBubbles !== false) for (const a of actors) if (a.bubble) this.bubble(a); // ゲーム画面では吹き出しを文字の読みやすいDOMで重ねる（main.js）
+  }
+
+  /** オーバーリアクションの描き文字。ちょうど2倍（ドットがにじまない）で、コマ送りではずんで出て、最後は点滅して消える */
+  drawEffects(effects, tMs) {
+    for (const e of effects) {
+      const t = tMs - e.t0;
+      if (t < 0 || t >= e.dur) continue;
+      if (t > e.dur - 300 && Math.floor(t / 60) % 2) continue; // 消える前に点滅
+      const dy = t < 60 ? -8 : t < 120 ? -3 : t < 180 ? 2 : t < 240 ? -1 : 0; // ポンと出てはずむ
+      const img = getImage(e.img), S = 2;
+      this.ctx.drawImage(img, Math.round(e.x - (img.width * S) / 2), Math.round(e.y - (img.height * S) / 2 + dy), img.width * S, img.height * S);
+    }
   }
 
   label(text, cx, y, selected) {

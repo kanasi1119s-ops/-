@@ -14,6 +14,7 @@ import { encodeSave, decodeSave } from './save.js';
 import { agingFactor, STAFF, AGES } from './business.js';
 import { Sound } from './audio.js';
 import { SCENE, IMAGES } from '../assets/scene.js';
+import { OVER_WORDS } from '../assets/faces.js';
 import { PREFECTURE_PICKLES } from '../data/prefectures.js';
 import { NOT_PLAYABLE } from '../data/regional.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
@@ -87,6 +88,7 @@ function view() {
       selected: false, label: null, // 札は画面の上に重ねて出す（下の renderChips）
     })),
     actors: world.actors,
+    effects: world.effects,
   };
 }
 const slotPos = (i) => SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
@@ -180,12 +182,11 @@ function renderChips() {
     return `<button class="chip${cls}${sel}" style="${pos}" data-chip="${i}" aria-label="樽${i + 1} ${esc(barrelName(b))}">${mark}<span class="long"> ${C.pickles[b.pickle].name}</span></button>`;
   }).join('');
 }
-/** オーバーリアクションの演出: 画面が揺れて、大きな文字が出る */
-const OVER_WORDS = { great: ['うまーい！！', 'ズキューン！', 'バーン！', 'ドーン！！', 'うおおお！'], bad: ['ガーン！', 'ズーン…', 'ぎゃー！'] };
+/** オーバーリアクションの演出: 画面が揺れて、ドットの描き文字（爆発吹き出し）が出る */
 function overEffect(v) {
   const good = v.reaction.key === 'great', words = OVER_WORDS[good ? 'great' : 'bad'];
   sound.se(good ? 'found' : 'bad');
-  floatText(words[Math.floor(Math.random() * words.length)], SCENE.lane.standX - 240, 60, `over ${good ? 'good' : 'bad'}`); // 吹き出しに隠れないよう、左上に
+  world.burst(`over_${words[Math.floor(Math.random() * words.length)]}`, SCENE.lane.standX - 250, 82);
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const st = $('stageWrap'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
     setTimeout(() => st.classList.remove('shake'), 600);
