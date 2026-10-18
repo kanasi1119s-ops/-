@@ -23,7 +23,8 @@ export function nextStep(g, ui = {}) {
   if (filmy.length) return `${filmy.map(n).join('・')}に白い膜が出ている。「手入れ」で取ろう。`;
   const crush = items.filter((x) => cfg.pickles[x.b.pickle].weight && x.t.waterUp >= 1 && (x.b.weights?.at(-1)?.w ?? 1) > 1);
   if (crush.length) return `${crush.map(n).join('・')}の水が上がった。重石を軽くしないと野菜がつぶれる（「樽」から）。`;
-  const work = items.filter((x) => x.t.work?.some((w) => w.state === 'now' || (w.state === 'skipped' && x.b.work?.[w.id] == null && g.fermentDays(x.b) <= cfg.pickles[x.b.pickle].work.find((y) => y.id === w.id).window[1] + cfg.workGrace)));
+  const whenOk = (pk, id) => { const w = cfg.pickles[pk].work.find((y) => y.id === id)?.when; return !w || ((!w.season || w.season.includes(g.season())) && (!w.weather || w.weather.includes(g.weather))); };
+  const work = items.filter((x) => x.t.work?.some((w) => whenOk(x.b.pickle, w.id) && (w.state === 'now' || (w.state === 'skipped' && x.b.work?.[w.id] == null && g.fermentDays(x.b) <= cfg.pickles[x.b.pickle].work.find((y) => y.id === w.id).window[1] + cfg.workGrace))));
   if (work.length) { const x = work[0], w = cfg.pickles[x.b.pickle].work.find((y) => x.t.work.find((z) => z.id === y.id && z.state !== 'done' && z.state !== 'wait')); return `${n(x)}は「${w.label}」の頃。「樽」からやろう。`; }
   const usesBed = items.some((x) => cfg.pickles[x.b.pickle].usesNukaBed) || g.nuka.maturity > 0;
   if (usesBed && g.nuka.lastStirDay !== g.day()) return 'ぬか床を今日はまだかき混ぜていない。「かき混ぜる」で床が育つ。';

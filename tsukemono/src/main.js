@@ -154,7 +154,7 @@ function renderHud() {
   const s = C.season[game.season()];
   $('hud').innerHTML = `
     <span class="day"><span class="season">${s.name}</span>　${kanjiNum(game.day())}日目</span>
-    <span class="tw"><b>${TIME_ICON[game.timeOfDay()]}</b><b>${WEATHER_ICON[game.weather]}</b>${game.ambientTemp()}℃</span>
+    <span class="tw"><b>${TIME_ICON[game.timeOfDay()]}</b><b>${WEATHER_ICON[game.weather]}</b>${game.ambientTemp()}℃<small title="明日の天気（干す日を決めるときに）"> 明日${WEATHER_ICON[game.tomorrow] ?? ''}</small></span>
     <span class="clock" title="この時間帯の進み"><i id="clockFill" style="width:${Math.round(ui.clock.phase * 100)}%"></i></span>
     <button class="pause" data-cmd="pause" aria-label="${ui.paused ? '時間を進める' : '時間を止める'}" title="${ui.paused ? '時間を進める' : '時間を止める'}">${ui.paused ? '▶' : '❚❚'}<span class="lbl">${ui.paused ? '止めている' : '時間が進んでいる'}</span></button>
     <span class="grow"></span>
@@ -346,7 +346,8 @@ function handworkBox(slot, b, p, t) {
     const st = t.work?.find((x) => x.id === w.id), done = b.work?.[w.id];
     const late = days > w.window[1] + C.workGrace;
     const info = done != null ? `<span class="ukon">済み</span>（${TIMING[st?.timing] ?? ''}）` : late ? '<span class="warn">やらなかった</span>' : st?.state === 'skipped' ? '<span class="warn">目安を過ぎた（まだ間に合う）</span>' : st?.state === 'now' ? '<span class="ukon">今が目安</span>' : `<span class="hint">あと${trim(w.window[0] - days, 1)}日で目安</span>`;
-    return `<div class="item"><span class="grow">${w.label}（${w.window[0]}〜${w.window[1]}日目） ${info}<br><span class="hint">${w.note}</span></span>${done == null && !late ? `<button class="btn" data-work="${w.id}" data-wslot="${slot}" ${t.drying ? 'disabled' : ''}>${w.label}</button>` : ''}</div>`;
+    const whenTxt = w.when ? `・${(w.when.season ?? []).map((x) => C.season[x].name).join('・')}の${(w.when.weather ?? []).map((x) => C.weatherName[x]).join('・')}の日に` : '';
+    return `<div class="item"><span class="grow">${w.label}（${w.window[0]}〜${w.window[1]}日目${whenTxt}） ${info}<br><span class="hint">${w.note}</span></span>${done == null && !late ? `<button class="btn" data-work="${w.id}" data-wslot="${slot}" ${t.drying ? 'disabled' : ''}>${w.label}</button>` : ''}</div>`;
   }).join('');
   return `<div class="panel"><div class="ukon">重石と工程</div>${wRow}${wk ? `<div class="list">${wk}</div>` : ''}</div>`;
 }
@@ -375,7 +376,7 @@ WINS.barrel = ({ slot }) => {
     body: `${nav}
     <div class="panel">
       <div><span class="stage-tag ${t.stage}">${t.stageLabel}</span>　${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個${agingFactor(p, t.ratio) > 1 ? ` ・ <span class="ukon">熟成もの（売り値 ×${trim(agingFactor(p, t.ratio), 2)}）</span>` : p.aging ? ' ・ <span class="hint">寝かせるほど高く売れる</span>' : ''}</div>
-      ${t.drying ? `<div class="ukon">${b.smoke ? `${p.smoking.woods[b.smoke.wood].name}の薪で燻している` : '大根を干している'}（あと${trim(t.drying, 1)}日。終わると漬かりはじめる）</div>` : b.smoke ? `<div class="hint">${p.smoking.woods[b.smoke.wood]?.name}の薪で${b.smoke.days}日燻してから漬けた</div>` : b.dry ? `<div class="hint">${b.dry}日干してから漬けた</div>` : ''}
+      ${t.drying ? `<div class="ukon">${b.smoke ? `${p.smoking.woods[b.smoke.wood].name}の薪で燻している` : `${C.vegetables[b.veg].name}を干している`}（あと${trim(t.drying, 1)}日${b.sunDry ? 'ぶん。晴れの日だけ乾く' : ''}。終わると漬かりはじめる）${b.sunDry && game.weather !== 'sunny' ? `<span class="warn"> 今日は${C.weatherName[game.weather]}で${game.weather === 'rain' ? '乾かない。濡れて質が少し落ちる' : 'あまり乾かない'}</span>` : ''}</div>` : b.smoke ? `<div class="hint">${p.smoking.woods[b.smoke.wood]?.name}の薪で${b.smoke.days}日燻してから漬けた</div>` : b.dry ? `<div class="hint">${b.dry}日干してから漬けた</div>` : ''}
       ${p.region ? `<div class="hint">${p.region}の漬物${p.seasonal ? ` ・ ここまでの平均の温度 ${b.tempC}℃` : ''}${p.place === 'kaon' ? ` ・ ${game.barrelAge(b) < 1 ? '下漬け' : game.barrelAge(b) < 2 ? '本漬け（天秤押し）' : '室入れ'}` : ''}</div>` : ''}
       ${p.umezu ? `<div class="${(b.exposed ?? 0) > C.umezu.safe ? 'warn' : 'hint'}">梅酢: ${(b.exposed ?? 0) > C.umezu.safe ? '梅の頭が梅酢から出ている！ カビやすい' : (b.exposed ?? 0) > 0.1 ? '梅が少し浮いてきた' : '梅はしっかり梅酢に浸かっている'}</div>` : ''}
       ${game.barrelUpgrade(slot) || b.specials?.length ? `<div class="hint">${game.barrelUpgrade(slot) ? '<span class="ukon">杉の木桶</span> ' : ''}${b.specials?.length ? `特別な食材: ${b.specials.map((id) => C.specials[id].name).join('・')}` : ''}</div>` : ''}
@@ -480,7 +481,7 @@ WINS.brew = () => {
       <div class="tiles">${Object.entries(p.smoking.woods).map(([id, w]) => `<button class="tile${r.smoke.wood === id ? ' on' : ''}" data-wood="${id}"><b>${w.name}</b><span>${w.flavor > 1 ? '香りが強い' : w.flavor < 1 ? '香りはひかえめ' : 'ふつう'}</span></button>`).join('')}</div>
       <div class="count"><button class="stepper" data-smoke="-1" aria-label="1日減らす">－</button><output class="ukon" style="min-width:4em;text-align:center">${r.smoke.days}日</output><button class="stepper" data-smoke="1" aria-label="1日増やす">＋</button></div></div>` : ''}
     ${p.seasonal ? '<div class="hint">季節をまたいで熟成する。温度は置き場所の温度の平均になる（夏の暑さで傷みやすい。塩をケチらないこと）。</div>' : ''}
-    ${p.drying ? `<div class="sec"><h3>干す　<span class="hint">目安 ${p.drying.ideal[0]}〜${p.drying.ideal[1]}日。干すほど食感と塩味が締まり、傷みにくい（そのあいだ樽はふさがる）</span></h3>
+    ${p.drying ? `<div class="sec"><h3>干す　<span class="hint">目安 ${p.drying.ideal[0]}〜${p.drying.ideal[1]}日。干すほど食感と塩味が締まり、傷みにくい（そのあいだ樽はふさがる）。天日干しは晴れの日だけ乾き、雨で止まる（冬の寒風はよく乾く）。今日は${C.weatherName[game.weather]}・明日は${C.weatherName[game.tomorrow] ?? '？'}</span></h3>
       <div class="count"><button class="stepper" data-dry="-1" aria-label="1日減らす">－</button><output class="ukon" style="min-width:4em;text-align:center">${r.dry ?? p.drying.default}日</output><button class="stepper" data-dry="1" aria-label="1日増やす">＋</button>
       <span class="presets">${[0, 3, 5, 7, 10, 14].filter((n) => n <= p.drying.max).map((n) => `<button class="tile${(r.dry ?? p.drying.default) === n ? ' on' : ''}" data-dryset="${n}">${n}</button>`).join('')}</span></div></div>` : ''}
     ${p.umezu ? '<div class="hint">梅は梅酢に浸かっていればカビにくい。毎日「樽」から重石を直して沈めよう。カビが出たら清潔なスプーンで取る。</div>' : ''}
@@ -800,6 +801,7 @@ function flushEvents() {
     if (e.type === 'orderOffer') { say(`${game.client(e.client).name}: ${e.line}（「売る」の窓で受けられる）`, game.client(e.client).name); continue; }
     if (e.type === 'orderDone') { say(`${game.client(e.client).name}: ${e.line}（お礼 ${yen(e.pay)}）`, game.client(e.client).name); continue; }
     if (e.type === 'orderFailed') { say(`${game.client(e.client).name}: ${e.line}（期日を過ぎた。評判が下がった）`, game.client(e.client).name); continue; }
+    if (e.type === 'dried') { say(`樽${e.slot + 1}の${C.vegetables[game.barrels[e.slot]?.veg]?.name ?? '野菜'}が干し上がった。ここから漬かりはじめる。`, '店主'); continue; }
     if (e.type === 'waterUp') { if (e.heavy) say(`樽${e.slot + 1}（${C.pickles[e.pickle].name}）の水が上がった。重石を軽くする頃だ。`, '店主'); continue; }
     if (e.type === 'starterReady') { say(`寝かせておいた${C.pickles[e.pickle].name}の床が、いい香りになった。もう漬けられる。`, '店主'); continue; }
     if (e.type === 'taneArrived') { say(`木曽から小包。「種を絶やしたな？ 今年だけじゃぞ」…${C.pickles[e.pickle].name}の種が届いた。`, '店主'); continue; }

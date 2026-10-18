@@ -162,7 +162,7 @@ export function applyWork(t, work, done, days, cfg = CONFIG) {
   if (!work?.length) return t;
   const k = cfg.work;
   let u = { ...t };
-  const mul = (eff) => { for (const [key, f] of Object.entries(eff ?? {})) { const field = key === 'spoil' ? 'spoilRisk' : key === 'acid' ? 'acid' : key; if (u[field] != null) u[field] = Math.min(100, u[field] * f); } };
+  const mul = (eff) => { for (const [key, f] of Object.entries(eff ?? {})) { if (key === 'price') { u.priceMult = (u.priceMult ?? 1) * f; continue; } const field = key === 'spoil' ? 'spoilRisk' : key; if (u[field] != null) u[field] = Math.min(100, u[field] * f); } };
   const status = [];
   for (const s of work) {
     const d = done?.[s.id];
@@ -277,7 +277,7 @@ export function applyCare(taste, care, cfg = CONFIG) {
 export function applySpecials(t, ids, cfg = CONFIG) {
   if (!ids?.length) return t;
   const m = Math.sqrt(Math.min(1, Math.max(0, t.ratio ?? 1)));
-  let { complexity, texture, saltiness, spoilRisk } = t, priceMult = 1;
+  let { complexity, texture, saltiness, spoilRisk } = t, priceMult = t.priceMult ?? 1;
   for (const id of ids) {
     const e = cfg.specials[id]?.effects;
     if (!e) continue;

@@ -82,8 +82,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     events: [], // 画面に知らせること（レベルが上がった・ひらめいた・あと一歩・図鑑が埋まった）。popEvents で受け取る
   };
 
-  const pickWeather = () => {
-    const w = cfg.weatherWeights[g.season()];
+  const pickWeather = (season = g.season()) => {
+    const w = cfg.weatherWeights[season];
     const total = Object.values(w).reduce((a, b) => a + b, 0);
     let r = rng() * total;
     for (const k of cal.weathers) { r -= w[k]; if (r < 0) return k; }
@@ -98,6 +98,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   // 棚に移したあとは、漬かり（と傷み・熟成）がゆっくり進む（cfg.shelf.slow 倍）
   g.barrelAge = (b) => (b.shelvedTick == null ? g.tick - b.startTick : b.shelvedTick - b.startTick + (g.tick - b.shelvedTick) * cfg.shelf.slow) / cal.ticksPerDay; // 日
   g.weather = pickWeather();
+  /** 明日の天気（天気の見立て。干す日を決めるのに使う） */
+  const seasonOfDay = (day) => cal.seasons[Math.floor((day - 1) / cal.daysPerSeason) % cal.seasons.length];
+  g.tomorrow = pickWeather(seasonOfDay(g.day() + 1));
   attachBusiness(g, { cfg, rng, cal, seed });
   attachSaga(g, { cfg, saga: cfg.saga }); // cfg.saga で物語を差し替えられる（試験用）
   attachWisdom(g, { cfg });
@@ -366,7 +369,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (p.starter) g.tane[p.starter]--; // 種を使う
     const st = g.useStock(veg, count); // 在庫を古い順に使う（鮮度が品質に響く）。足りない分は今日の相場で買う
     const quality = g.vegQuality(veg) * ((st.used * st.quality + (count - st.used)) / count);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, specials, weights: p.weight ? [{ d: 0, w: cfg.weight.levels[weight].w }] : undefined, work: p.work.length ? {} : undefined, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, specials, ...(p.drying && !p.smoking && dry > 0 ? { sunDry: true, dryProg: 0, dryEnd: null } : {}), weights: p.weight ? [{ d: 0, w: cfg.weight.levels[weight].w }] : undefined, work: p.work.length ? {} : undefined, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -376,11 +379,18 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     for (let i = 0; i < ticks; i++) {
       if (g.claim) { const r = g.respondClaim('ignore'); g.events.push({ type: 'claimIgnored', line: r.line, rep: r.rep }); } // 対応しないまま時間が進んだ
       g.tick++;
-      if (g.tick % cal.ticksPerDay === 0) { g.weather = pickWeather(); g.newDay(); } // 朝: 天気・維持費・従業員の仕事（business.js）
+      if (g.tick % cal.ticksPerDay === 0) { g.weather = g.tomorrow ?? pickWeather(); g.tomorrow = pickWeather(seasonOfDay(g.day() + 1)); g.newDay(); } // 朝: 天気・維持費・従業員の仕事（business.js）
       // 白い膜は、放っておくと少しずつ広がる（手入れで取れる）
       for (const b of g.barrels) {
         if (!b) continue;
         const pk = cfg.pickles[b.pickle];
+        if (b.sunDry && b.dryEnd == null) { // 天日干し: 晴れの日だけ乾く（雨・雪は止まる。冬の寒風はよく乾く）。雨に当たると質が落ちる
+          const sd = cfg.sunDry;
+          b.dryProg = (b.dryProg ?? 0) + (sd.weather[g.weather] ?? 1) * (g.season() === 'winter' ? sd.winter : 1) * dt;
+          if (g.weather === 'rain') b.quality *= 1 - sd.wetLoss * dt;
+          if (b.dryProg >= b.dry - 1e-9) { b.dryEnd = g.tick; g.events.push({ type: 'dried', slot: g.barrels.indexOf(b), pickle: b.pickle }); }
+          continue;
+        }
         if (g.dryingLeft(b) > 0) continue; // 干しているあいだは漬かっていない
         if (pk.seasonal && b.place && cfg.places[b.place]) { // 季節をまたぐ熟成（へしこ）: 温度はそれまでの置き場所の温度の平均
           b.tempSum = (b.tempSum ?? 0) + g.placeTemp(b.place); b.tempN = (b.tempN ?? 0) + 1;
@@ -409,7 +419,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (!b) return null;
     const p = cfg.pickles[b.pickle];
     const left = g.dryingLeft(b);
-    const base = simulate({ ...b, days: Math.max(0, g.barrelAge(b) - (b.dry ?? 0)) }, cfg);
+    const base = simulate({ ...b, days: g.fermentDays(b) }, cfg);
     if (left > 0) return { ...base, stage: 'raw', stageLabel: '干している', drying: left }; // まだ干している
     const film = Math.max(b.film ?? 0, p.usesNukaBed ? g.nuka.film : 0);
     const t = applyCare(base, { film, bed: p.usesNukaBed ? g.nuka : null }, cfg);
@@ -441,7 +451,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return { ok: true, shelf: SHELF + i };
   };
   /** 漬けて何日目か（干している日は数えない） */
-  g.fermentDays = (b) => Math.max(0, g.barrelAge(b) - (b.dry ?? 0));
+  g.fermentDays = (b) => {
+    if (b.sunDry) return b.dryEnd == null ? 0 : Math.max(0, g.barrelAge(b) - (b.dryEnd - b.startTick) / cal.ticksPerDay); // 干し終わった時から漬かる
+    return Math.max(0, g.barrelAge(b) - (b.dry ?? 0));
+  };
   /** 重石を替える（重石と工程）。level = light / normal / heavy */
   g.setWeight = (slot, level) => {
     const b = g.barrels[slot];
@@ -465,12 +478,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (b.work?.[id] != null) return { ok: false, error: 'もうやりました' };
     const d = g.fermentDays(b);
     if (d > s.window[1] + cfg.workGrace) return { ok: false, error: 'もう遅すぎます（目安を大きく過ぎた）' };
+    if (s.when?.season && !s.when.season.includes(g.season())) return { ok: false, error: `${s.when.season.map((x) => cfg.season[x].name).join('・')}にやる工程です` };
+    if (s.when?.weather && !s.when.weather.includes(g.weather)) return { ok: false, error: `${s.when.weather.map((x) => cfg.weatherName[x]).join('・')}の日にやる工程です` };
     (b.work ??= {})[id] = Math.round(d * 1000) / 1000;
     return { ok: true, timing: d < s.window[0] ? 'early' : d > s.window[1] ? 'late' : 'good' };
   };
 
   /** 干し終わるまでの日数（0 = 漬かりはじめている） */
-  g.dryingLeft = (b) => Math.max(0, (b.dry ?? 0) - g.barrelAge(b));
+  g.dryingLeft = (b) => (b.sunDry ? (b.dryEnd == null ? Math.max(1e-6, b.dry - (b.dryProg ?? 0)) : 0) : Math.max(0, (b.dry ?? 0) - g.barrelAge(b)));
   /** 梅干し: 重石を直して、梅を梅酢に沈める（同じ樽は1つの時間帯に1回） */
   g.sink = (slot) => {
     const b = g.barrels[slot];
@@ -689,7 +704,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, orders: g.orders, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, tomorrow: g.tomorrow, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, orders: g.orders, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -711,6 +726,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.barrels = s.barrels.map((b) => (b ? { ...b } : null));
     g.shelf = Array.isArray(s.shelf) ? s.shelf.map((b) => (b && okBarrel(b) && Number.isFinite(b.shelvedTick) ? { ...b } : null)) : [];
     g.weather = s.weather;
+    g.tomorrow = cal.weathers.includes(s.tomorrow) ? s.tomorrow : g.tomorrow;
     g.stats = { ...g.stats, ...s.stats };
     g.lastSaleTick = Number.isInteger(s.lastSaleTick) ? s.lastSaleTick : -1;
     const n = s.nuka;

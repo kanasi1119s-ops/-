@@ -11,11 +11,13 @@
 
 export const EVENTS = [
   { id: 'hanami', name: 'お花見', season: 'spring', from: 8, to: 10, visitors: 1.3, price: 1, likes: ['asazuke', 'shibazuke'], note: '花より団子、団子より漬物（という人もいる）' }, // 【仮置き】
+  { id: 'doyo', name: '夏の土用', season: 'summer', from: 14, to: 19, visitors: 1, price: 1, likes: ['umeboshi', 'odawaraume', 'koshukoume'], note: '梅を干す季節。晴れた日に土用干しをすると、梅干しの値打ちが上がる' }, // 【仮置き】
   { id: 'tsuyu', name: '梅雨入り', season: 'summer', from: 1, to: 5, visitors: 0.9, price: 1, likes: ['nukazuke'], vegPrice: { kyuri: 0.8 }, note: 'じめじめ。ぬか床がやたら元気になる季節' }, // 【仮置き】
   { id: 'obon', name: 'お盆', season: 'summer', from: 20, to: 23, visitors: 1.5, price: 1.1, likes: ['nukazuke', 'shibazuke', 'asazuke', 'karashizuke'], note: '帰省した人たちが「この味だよ、この味」と買っていく' }, // 【仮置き】
+  { id: 'bettaraichi', name: 'べったら市', season: 'autumn', from: 12, to: 13, visitors: 1.4, price: 1.1, likes: ['bettarazuke', 'asazuke'], note: '秋の市。べったら漬けを買った人の着物がべたべたになる（それが名前の由来らしい）' }, // 【仮置き】出典: 資料 p13-1「秋の市（べったら市）に合わせた出荷」
   { id: 'takuanDoki', name: 'たくあんの仕込みどき', season: 'autumn', from: 20, to: 28, visitors: 1, price: 1, likes: [], vegPrice: { daikon: 0.6 }, note: '干し大根が軒先に並ぶ季節。大根が安い。いま漬けると正月に間に合う' }, // 【仮置き】
   { id: 'saimatsu', name: '歳末', season: 'winter', from: 5, to: 9, visitors: 1.3, price: 1.15, likes: ['takuan', 'hakusaizuke', 'kasuzuke', 'nozawanazuke'], note: 'お歳暮に漬物。重い。でも喜ばれる' }, // 【仮置き】
-  { id: 'shogatsu', name: '正月', season: 'winter', from: 10, to: 12, visitors: 1.6, price: 1.2, likes: ['takuan', 'hakusaizuke', 'kasuzuke', 'furuzuke'], note: 'おせちに飽きた人が、漬物を求めてやってくる' }, // 【仮置き】
+  { id: 'shogatsu', name: '正月', season: 'winter', from: 10, to: 12, visitors: 1.6, price: 1.2, likes: ['takuan', 'hakusaizuke', 'kasuzuke', 'furuzuke', 'yuzumaki_tochigi', 'yuzumaki_gunma', 'kaburazushi_toyama', 'kaburazushi_ishikawa', 'nishinzuke'], note: 'おせちに飽きた人が、漬物を求めてやってくる' }, // 【仮置き】
 ];
 
 /** その日の行事（なければ null）。dayOfSeason は 1〜28 */

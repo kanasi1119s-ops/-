@@ -97,6 +97,9 @@ export const CONFIG = {
   workGrace: 3, // 【仮置き】目安を過ぎても3日までは（遅れて）できる
   // 注文・依頼（data/orders.js）【仮置き】
   orders: { slack: 1.4, maxDays: 60, firstDay: 3, every: 3, max: 3, maxActive: 2, offerDays: 3, spoilMax: 30, bonusPerSat: 0.01, xp: 15, failRepMult: 2 },
+  // 天日干し（天気と季節の仕込み）: 1日に乾く量（晴れ1）。冬の寒風はよく乾く。雨に当たると質が1日3%落ちる【仮置き】
+  // 出典: 資料 p14-1「天日干しの天気に左右される」、p10-1・p32-1「からっ風・寒風の天日干し」。数値は仮置き
+  sunDry: { weather: { sunny: 1, rain: 0, snow: 0.3 }, winter: 1.3, wetLoss: 0.03 },
   letterEvery: 5, // 【仮置き】地方の便りが届く間隔（日）
   kaonRange: [30, 55], // かぶらずしの糀は50℃前後（【出典】資料 p17-1）
   // 梅酢（梅干し。段階E）: 梅は梅酢に浸かっていればカビにくい。日がたつと梅が梅酢から出てくる 【仮置き】

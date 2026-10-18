@@ -40,8 +40,8 @@ test('行事: たくあんの仕込みどきは大根が安く、正月は客が
       const h = createGame({ seed });
       h.tick = (day - 1) * DAY + 1; // 昼
       h.weather = 'sunny'; h.money = 1e6;
-      h.brew(0, { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 20, count: 60 });
-      h.barrels[0].startTick -= 60 * DAY; // 寝かせ済み
+      h.brew(0, { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 20, count: 60, dry: 0 });
+      h.barrels[0].startTick -= 60 * DAY; // 寝かせ済み（干す日は天気しだいなので、干さずに）
       const r = h.sell(0);
       total += r.revenue; visits += r.visitors.length;
     }

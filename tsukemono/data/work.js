@@ -6,6 +6,7 @@
 //   label : 樽の窓のボタンの文字      note : 説明
 //   done  : やったときの効き目（味の値に掛ける。spoil は傷みリスクに掛ける）
 //   skip  : やらずに目安を過ぎたときの効き目
+//   when  : やれる季節・天気（{ season: [...], weather: [...] }。なければいつでも）
 // 早すぎ・遅すぎは src/config.js の work（early・late）が足される。
 
 export const WORK = {
@@ -16,6 +17,7 @@ export const WORK = {
   drain: { label: '汁を捨てる', note: '上がった汁（黒い汁・えぐみ）を捨てる。捨てないとえぐく、酸っぱい', done: {}, skip: { complexity: 0.8, acid: 1.2 } }, // 【仮置き】
   kasu: { label: '粕を替える', note: '古い粕から新しい粕へ。替えるほど、しょっぱさが抜けて深くなる', done: { complexity: 1.05 }, skip: { complexity: 0.8, saltiness: 1.25 } }, // 【仮置き】
   kasane: { label: '魚と野菜を重ねる', note: '下ごしらえした魚と、塩漬けした野菜を、麹と交互に重ねる', done: {}, skip: { complexity: 0.6 } }, // 【仮置き】
+  doyoboshi: { label: '土用干しをする', note: '夏の土用の晴れた日に、梅を3日3晩お日さまに当てる。皮がやわらかく、色よく、値打ちが上がる。やらなくても梅漬けとして売れる', when: { season: ['summer'], weather: ['sunny'] }, done: { complexity: 1.15, texture: 1.1, price: 1.2 }, skip: {} }, // 【仮置き】出典: 資料 p14-1「天日干しの天気に左右される」
   hasamu: { label: '魚をかぶで挟む', note: '塩漬けしたかぶに、魚をはさんで麹へ', done: {}, skip: { complexity: 0.6 } }, // 【仮置き】
 };
 

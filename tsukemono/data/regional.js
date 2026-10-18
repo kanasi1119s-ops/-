@@ -61,7 +61,7 @@ export const REGIONAL = [
   { ref: 'p12-2', key: 'segurogoma', method: 'su', veg: ['iwashi'], salt: [8, 10], temp: COOL, days: 2.5, src: ['days'], win: 'short', price: 700, level: 3 },
   { ref: 'p13-1', key: 'bettarazuke', method: 'koji', veg: ['daikon'], salt: [3, 5], temp: COOL, days: 8, src: ['days'], win: 'normal', price: 800, level: 3 },
   { ref: 'p13-2', key: 'fukujinzuke', method: 'shoyu', veg: ['daikon'], with: { nasu: 0.15, shirouri: 0.15, kabu: 0.15 }, salt: [3, 5], temp: COOL, days: 3, src: ['days'], win: 'long', price: 700, level: 3, labor: 200 },
-  { ref: 'p14-1', key: 'odawaraume', method: 'shio', veg: ['ume'], salt: [18, 20], temp: ROOM, days: 30, win: 'forever', price: 200, portions: 24, level: 4, needs: ['tsubo'], umezu: true, film: true, acidHalfProgress: 0.3, saltUptake: 0.4, aging: { from: 1, full: 25, max: 1.5 } },
+  { ref: 'p14-1', key: 'odawaraume', method: 'shio', veg: ['ume'], salt: [18, 20], temp: ROOM, days: 30, win: 'forever', price: 200, portions: 24, level: 4, needs: ['tsubo'], umezu: true, film: true, acidHalfProgress: 0.3, saltUptake: 0.4, aging: { from: 1, full: 25, max: 1.5 }, work: [['doyoboshi', 20, 200]] },
   { ref: 'p14-2', key: 'wariboshi', method: 'shoyu', veg: ['daikon'], salt: [3, 4], temp: COOL, days: 5, src: ['days'], win: 'normal', price: 700, level: 3, acidBase: 25, drying: { max: 20, ideal: [10, 14], default: 14 } },
   // ---- 北陸・甲信・岐阜 ----
   { ref: 'p15-1', key: 'namagusakouko', method: 'fish', veg: ['daikon'], with: { iwashi: 0.3 }, salt: [8, 10], temp: COLD, days: 30, src: ['days'], win: 'long', price: 900, level: 4 },
@@ -71,7 +71,7 @@ export const REGIONAL = [
   { ref: 'p18-2', key: 'sannengo', method: 'amazu', veg: ['rakkyo'], salt: [8, 10], temp: COOL, days: 37, src: ['days'], win: 'long', price: 1000, level: 4, acidHalfProgress: 6, work: [['amazu', 14, 24]] },
   { ref: 'p18-3', key: 'akakabura_su', method: 'su', veg: ['akakabu'], salt: [4, 4], temp: COOL, days: 7, src: ['salt', 'days'], win: 'long', price: 600, level: 3, film: true },
   { ref: 'p19-1', key: 'narusawanazuke', method: 'shoyu', veg: ['narusawana'], salt: [2, 3], temp: COOL, days: 7, src: ['days'], win: 'normal', price: 500, level: 3, weight: true },
-  { ref: 'p19-2', key: 'koshukoume', method: 'shio', veg: ['koume'], salt: [10, 15], temp: ROOM, days: 30, src: ['days'], win: 'forever', price: 120, portions: 24, level: 3, needs: ['tsubo'], umezu: true, film: true, acidHalfProgress: 0.3, saltUptake: 0.45, acidBase: 15 },
+  { ref: 'p19-2', key: 'koshukoume', method: 'shio', veg: ['koume'], salt: [10, 15], temp: ROOM, days: 30, src: ['days'], win: 'forever', price: 120, portions: 24, level: 3, needs: ['tsubo'], umezu: true, film: true, acidHalfProgress: 0.3, saltUptake: 0.45, acidBase: 15, work: [['doyoboshi', 20, 200]] },
   { ref: 'p21-1', key: 'hidaakakabu', method: 'nyusan', veg: ['akakabu'], salt: [4, 4], temp: ROOM, days: 60, src: ['salt', 'days'], win: 'long', price: 700, level: 3, film: true },
   // ---- 東海・近畿 ----
   { ref: 'p22-1', key: 'wasabizuke', method: 'kasu', veg: ['wasabi'], salt: [2, 2], temp: COOL, days: 2.5, src: ['salt', 'days'], win: 'short', price: 1500, level: 3 },

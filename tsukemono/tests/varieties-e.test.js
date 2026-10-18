@@ -53,9 +53,9 @@ test('干す: たくあんは干した日数だけ樽がふさがり、食感と
   assert.equal(g.brew(0, { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 15, dry: 20 }).ok, false); // 干しすぎ
   g.brew(0, { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 15, dry: 0 });
   g.brew(1, { veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 15, dry: 8 });
-  g.advance(DAY * 3);
+  for (let d = 0; d < 3; d++) { g.weather = 'sunny'; g.tomorrow = 'sunny'; g.advance(DAY); } // 晴れが続けば、1日に1日ぶん乾く
   assert.equal(g.tasteOf(1).stageLabel, '干している');
-  assert.equal(g.dryingLeft(g.barrels[1]), 5);
+  assert.ok(Math.abs(g.dryingLeft(g.barrels[1]) - 5) < 1e-6);
   const plain = simulate({ veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 15, days: 30 });
   const dried = simulate({ veg: 'daikon', pickle: 'takuan', saltPct: 5, tempC: 15, days: 30, dry: 8 });
   assert.ok(dried.texture > plain.texture);
