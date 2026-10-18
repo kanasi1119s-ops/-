@@ -141,7 +141,7 @@ test('客は名前なしでランダムに来て、好みのタイプもばら�
   }
   assert.equal(types.size, CONFIG.customers.length);
   const avg = total / 200;
-  assert.ok(avg > 3 && avg < 5, `平均 ${avg}人`); // 最大5人 × 来店率0.8
+  assert.ok(avg > 6.5 && avg < 9.5, `平均 ${avg}人`); // 最大10人 × 来店率0.8
 });
 
 test('セーブして戻すと、同じ状態から同じ結果で続けられる', () => {

@@ -8,7 +8,8 @@ const recipe = { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 };
 test('案内: 空き樽→仕込み、熟成中→時間を進める、食べ頃→売る、売った後→時間を進める、夜→朝まで', () => {
   const g = createGame({ seed: 3 });
   assert.match(nextStep(g), /空いている.*仕込もう/);
-  g.brew(0, recipe); g.brew(1, recipe); g.brew(2, recipe);
+  g.brew(0, { ...recipe, count: 60 }); g.brew(1, recipe); g.brew(2, recipe); // 樽1は1回では売り切れない数
+  g.money = 2000; // 投資の案内が出ない額にしておく
   assert.match(nextStep(g), /あと約6日で食べ頃/); // 食べ頃の入り口（約6日）
   g.advance(25); // 7日目の昼
   assert.match(nextStep(g), /食べ頃。味見して/);
@@ -39,6 +40,7 @@ test('案内: 白い膜が出たら手入れ、ぬか床は毎日かき混ぜる
 test('案内: 樽が全部使用中でお金に余裕があれば、投資をすすめる', () => {
   const g = createGame({ seed: 3 });
   g.brew(0, recipe); g.brew(1, recipe); g.brew(2, recipe);
+  g.money = 2000;
   assert.doesNotMatch(nextStep(g), /余裕/);
   g.money = 20000;
   assert.match(nextStep(g), /余裕がある.*樽を増やす/);

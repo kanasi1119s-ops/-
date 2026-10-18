@@ -258,10 +258,13 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         continue;
       }
       const base = priceFor(sat, b.pickle, cfg);
-      const price = regular && base > 0 ? Math.round(base * (1 + rc0.tip)) : base;
-      const bought = price > 0;
-      if (bought) { b.portions--; revenue += price; sold++; }
-      visitors.push({ customer: c, regular: reg, sat, price, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
+      const unit = regular && base > 0 ? Math.round(base * (1 + rc0.tip)) : base;
+      const bought = unit > 0;
+      // 気に入るほどたくさん買う（1〜maxBuy 個。残りの数まで）
+      const qty = bought ? Math.min(b.portions, 1 + Math.max(0, Math.floor((sat - cfg.sales.buyThreshold) / cfg.sales.buyStep)), cfg.sales.maxBuy) : 0;
+      const price = unit * qty;
+      if (bought) { b.portions -= qty; revenue += price; sold += qty; }
+      visitors.push({ customer: c, regular: reg, sat, price, unit, qty, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
     }
     g.money += revenue;
     g.stats.revenue += revenue;

@@ -576,7 +576,7 @@ async function startSale(slot) {
   const lane = SCENE.lane;
   await world.saleScene(res.visitors, res.season, (v) => {
     if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 280, 'bad'); return; }
-    if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`+${yen(v.price)}`, lane.standX, 280); renderHud(); }
+    if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`${v.qty > 1 ? `${v.qty}個 ` : ''}+${yen(v.price)}`, lane.standX, 280); renderHud(); }
     else if (!v.soldOut) floatText('買わない…', lane.standX, 280, 'bad');
     if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 240, 'good'), 500); }
   }, gaps);

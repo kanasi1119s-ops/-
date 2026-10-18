@@ -227,7 +227,9 @@ export const CONFIG = {
     // 支払額 = 定価 × (priceMin + (priceMax - priceMin) × 満足度/100)
     priceMin: 0.6, priceMax: 1.3, // 【仮置き】
     saltCostPerPct: 10, // 【仮置き】塩代: 塩分1%あたり(円)
-    startMoney: 2000, // 【仮置き】
+    startMoney: 10000, // 【仮置き】はじめから樽いっぱい（60個）仕込める額
+    maxBuy: 4, // 【仮置き】1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える
+    buyStep: 15, // 【仮置き】
   },
 
   // ---------------------------------------------------------------
@@ -263,7 +265,7 @@ export const CONFIG = {
   },
   // 来店: 最大 slots 人まで、1人ずつ「来店率 = base × 天気 × 時間帯」で来るか決める 【仮置き】
   visit: {
-    slots: 5,
+    slots: 10, // 【仮置き】1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど）
     base: 0.8,
     weather: { sunny: 1.0, rain: 0.5, snow: 0.4 },
     time: { morning: 0.7, noon: 1.0, evening: 1.0, night: 0 },

@@ -78,9 +78,12 @@
 | 226 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
 | 228 | sales.priceMin | `0.6, priceMax: 1.3` |  |
 | 229 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
-| 230 | sales.startMoney | `2000` |  |
-| 237 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
-| 238 | calendar.daysPerSeason | `28` |  |
+| 230 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
+| 231 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
+| 232 | sales.buyStep | `15` |  |
+| 239 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
+| 240 | calendar.daysPerSeason | `28` |  |
+| 268 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
 
 ## data/pickles.js
 
@@ -119,4 +122,4 @@
 | 108 | nozawanazuke.complexityMax | `70` |  |
 | 109 | nozawanazuke.price | `450` |  |
 
-合計 107 件
+合計 110 件
