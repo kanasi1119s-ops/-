@@ -66,6 +66,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     nextRegularId: 1,
     places: Object.keys(cfg.facilities).filter((k) => cfg.facilities[k].cost === 0), // 持っている設備（置き場所と道具）
     xp: 0, // 店の経験（段階C）。たまるとレベルが上がる
+    regions: [], // 地方の枠に入れた地方（段階F）
+    tane: {}, // 種（すんき）の数 { 漬物id: 数 }
     recipes: startRecipes(cfg), // 知っている作り方 { pickle: { via, day, made（成功した樽の数） } }
     claimer: { nerve: cfg.claimer.startNerve, look: 0, visits: 0, wins: 0, bannedUntil: -1, disguise: false, reformedTick: -1 }, // 難癖のお客（いつも同じ人）
     claim: null, // 対応を待っている難癖 { tick, slot, lines, regularHere, quality }
@@ -109,6 +111,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (!p) return { ok: false, error: 'その漬物はありません' };
     if (!g.knows(id)) return { ok: false, error: 'まだ作り方を知りません' };
     if (g.level().level < p.level) return { ok: false, error: `店のレベル${p.level}で挑めます`, needLevel: p.level };
+    if (p.region && !g.regions.includes(p.region)) return { ok: false, error: `地方の枠に「${p.region}」を入れると挑めます`, needRegion: p.region };
+    if (p.starter && !(g.tane[p.starter] > 0)) return { ok: false, error: '種がありません（前の樽から取り分ける）' };
     const lack = (p.needs ?? []).filter((f) => !g.places.includes(f));
     if (lack.length) return { ok: false, error: `${lack.map((f) => cfg.facilities[f].name).join('・')}がいります` };
     return { ok: true };
@@ -118,9 +122,22 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (!cfg.pickles[id] || g.knows(id)) return false;
     g.recipes[id] = { via, day: g.day(), made: 0 };
     const p = cfg.pickles[id];
+    if (p.region && !g.regions.includes(p.region) && g.regions.length < g.regionSlots()) g.regions.push(p.region); // 枠が空いていれば、その地方に挑む
+    if (p.starter) g.tane[p.starter] = Math.max(1, g.tane[p.starter] ?? 0); // 最初の種は、ひらめきと一緒に届く
     g.events.push({ type: 'inspire', pickle: id, via, line: line ?? p.unlock?.line ?? '', tooEarly: g.level().level < p.level ? p.level : 0 });
     g.addXp(cfg.progress.xpInspire);
     return true;
+  };
+  // ---- 地方の枠（段階F） ----
+  g.regionSlots = () => g.level().regions ?? 0;
+  g.regionList = () => [...new Set(Object.values(cfg.pickles).map((p) => p.region).filter(Boolean))];
+  /** 地方の枠に入れる（空きがなければ入れられない。一度入れた地方はそのまま） */
+  g.openRegion = (r) => {
+    if (!g.regionList().includes(r)) return { ok: false, error: 'その地方はありません' };
+    if (g.regions.includes(r)) return { ok: false, error: 'もう挑んでいます' };
+    if (g.regions.length >= g.regionSlots()) return { ok: false, error: g.regionSlots() ? '地方の枠がいっぱいです（店のレベルが上がると増える）' : '店のレベル3から、地方の漬物に挑めます' };
+    g.regions.push(r);
+    return { ok: true };
   };
   /** 樽の中身がひらめきの条件に合うか調べる（あと一歩なら、樽ごとに1回だけ知らせる）。 */
   const checkUnlocks = (b, stage = null) => {
@@ -128,7 +145,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     for (const [id, p] of Object.entries(cfg.pickles)) {
       const u = p.unlock;
       if (!u || g.knows(id) || u.via === 'taught') continue;
-      if (!ctx) ctx = { pickle: b.pickle, veg: b.veg, additives: b.additives ?? [], saltPct: b.saltPct, place: b.place, tempC: b.tempC, season: g.season(), days: g.barrelAge(b), owned: g.places, stage };
+      if (!ctx) ctx = { pickle: b.pickle, veg: b.veg, additives: b.additives ?? [], saltPct: b.saltPct, place: b.place, tempC: b.tempC, season: g.season(), days: g.barrelAge(b), owned: g.places, contracts: g.contracts, stage };
       if (u.when.stage && !ctx.stage) ctx.stage = g.tasteOf(g.barrels.indexOf(b))?.stage ?? null;
       const miss = unmet(u.when, ctx);
       if (!miss.length) { g.learn(id, u.via); continue; }
@@ -263,7 +280,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return { ok: true, cost };
   };
 
-  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry }) => {
+  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry, smoke, kaonTemp }) => {
+    if (cfg.pickles[pickle]?.place) place = cfg.pickles[pickle].place; // すぐき漬けは加温室で
     additives = [...new Set(additives)];
     count = count ?? g.standardCount(pickle);
     if (!Number.isInteger(count) || count < 1 || count > cfg.sales.barrelCapacity) return { ok: false, error: `個数は1〜${cfg.sales.barrelCapacity}個です` };
@@ -273,6 +291,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       if (!cfg.places[place]) return { ok: false, error: 'その置き場所はありません' };
       if (!g.places.includes(place)) return { ok: false, error: 'その置き場所はまだ使えません' };
       tempC = g.placeTemp(place);
+      if (cfg.facilities[place].adjustable && kaonTemp != null) { // 加温室は温度を選べる
+        const [lo, hi] = cfg.kaonRange;
+        if (!(kaonTemp >= lo && kaonTemp <= hi)) return { ok: false, error: `加温室の温度は${lo}〜${hi}℃です` };
+        tempC = kaonTemp;
+      }
     }
     const v = cfg.vegetables[veg], p = cfg.pickles[pickle];
     if (!v || !p) return { ok: false, error: '野菜か漬物が不正です' };
@@ -283,6 +306,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     // 干す日数（たくあんなど。段階E）。干しているあいだも樽はふさがる
     dry = p.drying ? (dry ?? p.drying.default ?? 0) : 0;
     if (!Number.isInteger(dry) || dry < 0 || dry > (p.drying?.max ?? 0)) return { ok: false, error: `干す日数は0〜${p.drying?.max ?? 0}日です` };
+    // 燻す（いぶりがっこ。段階F）: 薪と日数。燻すあいだも樽はふさがる（干すのと同じ）
+    if (p.smoking) {
+      smoke = { days: smoke?.days ?? p.smoking.default, wood: smoke?.wood ?? Object.keys(p.smoking.woods)[0] };
+      if (!p.smoking.woods[smoke.wood]) return { ok: false, error: 'その薪はありません' };
+      if (!Number.isInteger(smoke.days) || smoke.days < 1 || smoke.days > p.smoking.max) return { ok: false, error: `燻す日数は1〜${p.smoking.max}日です` };
+      dry = smoke.days;
+    } else smoke = null;
+    if (p.saltFree) saltPct = 0; // すんき: 塩を使わない
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
     if (g.barrels[slot]) return { ok: false, error: '樽が空いていません' };
     if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
@@ -294,9 +325,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
       g.nuka.water = Math.min(1, (g.nuka.water ?? 0) + cfg.nuka.waterPerBatch * (count / g.standardCount(pickle)) * ((v.water ?? cfg.water.base) / cfg.water.base)); // 野菜から水が出る（水分の多い野菜ほど）
     }
+    if (p.starter) g.tane[p.starter]--; // 種を使う
     const st = g.useStock(veg, count); // 在庫を古い順に使う（鮮度が品質に響く）。足りない分は今日の相場で買う
     const quality = g.vegQuality(veg) * ((st.used * st.quality + (count - st.used)) / count);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, exposed: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, smoke, exposed: 0, tempSum: 0, tempN: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -312,6 +344,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         if (!b) continue;
         const pk = cfg.pickles[b.pickle];
         if (g.dryingLeft(b) > 0) continue; // 干しているあいだは漬かっていない
+        if (pk.seasonal && b.place && cfg.places[b.place]) { // 季節をまたぐ熟成（へしこ）: 温度はそれまでの置き場所の温度の平均
+          b.tempSum = (b.tempSum ?? 0) + g.placeTemp(b.place); b.tempN = (b.tempN ?? 0) + 1;
+          b.tempC = Math.round((b.tempSum / b.tempN) * 10) / 10;
+        }
         // 梅干し: 梅が梅酢から出てくると、カビ（膜）がつきやすい（段階E）
         let mold = 1;
         if (pk.umezu) { b.exposed = Math.min(1, (b.exposed ?? 0) + cfg.umezu.exposePerDay * dt); mold = b.exposed > cfg.umezu.safe ? cfg.umezu.moldExposed : cfg.umezu.moldInBrine; }
@@ -526,6 +562,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       const first = !rec.made;
       rec.made += g.staffMult('mastery'); // 職人の弟子がいると腕前の伸びが2倍
       if (first) { learned = b.pickle; g.events.push({ type: 'learned', pickle: b.pickle }); g.addXp(pg.xpFirstSuccess); }
+      const sp = cfg.pickles[b.pickle].starter; // すんき: うまくできた樽から、次の種を取り分ける
+      if (sp) { g.tane[sp] = (g.tane[sp] ?? 0) + 1; g.events.push({ type: 'tane', pickle: b.pickle, n: g.tane[sp] }); }
     }
     // 常連: 来た常連は回数を数え、不満が続くと離れる。とても満足した客はときどき常連になる
     for (const v of visitors) {
@@ -554,7 +592,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -597,6 +635,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       for (const [k, e] of Object.entries(g.book)) { const id = k.split(':')[0]; if (g.recipes[id] && e.best >= cfg.progress.successSat) g.recipes[id].made = Math.max(g.recipes[id].made, 1); }
     }
     g.events = [];
+    g.regions = Array.isArray(s.regions) ? s.regions.filter((r) => g.regionList().includes(r)) : [];
+    g.tane = s.tane && typeof s.tane === 'object' ? Object.fromEntries(Object.entries(s.tane).filter(([k, v]) => cfg.pickles[k] && Number.isInteger(v) && v >= 0)) : {};
     const k = s.claimer;
     g.claimer = k && Number.isFinite(k.nerve) ? { ...g.claimer, ...k, nerve: Math.min(cfg.claimer.maxNerve, Math.max(0, k.nerve)) } : { ...g.claimer };
     // 段階D: 在庫・従業員・契約・相場の種

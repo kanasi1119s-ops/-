@@ -30,9 +30,9 @@ export function fermentRate({ veg, saltPct, tempC }, cfg = CONFIG) {
 }
 
 /** 風味の複雑さにかかる温度の係数（0〜1）。 */
-export function complexityTempFactor(tempC, cfg = CONFIG) {
+export function complexityTempFactor(tempC, cfg = CONFIG, best = null) {
   const t = cfg.taste;
-  const [lo, hi] = t.complexityBestTemp;
+  const [lo, hi] = best ?? t.complexityBestTemp; // すぐき漬けのように、漬物ごとに最良の温度が違うこともある
   let f = 1;
   if (tempC < lo) f = 1 - (lo - tempC) * t.complexityLowSlope;
   else if (tempC > hi) f = 1 - (tempC - hi) * t.complexityHighSlope;
@@ -40,12 +40,13 @@ export function complexityTempFactor(tempC, cfg = CONFIG) {
 }
 
 /** 1日あたりの傷みの危険度。 */
-export function spoilHazard({ veg, saltPct, tempC, additives }, cfg = CONFIG) {
+export function spoilHazard({ veg, pickle, saltPct, tempC, additives }, cfg = CONFIG) {
   const s = cfg.spoil;
   const add = (additives ?? []).reduce((m, a) => m * (cfg.additives[a]?.spoil ?? 1), 1); // 唐辛子は傷みにくくする
   return (
     add * s.basePerDay *
     cfg.vegetables[veg].spoilMult *
+    (cfg.pickles[pickle]?.spoilMult ?? 1) * // 漬物ごと（すんきの種・すぐきの乳酸菌は傷みをおさえる）
     interpolate(s.saltTable, saltPct) *
     interpolate(s.tempTable, tempC)
   );
@@ -87,7 +88,7 @@ export function simulate(p, cfg = CONFIG) {
   const acid = (100 * progress) / (progress + half);
 
   // 塩の入り方は野菜ごと（saltUptake）。水分が多いほど塩味は薄まり、干して水分を抜くと締まる（段階E）
-  const dr = cfg.drying, dry = Math.max(0, p.dry ?? 0);
+  const dr = cfg.drying, dry = Math.max(0, p.dry ?? 0); // 燻す日数も干すのと同じに数える（いぶりがっこ）
   const water = (veg.water ?? cfg.water.base) * (1 - Math.min(0.6, dr.waterLossPerDay * dry));
   const waterF = clamp(1 + cfg.water.saltDilution * (cfg.water.base - water), 0.7, 1.8);
   const uptake = veg.saltUptake ?? 1;
@@ -100,7 +101,12 @@ export function simulate(p, cfg = CONFIG) {
   const texture = crisp * (1 - cfg.texture.spoilPenalty * (spoilRisk / 100));
 
   const maturity = Math.sqrt(Math.min(1, ratio));
-  const complexity = pickle.complexityMax * maturity * complexityTempFactor(p.tempC, cfg);
+  let complexity = pickle.complexityMax * maturity * complexityTempFactor(p.tempC, cfg, pickle.bestTemp);
+  // 燻す（段階F）: 目安の日数まで燻すほど香ばしく、燻しすぎるとえぐくなる。薪で香りが違う
+  if (p.smoke && pickle.smoking) {
+    const sm = pickle.smoking, d = p.smoke.days ?? 0, wood = sm.woods[p.smoke.wood]?.flavor ?? 1;
+    complexity *= Math.max(0.3, 1 + cfg.smoking.bonusMax * Math.min(1, d / sm.ideal[0]) * wood - cfg.smoking.overPenalty * Math.max(0, d - sm.ideal[1]));
+  }
 
   const base = { progress, ratio, stage, stageLabel: STAGE_LABEL[stage], acid, saltiness, texture, complexity, spoilRisk, rate };
   return p.additives?.length ? withAdditives(base, p, maturity, absorbed, cfg) : base;

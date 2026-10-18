@@ -25,6 +25,12 @@
 //   praise      : お客のほめ言葉（なくてもよい。満足したお客がときどき言う）
 //   drying      : 干してから漬ける（段階E）。{ max, ideal: [lo, hi], default }: 干す日数（そのあいだ樽はふさがる）。干すと食感・塩味が締まり、傷みにくい
 //   umezu       : 梅酢に浸す漬物（梅干し。段階E）。梅が梅酢から出るとカビやすい。重石を直して沈め、カビは清潔なスプーンで取る
+//   region      : 地方の漬物（段階F）。店のレベルで開く「地方の枠」にその地方を入れると挑める
+//   saltFree    : 塩を使わない（すんき）。starter = 種にする漬物の id（前の樽から種を取り分け、次の樽に使う）
+//   smoking     : 燻してから漬ける（いぶりがっこ）。{ woods: { id: { name, flavor } }, max, ideal: [lo, hi], default }
+//   place       : 決まった置き場所で漬ける（すぐき漬けは加温室）。bestTemp: 風味がいちばん深くなる温度 [lo, hi]
+//   seasonal    : 季節をまたいで熟成する（へしこ）。温度は置き場所の温度の、それまでの平均になる
+//   spoilMult   : 漬物ごとの傷みやすさ（種や乳酸菌が傷みをおさえる）
 //   aging       : 寝かせると値打ちが上がる（段階D）。{ from, full, max }: 進み/ripeAt が from から full まで寝かせると、売り値が最大 ×(1+max)
 //   affinity    : 調味との相性（good / bad。書いてなければふつう）
 //   そのほか    : portions（標準の個数）、usesNukaBed（ぬか床を使う）、saltUptake、acidHalfProgress、film（白い膜が出る）、top（樽の中身の絵）
@@ -33,7 +39,7 @@ export const PICKLES = [
   {
     id: 'asazuke',
     name: '浅漬け',
-    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu', 'shirouri', 'myoga'],
+    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu', 'shirouri', 'myoga', 'suguki'],
     steps: ['野菜を切る', '塩をまぶして重石をする', '冷暗所で半日〜1日'],
     saltHint: '2〜3%', // 【出典】
     salt: { lo: 2, hi: 3 }, // 【出典】
@@ -249,6 +255,123 @@ export const PICKLES = [
     praise: ['これは晩酌が進んじゃう', 'ふわっと酒の香り…（運転はしません）', '大人の味だねぇ'],
     aging: { from: 1.2, full: 3, max: 0.6 }, // 【仮置き】寝かせるほど高く売れる
     affinity: { sakekasu: 'good', zarame: 'good', kombu: 'good', yuzu: 'bad', akajiso: 'bad' },
+  },
+
+  // ---- 地方の漬物（段階F）。特殊なルールを持つ。解放は段階Cの仕組み（ひらめき＋店のレベル＋地方の枠） ----
+  {
+    id: 'sunki',
+    name: 'すんき',
+    region: '長野・木曽',
+    vegetables: ['akakabu'],
+    steps: ['赤かぶの茎と葉を湯通しする', '前の年のすんき（種）と交互に樽に詰める', '重石をして、寒い所で約1か月', '塩は使わない'],
+    saltFree: true, // 塩を使わない（乳酸発酵だけで漬ける）
+    starter: 'sunki', // 前の樽のすんきを種にする
+    saltHint: '塩は使わない（種で漬ける）', // 【出典】
+    salt: { lo: 0, hi: 0 },
+    tempHint: '寒い所（0〜10℃）', // 【出典】は「低温」。数値は【仮置き】
+    temp: { lo: 0, hi: 10 }, // 【仮置き】
+    ripeAt: 6, // 【仮置き】5℃で約1か月
+    window: { lo: 0.8, hi: 2.5, sour: 4 }, // 【仮置き】
+    acidHalfProgress: 3, // 【仮置き】乳酸でしっかり酸っぱい
+    spoilMult: 0.05, // 【仮置き】種の乳酸菌が、塩のかわりに傷みをおさえる
+    complexityMax: 80, // 【仮置き】
+    price: 700, // 【仮置き】
+    level: 3,
+    unlock: {
+      via: 'condition',
+      hint: '「塩を使わないで漬ける山の保存食があるらしい。秋から冬、塩を控えた赤い葉っぱが、山奥でだけ酸っぱくなるとか」— 富山の薬売り（本業は薬）',
+      when: { veg: ['akakabu'], salt: { max: 1 }, season: ['autumn', 'winter'], days: { min: 3 } },
+      line: '塩を控えた赤かぶを見つめていると、小包が届いた。差出人は「木曽のおばあさん」。中には去年のすんきと、達筆な手紙。「種じゃ。絶やすでないぞ」',
+    },
+    praise: ['塩がないのに、この酸っぱさ…！', '体にしみる味だ', 'そばにのせたい（すんきそば）'],
+    affinity: { kombu: 'good', togarashi: 'good', zarame: 'bad', sakekasu: 'bad', yuzu: 'bad' },
+  },
+  {
+    id: 'iburigakko',
+    name: 'いぶりがっこ',
+    region: '秋田',
+    vegetables: ['daikon'],
+    steps: ['大根を囲炉裏の上で薪で燻して干す（4〜5日）', '米ぬか・塩・ざらめで漬ける', '冬の冷気で2か月以上'],
+    smoking: { woods: { nara: { name: 'ナラ', flavor: 1.0 }, sakura: { name: 'サクラ', flavor: 1.15 }, kunugi: { name: 'クヌギ', flavor: 0.9 } }, max: 8, ideal: [4, 5], default: 4 }, // 日数は【出典】4〜5日、香りの差は【仮置き】
+    needs: ['kunsei'],
+    saltHint: '5〜8%（米ぬか・ざらめと）', // 【仮置き】
+    salt: { lo: 5, hi: 8 }, // 【仮置き】
+    tempHint: '冬の冷気（0〜10℃）', // 【出典】は「冬の冷気」。数値は【仮置き】
+    temp: { lo: 0, hi: 10 }, // 【仮置き】
+    ripeAt: 3.8, // 【仮置き】塩6%・5℃で約2か月
+    window: { lo: 0.9, hi: 3, sour: 5 }, // 【仮置き】
+    acidHalfProgress: 15, // 【仮置き】
+    complexityMax: 70, // 【仮置き】燻すと最大 ×1.5
+    price: 1100, // 【仮置き】
+    portions: 12, // 【仮置き】
+    top: 'takuan',
+    level: 5,
+    unlock: {
+      via: 'condition',
+      hint: '「北の国では、大根を煙でいぶしてから漬けるそうな。冬の囲炉裏は、ただの暖房ではないらしい」— 旅の写真家（写真は全部ぶれている）',
+      when: { veg: ['daikon'], facility: 'kunsei', season: ['autumn', 'winter'], days: { min: 1 } },
+      line: '燻製小屋の前で大根を漬けていたら、煙が大根にまとわりついて離れない。…大根が「いぶして」と言っている。言っていない。でも、そう聞こえた。',
+    },
+    aging: { from: 1.2, full: 3, max: 0.4 }, // 【仮置き】
+    praise: ['このスモーキーさ…クリームチーズと合わせたい', 'ポリポリで香ばしい！', '酒が止まらなくなるやつだ'],
+    affinity: { zarame: 'good', kombu: 'good', togarashi: 'good', yuzu: 'bad', akajiso: 'bad' },
+  },
+  {
+    id: 'sugukizuke',
+    name: 'すぐき漬け',
+    region: '京都・上賀茂',
+    vegetables: ['suguki'],
+    steps: ['下漬け（塩をまぶして一晩）', '本漬け（天秤押しで重石をかける）', '室入れ（加温室で約40℃、1週間ほど発酵）', '半月ほどで食べられる'],
+    place: 'kaon', // 加温室で漬ける（温度を選べる）
+    needs: ['kaon'],
+    bestTemp: [38, 42], // 【出典】は「約40℃」。幅は【仮置き】
+    saltHint: '3〜4%', // 【仮置き】
+    salt: { lo: 3, hi: 4 }, // 【仮置き】
+    tempHint: '加温室で約40℃（温度管理が主役）', // 【出典】
+    temp: { lo: 38, hi: 42 },
+    ripeAt: 40, // 【仮置き】塩3.5%・40℃で約15日
+    window: { lo: 0.85, hi: 1.3, sour: 1.8 }, // 【仮置き】食べ頃は短い
+    spoilMult: 0.06, // 【仮置き】高温を好む乳酸菌が、ほかの菌をおさえる
+    complexityMax: 85, // 【仮置き】
+    price: 1000, // 【仮置き】
+    level: 4,
+    unlock: {
+      via: 'condition',
+      hint: '「都の北では、菜っ葉を40℃の部屋で寝かせて酸っぱくするらしい。お風呂より少しぬるいくらい」— 京都帰りの近所の人（お土産は八つ橋）',
+      when: { veg: ['suguki'], place: ['kaon'], days: { min: 2 } },
+      line: '加温室の扉を開けた瞬間、むわっと酸っぱい香り。すぐき菜が、ほんのり黄金色に染まっていた。…これが、都の味か。',
+    },
+    praise: ['この酸味、上品だねぇ', 'ご飯にのせて、お茶漬けに…', '京都に行った気分になれる'],
+    affinity: { yuzu: 'good', kombu: 'good', togarashi: 'good', zarame: 'bad', sakekasu: 'bad' },
+  },
+  {
+    id: 'heshiko',
+    name: 'へしこ',
+    region: '福井・若狭',
+    vegetables: ['saba'],
+    steps: ['鯖をたっぷりの塩で下漬け（約1週間）', '米ぬかに漬け替える（本漬け）', '季節をまたいで約1年熟成'],
+    seasonal: true, // 季節をまたいで熟成。夏の暑さで傷みやすい
+    saltHint: '10〜20%（魚なので多め。少ないと傷む）', // 【仮置き】
+    salt: { lo: 10, hi: 20 }, // 【仮置き】
+    tempHint: '置き場所の温度で（夏の暑さに注意）', // 【仮置き】
+    temp: { lo: 0, hi: 20 }, // 【仮置き】
+    ripeAt: 5, // 【仮置き】塩15%・土間で約1年（1年 = 112日）
+    window: { lo: 0.8, hi: 3, sour: 5 }, // 【仮置き】
+    acidHalfProgress: 10, // 【仮置き】
+    saltUptake: 0.18, // 【仮置き】感じる塩味（ぬかでやわらぐ。塩15%で塩味80ほど）
+    complexityMax: 95, // 【仮置き】長い熟成で旨味が深い
+    price: 1500, // 【仮置き】
+    portions: 12, // 【仮置き】
+    level: 3,
+    unlock: {
+      via: 'condition',
+      hint: '「港町では、魚をぬかに一年漬けるという。待つのが仕事、という人たちがいるのだ」— 若狭の漁師（ぬか床を見て目を細めた）',
+      when: { pickle: ['nukazuke'], contract: 'saba', days: { min: 2 } },
+      line: 'ぬか床をかき混ぜていたら、若狭の漁師の言葉がよみがえった。「ぬかは、魚も待てる」。…この床に、鯖を一年。正気か。正気である。',
+    },
+    aging: { from: 1, full: 2.5, max: 0.6 }, // 【仮置き】
+    praise: ['少しあぶって、お茶漬けに…最高', '酒の肴の王様だ', '一年待った味がする'],
+    affinity: { togarashi: 'good', sakekasu: 'good', kombu: 'good', yuzu: 'bad', zarame: 'bad' },
   },
 ];
 

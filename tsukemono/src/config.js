@@ -65,6 +65,10 @@ export const CONFIG = {
   water: { base: 0.93, saltDilution: 1.5 },
   // 干す（たくあんなど。段階E）: 干した日数だけ水分が抜け、食感・塩味が締まり、傷みにくくなる 【仮置き】
   drying: { waterLossPerDay: 0.03, crispPerDay: 0.03, crispMax: 1.3, spoilDropPerDay: 0.05, spoilMin: 0.5 },
+  // 燻す（いぶりがっこ。段階F）: 目安の日数まで燻すと風味の深さが最大 ×1.5、目安を過ぎると1日ごとに −12%（えぐい）【仮置き】
+  smoking: { bonusMax: 0.5, overPenalty: 0.12 },
+  // 加温室の温度を選べる幅（すぐき漬け。段階F）【仮置き】出典は「約40℃」
+  kaonRange: [30, 45],
   // 梅酢（梅干し。段階E）: 梅は梅酢に浸かっていればカビにくい。日がたつと梅が梅酢から出てくる 【仮置き】
   umezu: { exposePerDay: 0.08, safe: 0.3, moldInBrine: 0.2, moldExposed: 3 },
 

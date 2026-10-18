@@ -27,6 +27,9 @@ export const VEGETABLES = [
   { id: 'ume', name: '梅', water: 0.904, saltUptake: 0.6, fermentRate: 0.6, crisp0: 60, crispTau: 30, spoilMult: 1.0, cost: 600, seasons: { spring: 1.3, summer: 0.6, autumn: 2.0, winter: 2.0 }, note: '皮がかたく、塩はゆっくり入る。6月ごろの青梅が旬' }, // 【仮置き】
   { id: 'shirouri', name: '白瓜', water: 0.953, saltUptake: 1.0, fermentRate: 1.0, crisp0: 88, crispTau: 18, spoilMult: 1.2, cost: 350, seasons: { spring: 1.3, summer: 0.7, autumn: 1.1, winter: 1.6 }, note: '水分が多い。粕漬け（奈良漬け）の定番（夏）' }, // 【仮置き】
   { id: 'myoga', name: 'みょうが', water: 0.956, saltUptake: 1.2, fermentRate: 1.2, crisp0: 82, crispTau: 10, spoilMult: 1.2, cost: 500, seasons: { spring: 1.4, summer: 0.8, autumn: 0.9, winter: 1.6 }, note: '薄く重なっていて塩がすぐ入る。香りが良い（夏〜秋）' }, // 【仮置き】
+  // ---- 段階Fで追加（地方の漬物の材料） ----
+  { id: 'suguki', name: 'すぐき菜', water: 0.93, saltUptake: 1.0, fermentRate: 1.0, crisp0: 80, crispTau: 25, spoilMult: 1.0, cost: 600, seasons: { spring: 1.5, summer: 2.0, autumn: 1.0, winter: 0.8 }, contract: { cost: 6000, level: 4, farmer: '上賀茂の農家' }, note: 'かぶの仲間。京都・上賀茂の冬の野菜' }, // 【仮置き】
+  { id: 'saba', name: '鯖', water: 0.62, saltUptake: 1.2, fermentRate: 0.5, crisp0: 40, crispTau: 200, spoilMult: 6, cost: 1200, seasons: { spring: 1.1, summer: 1.3, autumn: 0.8, winter: 0.9 }, contract: { cost: 5000, level: 3, farmer: '若狭の漁師' }, fish: true, note: '魚。とても傷みやすいので、たっぷりの塩が要る（水分は約6割）' }, // water は【出典: 食品成分表の目安】、ほかは【仮置き】
 ];
 
 /** 定義の一覧から { vegetables, priceBySeason } を作る。id がかぶったり、必須の項目が抜けていればエラー。 */

@@ -1,5 +1,5 @@
 # 新しい野菜の樽の中身の絵を、似た野菜の絵の色を変えて作る（仮置き。あとでエディタで描き直せる）
-#   かぶ ← 大根（白に少し紫）、にんじん ← たくあん（黄色をオレンジに）、キャベツ ← 白菜（白を薄い黄緑に）、赤かぶ ← 大根（白を赤紫に）、梅 ← なす（黄色がかった橙に）、白瓜 ← きゅうり（薄い緑に）、みょうが ← なす（薄紅に）
+#   かぶ ← 大根（白に少し紫）、にんじん ← たくあん（黄色をオレンジに）、キャベツ ← 白菜（白を薄い黄緑に）、赤かぶ ← 大根（白を赤紫に）、梅 ← なす（黄色がかった橙に）、白瓜 ← きゅうり（薄い緑に）、みょうが ← なす（薄紅に）、すぐき菜 ← かぶ、鯖 ← なす（青い銀色に）
 import os, colorsys
 import numpy as np
 from PIL import Image
@@ -73,4 +73,22 @@ def myoga(h, l, s):  # なすの紫 → みょうがの薄紅
 recolor('nasu', 'ume', ume)
 recolor('kyuri', 'shirouri', shirouri)
 recolor('nasu', 'myoga', myoga)
+
+
+def suguki(h, l, s):  # かぶ → すぐき菜（葉の緑を濃く、根を少し黄みに）
+    if 60 <= h <= 170:
+        return (h + 6) / 360, l * 0.9, min(1, s * 1.1)
+    if s < 0.3 and l > 0.5:
+        return 55 / 360, l * 0.95, 0.25
+    return h / 360, l, s
+
+
+def saba(h, l, s):  # なす → 鯖（青みがかった銀色）
+    if l < 0.85:
+        return 210 / 360, min(0.8, l * 1.7 + 0.12), min(0.45, s * 0.4 + 0.1)
+    return h / 360, l, s
+
+
+recolor('kabu', 'suguki', suguki)
+recolor('nasu', 'saba', saba)
 print('ok')

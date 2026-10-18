@@ -13,7 +13,7 @@ const taste = (veg, extra = {}, cfg = CONFIG) => simulate({ veg, pickle: 'asazuk
 test('野菜はデータの定義から作られ、水分量・塩の入り方・食感の変わり方を持つ', () => {
   assert.deepEqual(Object.keys(CONFIG.vegetables), VEGETABLES.map((v) => v.id));
   for (const v of Object.values(CONFIG.vegetables)) {
-    assert.ok(v.water > 0.8 && v.water < 1, v.name);
+    assert.ok(v.water > 0.5 && v.water < 1, v.name); // 鯖（魚）は約6割
     assert.ok(v.saltUptake > 0 && v.crisp0 > 0 && v.crispTau > 0, v.name);
   }
   assert.throws(() => vegetablesFrom([...VEGETABLES, { id: 'x', name: 'x' }]), /water|saltUptake/);

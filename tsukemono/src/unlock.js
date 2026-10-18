@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 
 /**
  * ひらめきの条件（data/pickles.js の unlock.when）のうち、合っていない項目の一覧を返す。空なら全部合っている。
- * ctx: { pickle, veg, additives, saltPct, place, tempC, season, days, stage, owned }
+ * ctx: { pickle, veg, additives, saltPct, place, tempC, season, days, stage, owned, contracts }
  */
 export function unmet(when, ctx) {
   const miss = [];
@@ -13,6 +13,7 @@ export function unmet(when, ctx) {
   if (when.additives && !when.additives.every((a) => (ctx.additives ?? []).includes(a))) miss.push('additives');
   if (when.salt && !inRange(ctx.saltPct, when.salt)) miss.push('salt');
   if (when.facility && !(ctx.owned ?? []).includes(when.facility)) miss.push('facility');
+  if (when.contract && !(ctx.contracts ?? []).includes(when.contract)) miss.push('contract');
   if (when.place && !when.place.includes(ctx.place)) miss.push('place');
   if (when.season && !when.season.includes(ctx.season)) miss.push('season');
   if (when.temp && !inRange(ctx.tempC, when.temp)) miss.push('temp');

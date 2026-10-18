@@ -139,6 +139,10 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     if (g.staffDoes('stir').length && g.nuka.lastStirDay !== g.day()) g.stirNuka();
     if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].umezu && (b.exposed ?? 0) > 0.1) g.sink(i); }); // 梅も沈めておいてくれる
     if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed && b.film >= cfg.care.filmHarmless) g.care(i); });
+    // 種が絶えても、冬のはじめには木曽から種が届く（すんき。段階F）
+    for (const [id, p] of Object.entries(cfg.pickles)) {
+      if (p.starter && g.knows(id) && !(g.tane[p.starter] > 0) && g.season() === 'winter' && g.dayOfSeason() === 1 && !g.barrels.some((b) => b?.pickle === id)) { g.tane[p.starter] = 1; g.events.push({ type: 'taneArrived', pickle: id }); }
+    }
     const ev = g.event();
     if (ev && ev.from === g.dayOfSeason()) g.events.push({ type: 'season', id: ev.id, name: ev.name, note: ev.note });
     if (g.peddlerOffer()) g.events.push({ type: 'peddler' });
