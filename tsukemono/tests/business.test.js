@@ -13,9 +13,11 @@ test('旬: 白菜は冬、きゅうりは夏が安く、品質（食感）も高
   toSeason(g, 'winter');
   assert.ok(g.vegCost('hakusai') < hakusaiSummer);
   assert.ok(g.vegCost('kyuri') > kyuriSummer);
+  g.money = 1e5; // 段階D: 売らずに日がたつと維持費で減っている
   g.brew(0, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 });
   const winterHakusai = g.tasteOf(0).texture;
   const h = createGame({ seed: 1 }); toSeason(h, 'summer');
+  h.money = 1e5;
   h.brew(0, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 });
   assert.ok(winterHakusai > h.tasteOf(0).texture);
 });

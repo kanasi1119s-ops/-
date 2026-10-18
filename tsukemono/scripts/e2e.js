@@ -108,7 +108,7 @@ try {
   check('ぬか床をかき混ぜられる', (await G(() => window.__game.game.nuka.lastStirDay)) === (await G(() => window.__game.game.day())));
 
   // 常連
-  await G(() => { const g = window.__game.game; g.regulars.push({ id: 99, type: 'light', look: 12345, visits: 2, misses: 0, since: 1 }); g.nextRegularId = 100; g.cfg.regulars.visit = 10; g.weather = 'sunny'; g.money = 20000; if (g.barrels[1]) g.discard(1); g.brew(1, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); g.advance(4); while (g.timeOfDay() !== 'noon') g.advance(1); window.__game.renderAll(); });
+  await G(() => { const g = window.__game.game; g.regulars.push({ id: 99, type: 'light', look: 12345, visits: 2, misses: 0, since: 1, name: '山田さん', age: 'old', bond: 0, chapters: [] }); g.nextRegularId = 100; g.cfg.regulars.visit = 10; g.weather = 'sunny'; g.money = 20000; if (g.barrels[1]) g.discard(1); g.brew(1, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); g.advance(4); while (g.timeOfDay() !== 'noon') g.advance(1); window.__game.renderAll(); });
   await G(() => window.__game.doSell(1)); await idle();
   await G(() => { window.__game.game.cfg.regulars.visit = 0.45; });
   check('常連が来て記録に出る', JSON.stringify(await G(() => window.__game.ui.log[0])).includes('常連'));
@@ -143,6 +143,16 @@ try {
   check('対応を選ぶと結果が出る', (await G(() => window.__game.game.claim)) === null && (await page.textContent('#winBody')).includes('評判'));
   await G(() => { window.__game.game.cfg.claimer.chance = 0.1; });
   await page.click('#winClose'); await idle(); await closeNotices();
+  // 段階D: 仕入れ・店の経営
+  await G(() => { window.__game.game.money = 50000; window.__game.renderAll(); });
+  await page.click('[data-cmd="market"]');
+  await page.click('[data-stock="kyuri:12"]');
+  check('仕入れの窓で野菜を買って在庫にできる', (await G(() => window.__game.game.stockCount('kyuri'))) === 12);
+  await page.click('#winClose'); await closeNotices();
+  await page.click('[data-cmd="shop"]');
+  await page.click('[data-hire="baito"]');
+  check('店の窓で従業員を雇える', (await G(() => window.__game.game.staff.includes('baito'))));
+  await page.click('#winClose'); await closeNotices();
   await page.click('[data-cmd="brew"]');
   check('ひらめいた作り方を仕込みの窓で選べる', (await page.textContent('#winBody')).includes('からし漬け'));
   await page.click('#winClose'); await closeNotices();

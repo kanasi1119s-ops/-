@@ -18,7 +18,7 @@ test('仕込み→熟成→販売が1周でき、満足度・利益が出る', (
   assert.ok(r.ok);
   assert.ok(r.visitors.length >= 1);
   for (const v of r.visitors) assert.ok(v.sat >= 0 && v.sat <= 100);
-  assert.equal(g.money, m0 - b.cost + r.revenue);
+  assert.equal(g.money, m0 - b.cost + r.revenue - g.stats.upkeep); // 段階D: 毎朝の維持費
   assert.equal(g.stats.revenue - g.stats.cost, g.money - m0);
 });
 

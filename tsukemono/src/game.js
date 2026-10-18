@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import { simulate, filmPerDay, nukaStep, nukaApply, applyCare } from './model.js';
 import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
+import { attachBusiness, agingFactor, hash01 } from './business.js';
 import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
@@ -85,6 +86,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.isOpen = () => cal.storeOpen[g.timeOfDay()];
   g.barrelAge = (b) => (g.tick - b.startTick) / cal.ticksPerDay; // 日
   g.weather = pickWeather();
+  attachBusiness(g, { cfg, rng, cal, seed });
 
   // ---- 店のレベルと作り方の解放（段階C） ----
   g.level = () => levelOf(g.xp, cfg);
@@ -171,7 +173,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   /** 説明が通る確率 */
   g.explainChance = () => {
     const sc = RESPONSES.find((r) => r.id === 'explain').success;
-    return Math.min(0.95, Math.max(0.05, sc.base + sc.perLevel * (g.level().level - 1) + sc.perQuality * (g.claim?.quality ?? 0) + defense('explain', 0)));
+    return Math.min(0.95, Math.max(0.05, sc.base + sc.perLevel * (g.level().level - 1) + sc.perQuality * (g.claim?.quality ?? 0) + defense('explain', 0) + (g.staffDoes?.('claimDefense') ?? []).reduce((a, v) => a + v, 0)));
   };
   /** 難癖に対応する。id = data/claimer.js の RESPONSES の id、または 'ignore'。 */
   g.respondClaim = (id) => {
@@ -210,7 +212,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   // ---- 市場（旬） ----
   const seasonFactor = (veg) => cfg.market.priceBySeason[veg]?.[g.season()] ?? 1;
   /** 今の季節の仕入れ値（円）。旬は安い。 */
-  g.vegCost = (veg) => Math.round((cfg.vegetables[veg].cost * seasonFactor(veg)) / 10) * 10;
+  g.vegCost = (veg) => Math.round((cfg.vegetables[veg].cost * g.marketFactor(veg)) / 10) * 10; // 季節 × 日ごとの相場（段階D: business.js）
   /** 今の季節の品質（食感に掛ける）。旬は高い。 */
   g.vegQuality = (veg) => { const [lo, hi] = cfg.market.qualityRange; return Math.min(hi, Math.max(lo, 2 - seasonFactor(veg))); };
   g.inSeason = (veg) => seasonFactor(veg) < 1;
@@ -218,9 +220,12 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.standardCount = (pickle) => cfg.pickles[pickle]?.portions ?? cfg.sales.portionsPerBatch;
   /** 仕込みの費用（円）。count を選ぶと、野菜と塩の代金は標準の個数に対する比で増減する（調味は樽ごとに1回）。 */
   g.brewCost = ({ veg, saltPct, additives = [], count, pickle }) => {
-    const base = g.vegCost(veg) + Math.round(saltPct * cfg.sales.saltCostPerPct);
     const std = g.standardCount(pickle);
-    const scaled = count && count !== std ? Math.round((base * count) / std / 10) * 10 : base;
+    const n = count ?? std;
+    const fromStock = g.useStock(veg, n, true).used; // 仕入れてある分は野菜代がかからない
+    const vegPart = g.vegCost(veg), saltPart = Math.round(saltPct * cfg.sales.saltCostPerPct);
+    const scaled = fromStock ? Math.round((vegPart * (n - fromStock) + saltPart * n) / std / 10) * 10
+      : n !== std ? Math.round(((vegPart + saltPart) * n) / std / 10) * 10 : vegPart + saltPart;
     return scaled + additives.reduce((s, a) => s + (cfg.additives[a]?.cost ?? 0), 0);
   };
 
@@ -268,6 +273,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const v = cfg.vegetables[veg], p = cfg.pickles[pickle];
     if (!v || !p) return { ok: false, error: '野菜か漬物が不正です' };
     if (!p.vegetables.includes(veg)) return { ok: false, error: `${p.name}に${v.name}は使えません` };
+    if (!g.vegAvailable(veg)) return { ok: false, error: `${v.name}は${v.contract.farmer}と契約すると仕入れられます` };
     const can = g.canBrew(pickle);
     if (!can.ok) return can;
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
@@ -281,7 +287,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
       g.nuka.water = Math.min(1, (g.nuka.water ?? 0) + cfg.nuka.waterPerBatch * (count / g.standardCount(pickle))); // 野菜から水が出る
     }
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality: g.vegQuality(veg), startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
+    const st = g.useStock(veg, count); // 在庫を古い順に使う（鮮度が品質に響く）。足りない分は今日の相場で買う
+    const quality = g.vegQuality(veg) * ((st.used * st.quality + (count - st.used)) / count);
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -291,7 +299,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     for (let i = 0; i < ticks; i++) {
       if (g.claim) { const r = g.respondClaim('ignore'); g.events.push({ type: 'claimIgnored', line: r.line, rep: r.rep }); } // 対応しないまま時間が進んだ
       g.tick++;
-      if (g.tick % cal.ticksPerDay === 0) g.weather = pickWeather();
+      if (g.tick % cal.ticksPerDay === 0) { g.weather = pickWeather(); g.newDay(); } // 朝: 天気・維持費・従業員の仕事（business.js）
       // 白い膜は、放っておくと少しずつ広がる（手入れで取れる）
       for (const b of g.barrels) {
         if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * dt);
@@ -390,7 +398,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const season = g.season();
     const rep = cfg.reputation;
     const visitP = cfg.visit.base * cfg.visit.weather[g.weather] * cfg.visit.time[g.timeOfDay()]
-      * (rep.visitMin + (rep.visitMax - rep.visitMin) * (g.reputation / 100)); // 評判が高いほど客が来る
+      * (rep.visitMin + (rep.visitMax - rep.visitMin) * (g.reputation / 100)) // 評判が高いほど客が来る
+      * (g.event()?.visitors ?? 1) * g.staffMult('visitors'); // 行事の特需・看板店員（段階D）
+    const ev = g.event();
+    const priceMult = (ev?.price ?? 1) * agingFactor(cfg.pickles[b.pickle], taste.ratio); // 行事の値段・寝かせた値打ち
     // 名前のない客がランダムに来る。来た客の好みのタイプもランダム
     const rc0 = cfg.regulars;
     const coming = [];
@@ -423,7 +434,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     };
     for (const [ci, { c, regular }] of coming.entries()) {
       if (ci === claimAt) visitors.push(claimVisitor());
-      const sat = Math.max(0, satisfaction(taste, b.pickle, c, season, cfg) - (soured ? cfg.claimer.moodPenalty : 0));
+      // 年代（常連は決まった年代。ほかは今年の割合で）と減塩の流れで、好む塩味がずれる
+      const age = regular?.age ?? (() => { let r = hash01(g.seed, g.tick, ci, 'age'); for (const [k, v] of Object.entries(g.ageShares())) { r -= v; if (r < 0) return k; } return 'middle'; })();
+      const likeEv = ev?.likes?.includes(b.pickle) ? cfg.sales.likeBonus : 0; // 行事で人気の漬物
+      const sat = Math.min(100, Math.max(0, satisfaction(taste, b.pickle, g.customerFor(c, age), season, cfg) + likeEv - (soured ? cfg.claimer.moodPenalty : 0)));
       const reg = regular ? { id: regular.id, look: regular.look, visits: regular.visits + 1 } : null;
       if (spoiled) {
         visitors.push({ customer: c, regular: reg, sat: 0, price: 0, bought: false, reaction: { key: 'rotten', line: ['うっ、傷んでるよ！', 'これは食べられないよ…', 'すっぱい匂いがする…'][Math.floor(rng() * 3)] } });
@@ -433,14 +447,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
         visitors.push({ customer: c, regular: reg, sat, price: 0, bought: false, soldOut: true, reaction: { key: 'soldout', line: '売り切れかぁ' } });
         continue;
       }
-      const base = priceFor(sat, b.pickle, cfg);
+      const base = Math.round((priceFor(sat, b.pickle, cfg) * priceMult) / 10) * 10;
       const unit = regular && base > 0 ? Math.round(base * (1 + rc0.tip)) : base;
       const bought = unit > 0;
       // 気に入るほどたくさん買う（1〜maxBuy 個。残りの数まで）
       const qty = bought ? Math.min(b.portions, 1 + Math.max(0, Math.floor((sat - cfg.sales.buyThreshold) / cfg.sales.buyStep)), cfg.sales.maxBuy) : 0;
       const price = unit * qty;
       if (bought) { b.portions -= qty; revenue += price; sold += qty; }
-      visitors.push({ customer: c, regular: reg, sat, price, unit, qty, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
+      visitors.push({ customer: c, age, regular: reg, sat, price, unit, qty, bought, reaction: reactionOf(taste, b.pickle, c, sat, season, cfg, Math.floor(rng() * 3)) });
     }
     if (claimAt === coming.length) visitors.push(claimVisitor());
     g.money += revenue;
@@ -475,8 +489,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (discovery && top >= pg.successSat && !b.succeeded) {
       b.succeeded = true;
       const rec = g.recipes[b.pickle] ?? (g.recipes[b.pickle] = { via: 'start', day: g.day(), made: 0 });
-      rec.made++;
-      if (rec.made === 1) { learned = b.pickle; g.events.push({ type: 'learned', pickle: b.pickle }); g.addXp(pg.xpFirstSuccess); }
+      const first = !rec.made;
+      rec.made += g.staffMult('mastery'); // 職人の弟子がいると腕前の伸びが2倍
+      if (first) { learned = b.pickle; g.events.push({ type: 'learned', pickle: b.pickle }); g.addXp(pg.xpFirstSuccess); }
     }
     // 常連: 来た常連は回数を数え、不満が続くと離れる。とても満足した客はときどき常連になる
     for (const v of visitors) {
@@ -485,9 +500,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       if (r) {
         r.visits++;
         r.misses = spoiled || v.sat < rc0.leaveSat ? r.misses + 1 : 0;
+        if (!spoiled && v.sat >= cfg.bond.sat) { const st = g.deepenBond(r); if (st) v.regular.story = st; } // 絆と物語（business.js）
         if (r.misses >= rc0.leaveAfter) { g.regulars = g.regulars.filter((x) => x !== r); v.regular.left = true; }
       } else if (!spoiled && v.bought && v.sat >= rc0.joinSat && g.regulars.length < rc0.max && rng() < rc0.joinChance) {
-        const nr = { id: g.nextRegularId++, type: v.customer.id, look: Math.floor(rng() * 1e9), visits: 1, misses: 0, since: g.day() };
+        const id = g.nextRegularId++;
+        const nr = { id, type: v.customer.id, look: Math.floor(rng() * 1e9), visits: 1, misses: 0, since: g.day(), name: g.regularName(id), age: v.age ?? 'middle', bond: 0, chapters: [] };
         g.regulars.push(nr);
         v.regular = { id: nr.id, look: nr.look, visits: 1, joined: true };
       }
@@ -500,7 +517,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, claimer: g.claimer, claim: g.claim,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -545,6 +562,13 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.events = [];
     const k = s.claimer;
     g.claimer = k && Number.isFinite(k.nerve) ? { ...g.claimer, ...k, nerve: Math.min(cfg.claimer.maxNerve, Math.max(0, k.nerve)) } : { ...g.claimer };
+    // 段階D: 在庫・従業員・契約・相場の種
+    if (Number.isFinite(s.seed)) g.seed = s.seed;
+    g.stock = {};
+    if (s.stock && typeof s.stock === 'object') for (const [veg, lots] of Object.entries(s.stock)) if (cfg.vegetables[veg] && Array.isArray(lots)) g.stock[veg] = lots.filter((l) => l && Number.isInteger(l.n) && l.n > 0 && Number.isFinite(l.day)).map((l) => ({ n: l.n, day: l.day }));
+    g.staff = Array.isArray(s.staff) ? s.staff.filter((id) => g.staffDef(id)) : [];
+    g.contracts = Array.isArray(s.contracts) ? s.contracts.filter((v) => cfg.vegetables[v]?.contract) : [];
+    for (const r of g.regulars) { r.name ??= g.regularName(r.id); r.age ??= 'middle'; r.bond ??= 0; r.chapters ??= []; }
     g.claim = s.claim && Array.isArray(s.claim.lines) && Number.isInteger(s.claim.slot) ? { ...s.claim } : null;
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;

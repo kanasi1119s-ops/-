@@ -110,7 +110,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 .msgbox .who { display: inline-block; font: 400 14px/1 var(--brush); background: var(--shu); color: var(--washi); padding: 4px 6px; margin-right: 8px; vertical-align: 2px }
 .msgbox .hint { color: var(--sumi-dim) }
 @keyframes blink { 50% { opacity: 0 } }
-.commands { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px }
+.commands { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px }
 /* 木札 */
 .cmd { position: relative; background: linear-gradient(var(--ki-hi), var(--ki) 30%, var(--ki) 80%, var(--ki-lo)); color: var(--sumi);
   border: 2px solid var(--kogecha); box-shadow: 3px 3px 0 var(--shadow); padding: 8px 4px 7px; font: 400 19px/1.1 var(--brush) }
@@ -251,3 +251,5 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
 .idea p { margin: 0 }
 .idea .panel { text-align: left }
 .panel.claim .bubble { margin: 4px 0; font: 400 18px/1.5 var(--brush); color: var(--sumi) }
+.hud .ev { font: 400 13px/1 var(--brush); background: var(--shu); color: var(--washi); padding: 4px 6px }
+details summary { cursor: pointer; color: var(--sumi); font-size: 14px }

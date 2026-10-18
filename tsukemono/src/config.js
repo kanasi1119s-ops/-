@@ -101,6 +101,14 @@ export const CONFIG = {
       spoilMult: 1.1, // 【仮置き】
       cost: 300, // 【仮置き】
     },
+    akakabu: {
+      name: '赤かぶ',
+      fermentRate: 1.1, // 【仮置き】かぶと同じくらい
+      crisp0: 88, crispTau: 14, // 【仮置き】
+      spoilMult: 1.1, // 【仮置き】
+      cost: 400, // 【仮置き】
+      contract: { cost: 3000, level: 2, farmer: '山あいの赤かぶ農家' }, // 【仮置き】契約しないと仕入れられない（段階D「新しい野菜」）
+    },
     ninjin: {
       name: 'にんじん',
       fermentRate: 0.8, // 【仮置き】かたく、ゆっくり漬かる
@@ -158,10 +166,30 @@ export const CONFIG = {
       kabu: { spring: 1.0, summer: 1.3, autumn: 0.8, winter: 0.8 }, // 秋〜冬
       ninjin: { spring: 1.0, summer: 1.2, autumn: 0.8, winter: 0.9 }, // 秋〜冬
       kyabetsu: { spring: 0.7, summer: 1.0, autumn: 1.1, winter: 1.0 }, // 春キャベツ
+      akakabu: { spring: 1.1, summer: 1.4, autumn: 0.8, winter: 0.8 }, // 秋〜冬
     },
     // 品質（食感の初期値に掛ける）＝ 2 − 価格の倍率 を、この範囲に収める 【仮置き】
     qualityRange: [0.85, 1.15],
+    // 段階D: 毎日の相場。季節の倍率に、日ごとの揺れと特売をかける 【仮置き】
+    dailyNoise: 0.15, // ±15%
+    saleChance: 0.25, // 1日に1つの野菜が特売になる確率
+    saleFactor: 0.6, // 特売は4割引き
   },
+  // 仕入れた野菜の在庫（段階D）。置いておくと鮮度が落ち、やがて捨てることになる 【仮置き】
+  stock: {
+    freshDays: 2, // この日数までは採れたて
+    decayPerDay: 0.05, // それを過ぎると、1日ごとに品質−5%
+    spoilDays: 7, // この日数を過ぎた野菜は傷んで捨てる
+  },
+  // 店の維持費（毎朝払う）。光熱費・樽の手入れ・町内会費など 【仮置き】
+  upkeep: { base: 150, perBarrel: 40 },
+  // 客の年代と減塩の流れ（data/stories.js の AGES）【仮置き】
+  trend: { saltPerYear: -2, saltMin: -8 }, // 1年ごとに、みんなの好む塩味が −2（減塩志向。−8まで）
+  // 常連との絆と物語（data/stories.js）【仮置き】
+  bond: { sat: 75, storyRep: 2, prefAfter: 3 }, // この満足度以上で絆+1、章が開くと評判+2、3回来ると好みを覚える
+  // 行商人（作り方を売りに来る）【仮置き】
+  peddler: { every: 7, onDay: 4, pricePerLevel: 2500 }, // 7日に1度（4日目・11日目…）来る。値段 = 2500 × 挑むレベル
+
   // 評判: 満足度で上下し、来店の多さに効く 【仮置き】
   reputation: {
     start: 50,

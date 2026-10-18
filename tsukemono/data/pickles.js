@@ -23,6 +23,7 @@
 //                   line  : ひらめいたときの一言
 //   needs       : 仕込むのに要る設備（data/facilities.js の id の配列）
 //   praise      : お客のほめ言葉（なくてもよい。満足したお客がときどき言う）
+//   aging       : 寝かせると値打ちが上がる（段階D）。{ from, full, max }: 進み/ripeAt が from から full まで寝かせると、売り値が最大 ×(1+max)
 //   affinity    : 調味との相性（good / bad。書いてなければふつう）
 //   そのほか    : portions（標準の個数）、usesNukaBed（ぬか床を使う）、saltUptake、acidHalfProgress、film（白い膜が出る）、top（樽の中身の絵）
 
@@ -30,7 +31,7 @@ export const PICKLES = [
   {
     id: 'asazuke',
     name: '浅漬け',
-    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin'],
+    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu'],
     steps: ['野菜を切る', '塩をまぶして重石をする', '冷暗所で半日〜1日'],
     saltHint: '2〜3%', // 【出典】
     salt: { lo: 2, hi: 3 }, // 【出典】
@@ -65,7 +66,7 @@ export const PICKLES = [
   {
     id: 'nukazuke',
     name: 'ぬか漬け',
-    vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon', 'kabu', 'ninjin'],
+    vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon', 'kabu', 'ninjin', 'akakabu'],
     steps: ['野菜に塩をすり込む', 'ぬか床に埋める', '20〜25℃で一晩〜1日', '毎日かき混ぜる'],
     usesNukaBed: true, // 塩分はぬか床の塩分を使う（仕込みで塩分は選ばない）
     saltHint: 'ぬか床の塩分',
@@ -101,6 +102,7 @@ export const PICKLES = [
     top: 'takuan', // 樽の中身の絵（黄色）
     level: 1,
     unlock: null,
+    aging: { from: 1.3, full: 3, max: 0.5 }, // 【仮置き】寝かせるほど高く売れる
     affinity: { zarame: 'good', togarashi: 'good', kombu: 'good', yuzu: 'bad', sakekasu: 'good', akajiso: 'bad' },
   },
   {
@@ -191,6 +193,7 @@ export const PICKLES = [
       line: '酸っぱくなりすぎた…。捨てようとしたら、どこからか「刻んで生姜と和えなされ」という声が。…うまい！',
     },
     praise: ['この酸っぱさ、ばあちゃんの味だ…', '刻んで生姜で…わかってるねぇ', '捨てなくてよかったねぇ'],
+    aging: { from: 1.5, full: 4, max: 0.3 }, // 【仮置き】寝かせるほど高く売れる
     affinity: { shoga: 'good', togarashi: 'good', kombu: 'good', zarame: 'bad', yuzu: 'bad' },
   },
   {
@@ -215,6 +218,7 @@ export const PICKLES = [
       line: '樽を開けたら、ふわっと酒の香り…（ちょっと酔った）。これは大人の漬物だ！',
     },
     praise: ['これは晩酌が進んじゃう', 'ふわっと酒の香り…（運転はしません）', '大人の味だねぇ'],
+    aging: { from: 1.2, full: 3, max: 0.6 }, // 【仮置き】寝かせるほど高く売れる
     affinity: { sakekasu: 'good', zarame: 'good', kombu: 'good', yuzu: 'bad', akajiso: 'bad' },
   },
 ];

@@ -1,5 +1,5 @@
 # 新しい野菜の樽の中身の絵を、似た野菜の絵の色を変えて作る（仮置き。あとでエディタで描き直せる）
-#   かぶ ← 大根（白に少し紫）、にんじん ← たくあん（黄色をオレンジに）、キャベツ ← 白菜（白を薄い黄緑に）
+#   かぶ ← 大根（白に少し紫）、にんじん ← たくあん（黄色をオレンジに）、キャベツ ← 白菜（白を薄い黄緑に）、赤かぶ ← 大根（白を赤紫に）
 import os, colorsys
 import numpy as np
 from PIL import Image
@@ -41,4 +41,13 @@ def kyabetsu(h, l, s):  # 白 → 薄い黄緑、緑は明るく
 recolor('daikon', 'kabu', kabu)
 recolor('takuan', 'ninjin', ninjin)
 recolor('hakusai', 'kyabetsu', kyabetsu)
+
+
+def akakabu(h, l, s):  # 白い身を赤紫に（赤かぶ）
+    if s < 0.25 and l > 0.5:
+        return 335 / 360, l * 0.62, 0.55
+    return h / 360, l, s
+
+
+recolor('daikon', 'akakabu', akakabu)
 print('ok')
