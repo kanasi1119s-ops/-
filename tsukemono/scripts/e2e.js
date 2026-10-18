@@ -185,6 +185,7 @@ try {
   await page.click('[data-act="exportSave"]');
   const exported = await G(() => window.__lastExport);
   check('セーブをファイルに書き出せる（版番号つき）', !!exported && JSON.parse(exported).v === 2);
+  check('ファイルが使えない所でも、セーブの文字をコピーできる', (await page.inputValue('#winBody textarea')) === exported);
   await page.click('#winClose');
   const edited = JSON.parse(exported); edited.game.money = 123456;
   await Promise.all([page.waitForEvent('load'), page.evaluate((t) => window.__game.importSaveText(t), JSON.stringify(edited)).catch(() => {})]);

@@ -290,6 +290,19 @@ WINS.wisdom = ({ e }) => ({
     <div class="row end"><button class="btn main" data-act="closeWin">ありがとうございます</button></div>`,
 });
 
+// セーブの書き出し・読みこみ（ファイルが使えない所でも、文字のコピーと貼り付けでできる）
+WINS.saveText = ({ text }) => ({
+  title: text ? 'セーブを書き出す' : 'セーブを読みこむ',
+  body: text
+    ? `<div class="hint">ファイル（tsukemono-save-○日目.json）に書き出した。ファイルが保存できない所では、下の文字をコピーして取っておく。</div>
+      <textarea readonly rows="6" style="width:100%;font-size:12px">${esc(text)}</textarea>
+      <div class="row end"><button class="btn" data-act="copySave">文字をコピー</button><button class="btn main" data-act="closeWin">閉じる</button></div>`
+    : `<div class="hint">書き出したファイルを選ぶか、セーブの文字を貼り付けて読みこむ。今の店は、読みこんだセーブに置きかわる（読めないセーブなら、今の店はそのまま）。</div>
+      <div class="row"><button class="btn" data-act="pickFile">ファイルを選ぶ</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>
+      <textarea id="saveInput" rows="6" style="width:100%;font-size:12px" placeholder="ここにセーブの文字を貼り付け"></textarea>
+      <div class="row end"><button class="btn main" data-act="pasteSave">貼り付けた文字から読みこむ</button></div>`,
+});
+
 // 常連の物語
 WINS.story = ({ e }) => ({
   title: `${e.name}の話`,
@@ -719,7 +732,7 @@ WINS.settings = () => {
       <div class="row">${sel('dSeason', SEASONS, Object.fromEntries(SEASONS.map((s) => [s, C.season[s].name])), o.season)} ${sel('dTime', TIMES, C.timeName, o.time)} ${sel('dWeather', WEATHERS, C.weatherName, o.weather)}</div>
       <div class="row"><button class="btn ghost" data-act="ambient">通りがかりの客を呼ぶ</button>${globalThis.TSUKEMONO_IMAGES ? '' : '<a class="hint" href="explorer.html" target="_blank" rel="noopener">味の確認表</a>'}</div></div>
     <div class="sec"><h3>データ</h3><div class="hint">自動で保存しています（このブラウザの中だけ）。ファイルに書き出しておくと、別の端末や、ブラウザのデータを消したあとでも続きから遊べる。</div>
-      <div class="row"><button class="btn" data-act="exportSave">ファイルに書き出す</button><button class="btn" data-act="importSave">ファイルから読みこむ</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>
+      <div class="row"><button class="btn" data-act="exportSave">ファイルに書き出す</button><button class="btn" data-act="importSave">ファイルから読みこむ</button></div>
       <div class="row"><button class="btn ghost" data-act="reset">${ui.confirm === 'reset' ? '本当に消して最初から' : '最初からやり直す'}</button></div></div>`,
   };
 };
@@ -987,12 +1000,15 @@ document.addEventListener('click', (e) => {
       a.download = `tsukemono-save-${game.day()}日目.json`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      say(`${game.day()}日目のセーブをファイルに書き出した。`, '店主');
-    } catch { say('ファイルに書き出せなかった。'); }
+    } catch { /* ファイルを保存できない所（埋めこみ表示など）では、下の文字のコピーで書き出す */ }
     window.__lastExport = text; // 動作確認用
+    openWin('saveText', { text });
     return;
   }
-  if (act === 'importSave') { $('importFile')?.click(); return; }
+  if (act === 'copySave') { try { navigator.clipboard?.writeText(ui.win?.text ?? ''); say('セーブの文字をコピーした。メモなどに貼って取っておこう。', '店主'); } catch { say('コピーできなかった。文字を選んでコピーしてください。'); } return; }
+  if (act === 'pasteSave') { const t = $('saveInput')?.value ?? ''; if (t.trim()) importSaveText(t); return; }
+  if (act === 'importSave') { openWin('saveText', { text: null }); return; }
+  if (act === 'pickFile') { $('importFile')?.click(); return; }
   if (act === 'sagaNext') { sound.se('select'); ui.win.step++; renderWin(); return; }
   if (act === 'openMarket') { openWin('market'); return; }
   if (act === 'buyRecipe') { const r = game.buyRecipe(); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; closeWin(); return; }
