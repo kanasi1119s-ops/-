@@ -64,22 +64,32 @@ class Art:
             elif not o[3] or o[:3] != tuple(c): res.append({'x': x, 'y': y, 'color': hexc(c)})
         return {'from': self.src, 'touch': res}
 
-def glasses(a, near, far):
-    """丸い眼鏡。near/far = (x0, x1, y0, y1)（目のまわりのレンズの内側）"""
-    F = '#3a2a22'
-    for x0, x1, y0, y1 in (near, far):
-        for x in range(x0, x1 + 1): a.put(x, y0 - 1, F); a.put(x, y1 + 1, F)
-        for y in range(y0, y1 + 1): a.put(x0 - 1, y, F); a.put(x1 + 1, y, F)
-    for x in range(near[1] + 2, far[0] - 1): a.put(x, near[2] + 1, F)  # ブリッジ
+def glasses(a, near, far, bridge_y, temple):
+    """丸い眼鏡。near / far = レンズのふちの外側 (x0, y0, x1, y1)。手前のレンズは広く、奥は細い（斜めから見ているので）。
+    ふちは角を2段落とした丸。細い金属のふちに見えるよう、黒ではなくこげ茶（下のふちは光を受けて少し明るい）。
+    レンズの左上に、肌の色を明るくした光を斜めに2ドット。鼻の上にブリッジ、手前のふちから耳へつる。
+    光とふちの明るい色は、元の絵の色の表から近い色を選ぶ（エディタの色の表は62色まで）"""
+    pal = {a.px[x, y][:3] for y in range(a.H) for x in range(a.W) if a.px[x, y][3]}
+    near_col = lambda t: min(pal, key=lambda c: sum((c[i] - t[i]) ** 2 for i in range(3)))
+    frame, rim, glint = '#4a3024', near_col((122, 82, 62)), near_col((252, 226, 204))
+    for x0, y0, x1, y1 in (near, far):
+        ring = set()
+        for x in range(x0 + 2, x1 - 1): ring |= {(x, y0), (x, y1)}
+        for y in range(y0 + 2, y1 - 1): ring |= {(x0, y), (x1, y)}
+        ring |= {(x0 + 1, y0 + 1), (x1 - 1, y0 + 1), (x0 + 1, y1 - 1), (x1 - 1, y1 - 1)}
+        for x, y in ring: a.put(x, y, rim if y == y1 or (y == y1 - 1 and x in (x0 + 1, x1 - 1)) else frame)
+        a.put(x0 + 3, y0 + 2, glint); a.put(x0 + 2, y0 + 3, glint)  # 斜めの光
+    for x in range(near[2] + 1, far[0]): a.put(x, bridge_y, frame)
+    for x in range(temple, near[0]): a.put(x, (near[1] + near[3]) // 2 - 1, frame)
 
-def baito(pose, eyes, rows):
+def baito(pose, specs, rows):
     a = Art(f'pose_keeper_{pose}')
     head, shirt0, shirt1 = rows
     light = lambda c: hsv(c)[1] < 0.3 and lum(c) > 85 and not SKIN(c)
     a.recolor(lambda x, y, c: light(c), 'orange', (0, 0, a.W - 1, head))  # 手ぬぐい → バンダナ
     a.recolor(lambda x, y, c: light(c), 'yellow', (0, shirt0, a.W - 1, shirt1))  # Tシャツ
     a.recolor(lambda x, y, c: 0.52 < hsv(c)[0] < 0.72 and hsv(c)[1] > 0.2, 'green', (0, shirt0, a.W - 1, a.H - 1))  # 前掛け
-    glasses(a, *eyes)
+    glasses(a, *specs)
     return a
 
 def kanban(pose, crest, band_y, hands):
@@ -106,40 +116,77 @@ def kanban(pose, crest, band_y, hands):
     a.stamp(['.rrr', 'rRrr', 'rr.R', '.r..', '.rR.', '..r.'], x0 - 3, band_y - 1, {'r': '#d23a2c', 'R': '#8f2018'})
     return a
 
-STONE = [  # 重石（K 縁・1〜4 石の明るさ・r 縄・R 縄の陰）
-    '.....KKKKKKKK.....',
-    '...KK44433322KK...',
-    '..K4443333222221K.',
-    '.K44433332222211K.',
-    'K4rrrrrrrrrrrrrr1K',
-    'K3RRRRRRRRRRRRRR1K',
-    'K33332222r221111K.',
-    'K33322222r221111K.',
-    '.K332222rR22111KK.',
-    '.K32222rR2211111K.',
-    '..KK222r221111KK..',
-    '....KKKKKKKKKK....',
-]
-STONE_PAL = {'K': '#2c2a28', '1': '#4a4844', '2': '#6c6a64', '3': '#8e8c84', '4': '#b4b2aa', 'r': '#cda45a', 'R': '#8a6a32'}
+# 重石: 上が少し平らな丸い川石。左上から光が当たる5段の陰（ふちは暗い線）、ところどころに斑点。
+# わらの縄を十文字にかけて、上で結び、結び目から手へ。縄はよじれて見えるよう、明るい・暗いを1ドットずつ互い違いに
+STONE_C = {'K': '#322823', '1': '#45423d', '2': '#5f5b54', '3': '#7c786f', '4': '#9b978d', '5': '#bdb9ae', 's': '#5f5b54',
+           'r': '#d8b060', 'R': '#9a7436', 'o': '#45423d'}  # ふちどりは空手家の絵のふちの色。縄の影・斑点は石の色を使う（エディタの色の表は62色まで）
+
+def stone(a, cx, top, w=20, h=17):
+    rx, ry, cy = w / 2, h / 2, top + h / 2
+    cells = {}
+    for y in range(top, top + h):
+        for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
+            nx, ny = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+            if ny < 0: ny *= 1.12  # 上は少し平ら
+            nx2 = nx * (1.08 if nx > 0 else 1)  # 左右で少しちがう（川石のいびつさ）
+            if abs(nx2) ** 2.15 + abs(ny) ** 2.15 <= 1:
+                nz = max(0.0, 1 - nx * nx - ny * ny) ** 0.5
+                cells[(x, y)] = -0.55 * nx - 0.65 * ny + 0.5 * nz  # 左上からの光
+    for (x, y), v in cells.items():
+        edge = any((x + dx, y + dy) not in cells for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+        c = 'K' if edge else '5' if v > 0.75 else '4' if v > 0.45 else '3' if v > 0.15 else '2' if v > -0.2 else '1'
+        if c in '12345':  # 石の肌のざらつき（まわりの絵と同じように、ドットごとに少しゆらす）
+            r = ((x * 73856093) ^ (y * 19349663)) % 100
+            c = '12345'[min(4, '12345'.index(c) + 1)] if r < 15 else '12345'[max(0, '12345'.index(c) - 1)] if r < 30 else c
+        if not edge and c in '234' and (x * 7 + y * 13) % 17 == 0: c = 's'  # 斑点
+        a.put(x, y, STONE_C[c])
+    # 照り返し: 下のふちのすぐ内側を少し明るく（地面からの光）
+    for (x, y), v in cells.items():
+        if (x, y + 1) not in cells and (x, y - 1) in cells and (x + 1, y) in cells and (x - 1, y) in cells:
+            above = (x, y - 1)
+            if all((above[0] + dx, above[1]) in cells for dx in (-1, 1)): a.put(x, y - 1, STONE_C['3'])
+    # 縄: 1ドットのよじれた縄（明・明・暗のくり返し）を、横に1本（ふくらみに沿って少し下へ曲がる）と、縦に1本
+    twist = lambda i: STONE_C['R' if i % 3 == 2 else 'r']
+    for i, x in enumerate(range(int(cx - rx) + 1, int(cx + rx))):
+        nx = (x + 0.5 - cx) / rx  # 少し上から見ているので、胴まわりの縄は手前（まん中）ほど下がる
+        y = round(cy - 2 + 3 * max(0.0, 1 - nx * nx) ** 0.5)
+        if (x, y) in cells and (x, y + 1) in cells and (x, y - 1) in cells:
+            a.put(x, y, twist(i)); a.put(x, y + 1, STONE_C['o'])  # 縄の下に影
+    vx = round(cx)
+    for i, y in enumerate(range(top + 1, top + h - 1)):
+        if (vx, y) in cells and (vx + 1, y) in cells and (vx - 1, y) in cells:
+            a.put(vx, y, twist(i)); a.put(vx + 1, y, STONE_C['o'])
+    # 結び目（石のてっぺん）
+    for j, row in enumerate(['.r.', 'rRr', '.R.']):
+        for i, ch in enumerate(row):
+            if ch != '.': a.put(vx - 1 + i, top - 1 + j, STONE_C[ch])
 
 def deshi(pose, bag_box, hand, stone_at, keep):
     a = Art(f'pose_karate_{pose}')
     gi = lambda c: hsv(c)[1] < 0.25 and lum(c) > 105
-    a.erase(lambda x, y, c: not (SKIN(c) and y < hand[1] + 5) and not (gi(c) and keep(x, y)), bag_box)  # かご・袋を消す（手と道着は残す。かごの色は肌に近いので、手の高さより下は消す）
+    wicker = lambda c: 0.1 < hsv(c)[0] < 0.18 and hsv(c)[1] > 0.3
+    a.erase(lambda x, y, c: not (SKIN(c) and not wicker(c) and y < hand[1] + 5 and hand[0] - 10 < x < hand[0] + 16) and not (gi(c) and keep(x, y)), bag_box)
+    x0, y0, x1, y1 = bag_box  # 消したあとに、ぽつんと残ったドットも消す
+    for y in range(max(0, y0), min(a.H - 1, y1) + 1):
+        for x in range(max(0, x0), min(a.W - 1, x1) + 1):
+            if a.get(x, y) and not any(0 <= x + dx < a.W and 0 <= y + dy < a.H and a.get(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                a.out[(x, y)] = None  # かご・袋を消す（手と道着は残す。かごの色は肌に近いので、手の高さより下は消す）
     a.recolor(lambda x, y, c: gi(c) and (x, y) not in a.out, 'indigo', (0, 34, a.W - 1, a.H - 1))  # 道着 → 作務衣
     sx, sy = stone_at
     hx, hy = hand
-    for y in range(hy, sy + 1): a.put(hx, y, '#cda45a'); a.put(hx + 1, y, '#8a6a32')  # 縄（手から石へ）
-    a.stamp(STONE, sx - 9 + (hx - sx), sy, STONE_PAL)
+    for i, y in enumerate(range(hy, sy - 1)):  # 縄（手から結び目へ。1ドットのよじれた縄）
+        a.put(hx + 1, y, STONE_C['R' if i % 3 == 2 else 'r'])
+    stone(a, hx + 1, sy)
     return a
 
 if __name__ == '__main__':
     d = {}
-    # アルバイト: 目のまわり（レンズの内側）は 手前 (x0,x1,y0,y1)・奥。rows = (頭の下の行, Tシャツの上, Tシャツの下)
-    for pose, eyes, rows in [(0, ((21, 28, 20, 24), (33, 39, 20, 24)), (36, 38, 80)),
-                             (1, ((28, 34, 18, 22), (41, 47, 18, 22)), (34, 36, 80)),
-                             (2, ((34, 41, 22, 26), (48, 54, 22, 26)), (28, 30, 74))]:
-        d[f'staff_baito_{pose}'] = baito(pose, eyes, rows).touch()
+    # アルバイト: 眼鏡 = (手前のレンズ, 奥のレンズ, ブリッジの行, つるの左端)。レンズはふちの外側 (x0, y0, x1, y1)。目の位置は元の絵で確かめた
+    # rows = (頭の下の行, Tシャツの上, Tシャツの下)
+    for pose, specs, rows in [(0, ((19, 17, 28, 24), (32, 17, 38, 24), 20, 17), (36, 38, 80)),
+                              (1, ((28, 17, 37, 24), (41, 17, 47, 24), 20, 25), (34, 36, 80)),
+                              (2, ((35, 20, 44, 27), (48, 20, 54, 27), 23, 33), (28, 30, 74))]:
+        d[f'staff_baito_{pose}'] = baito(pose, specs, rows).touch()
     for pose, crest, hands in [(2, (27, 52), [(0, 40, 10, 56), (10, 45, 30, 62), (32, 36, 60, 58)]), (3, (24, 52), [(0, 40, 9, 56), (10, 52, 30, 70), (34, 42, 62, 60)])]:
         d[f'staff_kanban_{pose}'] = kanban(pose, crest, 13, hands).touch()
     # 弟子: 3 はかごを腕に掛けている（取っ手の上に手）、7 は袋を差し出している

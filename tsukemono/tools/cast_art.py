@@ -4,13 +4,26 @@
 #   エディタのえんぴつで、まっさらなキャンバスに1ドットずつ描いて書き出す（assets/img/baron_<番号>.png・tama_<番号>.png）
 # 漬物男爵: 背広の紳士（pose_suit_0〜3）を、シルクハットが入るように上を HAT ドット広げたキャンバスに写し、
 #   背中に裏地の赤い黒マント（かごと肩掛けかばんはマントの下）、シルクハット、白いカイゼルひげを描き足す
-# タマ殿: まっさらなキャンバスに描く。白に灰色のしま模様、赤い首輪に金の鈴。座る（目を開ける・まばたき）と、丸くなって寝る
+# タマ殿: まっさらなキャンバスに描く。灰色のさばとらに白い胸と足先、赤い首輪に金の鈴。座る（目を開ける・まばたき・しっぽの先を動かす）と、丸くなって寝る
 import json, os
 from PIL import Image
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 HAT = 22  # 男爵のキャンバスを上に広げる行数（シルクハットの分）
 hexc = lambda c: '#%02x%02x%02x' % tuple(c[:3])
 rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+def grain(x, y, seed=0):
+    """ドットごとの決まった乱数（0〜99）。元の人物の絵は、となり合うドットの半分以上が少しずつ違う色（絵の具のような手ざわり）。
+    描き足すところも、塗りの中のドットをこれで1段明るく・暗くゆらして、まわりの絵になじませる"""
+    return ((x * 73856093) ^ (y * 19349663) ^ (seed * 83492791)) % 100
+
+def jitter(ramp, c, x, y, rate, seed=0):
+    """ramp（暗い→明るい）の中の色 c を、rate% の確率で1段上か下へ"""
+    if c not in ramp: return c
+    r, i = grain(x, y, seed), ramp.index(c)
+    if r < rate / 2: i = min(len(ramp) - 1, i + 1)
+    elif r < rate: i = max(0, i - 1)
+    return ramp[i]
 
 def inside(poly, x, y):
     """多角形の中か（ドットの中心で判定）"""
@@ -24,46 +37,130 @@ def canvas_touch(px, W, H):
     return [{'x': x, 'y': y, 'color': hexc(px[(x, y)])} for y in range(H) for x in range(W) if (x, y) in px]
 
 # ---------------------------------------------------------------- 漬物男爵
-CAPE = {'K': '#0c0a10', 'd': '#16121c', 'm': '#221a2c', 'l': '#30263e', 'r': '#a8202a', 'R': '#d23a3c'}
-HATC = {'K': '#0c0a10', 'm': '#1c1a22', 'l': '#3a3644', 'b': '#9a1c22'}
-MUSTACHE = ['K...............K', 'WK.............KW', 'WWK..KKK.KKK..KWW', '.WWKKWWWKWWWKKWW.', '..WWWWWW.WWWWWW..', '....KKKK.KKKK....']
-MPAL = {'K': '#4a4a52', 'W': '#d4d4dc'}
+DARK = ['#0a080e', '#14121a', '#1e1b26', '#2c2836', '#45404f', '#6e6878']  # マントとシルクハットで共通の黒（暗い → つや）
+CAPE = {'K': DARK[0], 'r': '#a8202a', 'R': '#d23a3c'}
+MUSTACHE = ['....wWWWWWw....', 'W..wWWWWWWWw..W', 'WwWWWWWkWWWWWwW', '.wWWWw...wWWWw.', '..ww.......ww..']  # カイゼルひげ: 鼻の下で厚く（まん中に分け目）、外へ細くなり、先はくるりと上へ
+MPAL = {'W': '#e4e4ea', 'w': '#a6a6b0', 'k': '#7a6a66'}  # カイゼルひげ（明・中・下の影）
 
-def baron(pose, cape, head, mouth):
+def baron(pose, cape, mouth):
     im = Image.open(os.path.join(ROOT, 'assets/img', f'pose_suit_{pose}.png')).convert('RGBA')
     W, H0 = im.size; H = H0 + HAT
+    # 頭のてっぺんの中心: 元の絵の髪の、上から5〜8行目の左右のはしの真ん中（ポーズで頭の位置が違うので、絵から測る）
+    hy = min(y for y in range(H0) for x in range(W) if im.getpixel((x, y))[3])
+    spans = [[x for x in range(W) if im.getpixel((x, y))[3]] for y in range(hy + 5, hy + 9)]
+    hx = round(sum((min(r) + max(r)) / 2 for r in spans) / len(spans))
+    head = (hx, hy)
+    # その絵のふちどりでいちばん多い暗い色（描き足すふちどりにもまぜて、なじませる）
+    from collections import Counter
+    rim = Counter(im.getpixel((x, y))[:3] for y in range(H0) for x in range(W) if im.getpixel((x, y))[3]
+                  and any(not (0 <= x + dx < W and 0 <= y + dy < H0) or not im.getpixel((x + dx, y + dy))[3] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))))
+    suit_k = hexc(rim.most_common(1)[0][0])
     px = {(x, y + HAT): im.getpixel((x, y))[:3] for y in range(H0) for x in range(W) if im.getpixel((x, y))[3]}
     put = lambda x, y, c: px.__setitem__((x, y), rgb(c)) if 0 <= x < W and 0 <= y < H else None
-    # マント: 背中側（左）を多角形でおおう。たたみじわ（縦のすじ）、ふちは黒、内側のふちに赤い裏地
+    # マント: 背中側（左）を多角形でおおう。肩から下へ広がるひだ（ひとつずつ、光の当たる左の面と影の右の面）、
+    # ひだの山にうっすら紫のつや。すそはひだの谷で少し上がって波打ち、ひだの山のすそに赤い裏地がのぞく。前のふちは赤い裏地
+    import math
     poly = [(x, y + HAT) for x, y in cape]
     cells = {(x, y) for y in range(H) for x in range(W) if inside(poly, x, y)}
-    for x, y in cells:
-        edge_out = any((x + dx, y + dy) not in cells and (x + dx, y + dy) not in px for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-        inner = (x + 1, y) not in cells or (x + 2, y) not in cells
-        if edge_out and not inner: c = CAPE['K']
-        elif inner: c = CAPE['R'] if (x + 1, y) not in cells and y % 7 < 4 else CAPE['r']
-        elif y >= max(yy for xx, yy in cells if xx == x) - 1: c = CAPE['K']  # すそ
-        else: c = CAPE['d'] if x % 6 == 0 else CAPE['l'] if x % 6 == 2 and y % 3 else CAPE['m']
+    ys = [y for _, y in cells]; ytop, ybot = min(ys), max(ys)
+    rows = {y: sorted(x for x, yy in cells if yy == y) for y in range(ytop, ybot + 1)}
+    phase = {}
+    for (x, y) in cells:
+        r = rows[y]; t = (y - ytop) / max(1, ybot - ytop)
+        folds = 2 + 2.2 * t  # 下へいくほどひだが増える（広がる）
+        phase[(x, y)] = (x - r[0]) / max(1, r[-1] - r[0] + 1) * folds
+    # すその波: ひだの谷（phase の小数部が 0.5 のあたり）でもち上がる
+    for x in {x for x, _ in cells}:
+        col = [y for xx, y in cells if xx == x]
+        yb = max(col); ph = phase[(x, yb)] % 1
+        lift = round(2 * max(0.0, 1 - abs(ph - 0.5) * 4))
+        for k in range(lift): cells.discard((x, yb - k))
+    shade = DARK  # 暗い → つや
+    for (x, y) in cells:
+        ph = phase[(x, y)] % 1
+        face = math.cos(ph * 2 * math.pi)  # 1 = ひだの山（左向きの面が明るい）、-1 = 谷
+        lit = math.sin(ph * 2 * math.pi + 0.6)  # 左の面に光
+        t = (y - ytop) / max(1, ybot - ytop)
+        v = 2.2 + 1.3 * lit + 0.6 * face - 0.8 * t + (0.6 if y - ytop < 6 else 0)  # 肩のあたりは光を受ける
+        c = jitter(shade, shade[max(0, min(5, round(v)))], x, y, 34, 1)  # 布の手ざわり
+        out = [(dx, dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if (x + dx, y + dy) not in cells]
+        inner = (x + 1, y) not in cells
+        if inner: c = CAPE['R'] if (y // 3) % 3 == 0 else CAPE['r']  # 前のふち（赤い裏地）
+        elif (x + 2, y) not in cells: c = CAPE['r']
+        elif out and any(dy == 1 for _, dy in out):  # すそ: ひだの山では裏地がのぞく
+            c = CAPE['r'] if math.cos(ph * 2 * math.pi) > 0.5 else CAPE['K']
+        elif out and (x - 1, y) not in cells and (x - 1, y) not in px: c = CAPE['K'] if grain(x, y, 2) < 50 else suit_k  # ふちどりは元の絵の紺の黒もまぜる
         put(x, y, c)
+    # 首もとの金の留め金
+    hx0, hy0 = head
+    put(hx0 - 4, hy0 + 35 + HAT, '#e8c040'); put(hx0 - 3, hy0 + 35 + HAT, '#a8802a')  # 留め金
     hx, hy = head  # 頭のてっぺんの中心（元の絵の座標）
-    # シルクハット: つば（2行）・赤い帯（3行）・山（14行）。左に光
-    by = hy + 3 + HAT
-    for x in range(hx - 15, hx + 16): put(x, by, HATC['K']); put(x, by + 1, HATC['m'] if hx - 15 < x < hx + 15 else HATC['K'])
-    for y in range(by - 17, by):
-        for x in range(hx - 10, hx + 11):
-            edge = x in (hx - 10, hx + 10) or y == by - 17
-            c = HATC['K'] if edge else HATC['b'] if y >= by - 3 else HATC['l'] if x in (hx - 8, hx - 7) else HATC['m']
+    # シルクハット（絹）: 山は上と下が少し広く、まん中がわずかにくびれる。左に細く強いつや、右寄りにうすいつや、右のふちは暗い。
+    # てっぺんのふちは光を受けて明るい。赤い帯（明・中・暗の3段）と横の蝶結び。つばは両はしが反り上がり、手前のまん中が下がる。
+    # つばの下の髪と額に影を落とす（影の色は元の絵の色から選ぶ）
+    HK, H1, H2, H3, H4, H5 = DARK
+    RB = (CAPE['R'], CAPE['r'], '#5c1018')
+    by = hy + 6 + HAT  # つばは額の上（頭のてっぺんは山の中に入る）
+    pal0 = set(px.values())
+    near = lambda t: min(pal0, key=lambda c: sum((c[i] - t[i]) ** 2 for i in range(3)))
+    for x in range(hx - 13, hx + 14):  # つばの影（つばのすぐ下、2行）
+        for y in (by + 2, by + 3):
+            if (x, y) in px and (y == by + 2 or abs(x - hx) < 10):
+                o = px[(x, y)]; px[(x, y)] = near(tuple(round(v * 0.62) for v in o))
+    for j in range(17):
+        y = by - 17 + j
+        hw = 10 + round(0.9 * ((j - 8) / 8) ** 2)
+        for x in range(hx - hw, hx + hw + 1):
+            u = (x - (hx - hw)) / (2 * hw)
+            if x in (hx - hw, hx + hw): c = HK
+            elif j == 0: c = H4 if u < 0.6 else H3  # てっぺんのふち
+            elif 13 <= j <= 15: c = RB[j - 13] if not (j == 13 and u > 0.7) else RB[1]  # 帯
+            elif abs(u - 0.2) < 0.03: c = H5  # 強いつや
+            elif abs(u - 0.2) < 0.09: c = H4
+            elif abs(u - 0.62) < 0.05: c = H3  # うすいつや
+            elif u > 0.85: c = HK
+            elif u < 0.12: c = H3
+            else: c = jitter(DARK[:4], H2 if u < 0.5 else H1, x, y, 16, 3)  # 絹は布より手ざわりを弱く
+            if c == HK and x in (hx - hw, hx + hw) and grain(x, y, 4) < 40: c = suit_k
+            put(x, y, c)
+    for i, row in enumerate(['RrR', 'rRr', '.R.']):  # 蝶結び（左の横）
+        for k, ch in enumerate(row):
+            if ch != '.': put(hx - 10 + k, by - 4 + i, RB[0] if ch == 'r' else RB[2])
+    for x in range(hx - 15, hx + 16):  # つば
+        d = abs(x - hx)
+        top = by - (1 if d >= 13 else 0)  # 両はしは反り上がる
+        bot = by + (1 if d <= 6 else 0) + (0 if d < 13 else -1) + 1  # 手前のまん中は下がる
+        for y in range(top, bot + 1):
+            c = HK if y == bot else (H4 if y == top and x < hx - 4 else H3 if y == top else H2)
             put(x, y, c)
     # カイゼルひげ（口のすぐ上）
     mx, my = mouth
     for j, row in enumerate(MUSTACHE):
         for i, ch in enumerate(row):
-            if ch != '.': put(mx - 8 + i, my - 4 + j + HAT, MPAL[ch])
+            if ch != '.': put(mx - 7 + i, my - 5 + j + HAT, MPAL[ch])
     return {'size': [W, H], 'touch': canvas_touch(px, W, H)}
 
 # ---------------------------------------------------------------- タマ殿
-TAMA = {'K': '#3a3436', 'W': '#f4f0ea', 'w': '#d8d2c8', 'g': '#8a8a92', 'G': '#5e5e66', 'p': '#e8a0a8', 'E': '#9cc24a', 'k': '#1c1a1a',
-        'H': '#ffffff', 'r': '#c8302a', 'R': '#8a1e1a', 'y': '#e8c040', 'Y': '#a8802a', 'h': '#6a6468'}
+# 猫のドット絵の描き方（調べたこと）に合わせて描く:
+#   形（シルエット）から。耳は頭に合った大きさのとがった三角で、少し外向き（小さく丸いと熊、長いと狐に見える）
+#   目は絵の中でいちばん鮮やかな色（灰色の毛に琥珀色）。アーモンド形に縦長の瞳、光は1ドット
+#   しま模様は3つ目の暗い色で、つながった線ではなく短く途切れた線に
+#   光は左上から。影は右下のふちのすぐ内側。影は青寄り、明るい所は黄寄り（色相をずらす）
+#   ふちどりは場所で色を変える（光の当たる左上は明るい線、影の右下は暗い線。ぜんぶ黒にしない）
+#   毛は、まずなめらかに陰をつけてから、ほおと胸の白い毛だけ小さなふさ（ぎざぎざ）を刻む。点を散らかさない
+#   じっとしている絵は、しっぽの先を動かすと生きて見える
+# 姿: 体を右に向けて座り、顔はこちら。腰のふくらみ、まっすぐな前足、しっぽは前足のまわりに巻く。白い胸と足先、灰色のさばとら
+TAMA = {
+    'K': '#2a1f1c', 'L': '#5e504a',  # ふちどり（影側・光側）。ほかの人物の絵と同じ、こげ茶の黒
+    '1': '#4a4654', '2': '#6c6872', '3': '#8e898c', '4': '#b1aaa4', '5': '#d0c7ba',  # 灰色の毛（影は青寄り、光は黄寄り）
+    's': '#3d3946',  # しま
+    'W': '#f3ede3', 'w': '#d6cdc6', 'v': '#b2a9ab',  # 白い毛（明・陰・深い陰）
+    'p': '#e09aa0', 'P': '#b06a74',  # 鼻と耳の内側
+    'E': '#e0a838', 'e': '#a8701c', 'k': '#16121a', 'H': '#fffbea',  # 目（琥珀・ふち・瞳・光）
+    'm': '#4a3c42',  # 口の線
+    'r': '#c8302a', 'R': '#8a1e1a', 'y': '#ecc44a', 'Y': '#a8802a', 'h': '#e8e2da',  # 首輪・鈴・ひげ
+}
+LIGHT = (-0.55, -0.65, 0.52)
 
 def ellipse(cx, cy, rx, ry):
     return {(x, y) for y in range(int(cy - ry) - 1, int(cy + ry) + 2) for x in range(int(cx - rx) - 1, int(cx + rx) + 2)
@@ -73,81 +170,141 @@ def tri(a, b, c):
     xs = [p[0] for p in (a, b, c)]; ys = [p[1] for p in (a, b, c)]
     return {(x, y) for y in range(min(ys), max(ys) + 1) for x in range(min(xs), max(xs) + 1) if inside([a, b, c], x, y)}
 
-def cat_paint(W, H, parts, shade_of, patch, extras):
-    """parts = 形（集合）のリスト。塗り: 白・陰・しま模様、ふちどり、そのあと顔などを足す"""
-    shape = set().union(*parts)
-    px = {}
-    for x, y in shape:
-        c = TAMA['w'] if shade_of(x, y) else TAMA['W']
-        if patch(x, y): c = TAMA['G'] if (x + y // 2) % 4 == 0 else TAMA['g']
-        px[(x, y)] = rgb(c)
-    for x, y in shape:  # ふちどり
-        if any((x + dx, y + dy) not in shape for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))): px[(x, y)] = rgb(TAMA['K'])
-    for (x, y), ch in extras.items():
-        if 0 <= x < W and 0 <= y < H: px[(x, y)] = rgb(TAMA[ch])
-    return {'size': [W, H], 'touch': canvas_touch(px, W, H)}
+class Cat:
+    """部品（形と、陰をつけるためのふくらみの中心）を奥から順に重ねる"""
+    def __init__(self, W, H):
+        self.W, self.H, self.part, self.shade = W, H, {}, {}
+    def add(self, name, cells, center, radius, flat=1.0):
+        for x, y in cells:
+            if 0 <= x < self.W and 0 <= y < self.H:
+                nx, ny = (x + 0.5 - center[0]) / radius[0], (y + 0.5 - center[1]) / radius[1]
+                nz = max(0.0, 1 - nx * nx - ny * ny) ** 0.5 * flat
+                l = (nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / max(0.3, (nx * nx + ny * ny + nz * nz) ** 0.5)
+                self.part[(x, y)] = name; self.shade[(x, y)] = l
+    def paint(self, white, stripes, tufts, details):
+        px = {}
+        tone = lambda l: '5' if l > 0.62 else '4' if l > 0.3 else '3' if l > 0.0 else '2' if l > -0.35 else '1'
+        wtone = lambda l: 'W' if l > 0.05 else 'w' if l > -0.4 else 'v'
+        for (x, y), l in self.shade.items():
+            c = wtone(l) if white(x, y) else ('s' if stripes(x, y) and l < 0.62 else tone(l))
+            c = jitter('12345', c, x, y, 36, 5) if c in '12345' else jitter('vwW', c, x, y, 22, 6) if c in 'vwW' else c  # 毛の手ざわり
+            px[(x, y)] = c
+        # 部品の境目（手前の部品が奥の部品に重なる所）に、1段暗い線を入れる
+        order = list(dict.fromkeys(self.part.values()))
+        for (x, y), name in self.part.items():
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                q = (x + dx, y + dy)
+                if q in self.part and order.index(self.part[q]) < order.index(name) and self.part[q] not in ('ear',) and name not in ('tailtip',):
+                    c = px[q]
+                    px[q] = {'5': '3', '4': '2', '3': '2', '2': '1', '1': '1', 's': '1', 'W': 'w', 'w': 'v', 'v': 'v'}[c]
+        # ふちどり: 外に面したドット。光の当たる側（左上）は明るい線、ほかは暗い線
+        shape = set(self.part)
+        for (x, y) in shape:
+            out = [(dx, dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if (x + dx, y + dy) not in shape]
+            if out:
+                lit = all(dx <= 0 and dy <= 0 for dx, dy in out) and self.shade[(x, y)] > -0.1
+                px[(x, y)] = 'L' if lit else 'K'
+        for (x, y) in tufts: px.pop((x, y), None)  # 白い毛のふさ（ふちを刻む）
+        px.update(details)
+        return {'size': [self.W, self.H], 'touch': [{'x': x, 'y': y, 'color': TAMA[c]} for (x, y), c in sorted(px.items(), key=lambda t: (t[0][1], t[0][0])) if 0 <= x < self.W and 0 <= y < self.H]}
 
 def stamp(d, rows, x0, y0):
     for j, row in enumerate(rows):
         for i, ch in enumerate(row):
             if ch != '.': d[(x0 + i, y0 + j)] = ch
 
-def tama_sit(blink):
-    W, H = 44, 40
-    head = ellipse(20, 14, 11, 9)
-    ears = tri((9, 10), (11, 1), (18, 6)) | tri((22, 6), (29, 1), (31, 10))
-    body = ellipse(20, 29, 12, 9) | ellipse(20, 34, 14, 5)
-    paws = ellipse(15.5, 37.5, 3.5, 2) | ellipse(24.5, 37.5, 3.5, 2)
-    tail = set()
-    import math
-    for k in range(0, 40):  # しっぽは体の右で、地面に沿って丸める（太さ3）
-        a = math.pi * 0.5 - k / 39 * math.pi * 0.85
-        x, y = 31 + 8 * math.cos(a), 30 + 8 * math.sin(a)
-        tail |= {(round(x) + dx, round(y) + dy) for dx in (0, 1) for dy in (0, 1)} | {(round(x), round(y) + 2)}
-    parts = [head, ears, body, paws, tail]
-    shade = lambda x, y: (y > 30 and x > 24) or (y > 18 and y < 23 and x > 26) or (x, y) in tail and (x + y) % 3 == 0
-    patch = lambda x, y: ((x, y) in ears) or (y < 10 and 11 < x < 29) or ((x, y) in body and x < 15 and y < 30) or ((x, y) in tail and y < 27)
-    ex = {}
-    for x in range(12, 15): ex[(x, 4)] = 'p'; ex[(x - 1, 6)] = 'p'
-    for x in range(26, 29): ex[(x, 4)] = 'p'; ex[(x + 1, 6)] = 'p'
-    eye = ['KKK', 'EKH', 'EKE'] if not blink else ['...', 'KKK', '...']
-    stamp(ex, eye, 14, 12); stamp(ex, eye, 24, 12)
-    stamp(ex, ['..pp..', 'K.KK.K', '.K..K.'], 17, 17)  # 鼻と、ωの口
-    for i in range(6): ex[(8 - i, 16 - (i > 2))] = 'h'; ex[(8 - i, 18 + (i > 2))] = 'h'; ex[(31 + i, 16 - (i > 2))] = 'h'; ex[(31 + i, 18 + (i > 2))] = 'h'  # ひげ
-    for x in range(12, 29): ex[(x, 22)] = 'r'; ex[(x, 23)] = 'R'  # 首輪
-    stamp(ex, ['YyY', 'yHy', 'YyY'], 19, 23)  # 金の鈴
-    return cat_paint(W, H, parts, shade, patch, ex)
+def tail_curve(points, thick):
+    cells = set()
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        n = int(max(abs(x1 - x0), abs(y1 - y0)) * 3) + 1
+        for k in range(n + 1):
+            t = k / n; x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            cells |= {(round(x + dx), round(y + dy)) for dx in range(-thick // 2, thick - thick // 2) for dy in range(-thick // 2, thick - thick // 2)}
+    return cells
+
+def tama_sit(blink=False, flick=False):
+    """本物の猫の座り姿の比率: 頭は座った高さの4分の1くらいで横に広い（ほほのふくらみ）。耳は付け根の広い三角。
+    首から背中が後ろへ下がって、大きく張った腰につながる。前足は細くまっすぐ。しっぽは前足のまわりに巻く"""
+    W, H = 44, 44
+    c = Cat(W, H)
+    # 奥から: 腰・胴（横腹）・胸・頭・耳・奥の前足・手前の前足・しっぽ
+    c.add('haunch', ellipse(28.5, 34.5, 10, 8.5), (27, 32), (10.5, 9.5))
+    c.add('side', ellipse(23, 27, 8.5, 8), (21, 25), (9, 8.5))
+    c.add('shoulder', ellipse(20.5, 19.5, 3.5, 2.8), (19.5, 18.5), (4, 3))  # 肩甲骨のこぶ（座った猫の背中の上に出る）
+    c.add('chest', ellipse(15.5, 25.5, 6, 10), (14.5, 23), (6.5, 10.5))
+    c.add('head', ellipse(14.5, 11, 7.5, 5.8) | ellipse(14.5, 13.5, 8.2, 3.6), (13.5, 10), (8.5, 7))
+    c.add('ear', tri((6, 9), (7, 0), (12, 6)) | tri((17, 6), (22, 0), (23, 9)), (14.5, 6), (9, 7))
+    c.add('legback', {(x, y) for x in range(12, 15) for y in range(30, 42)} | ellipse(13.2, 42, 2.2, 1.3), (12.5, 33), (3, 12), 0.6)
+    c.add('leg', {(x, y) for x in range(16, 19) for y in range(30, 43)} | ellipse(17.6, 42.6, 2.4, 1.3), (16.5, 33), (3, 12), 0.6)
+    tip = [(18, 39.5), (17, 37.5)] if flick else [(18, 41.2), (16, 40.4)]  # しっぽの先は手前の前足の上
+    c.add('tail', tail_curve([(36, 41.8), (31, 42.6), (26, 42.8), (22, 42.4)] + tip, 3), (27, 41), (11, 4))
+    white = lambda x, y: (c.part.get((x, y)) == 'chest' and y >= 17 and abs(x - 15.5) <= 2 + (y - 17) * 0.22) \
+        or (c.part.get((x, y)) in ('leg', 'legback') and (y >= 38 or x in (12, 13, 16, 17))) \
+        or (c.part.get((x, y)) == 'head' and y >= 12 and abs(x - 14.5) <= (y - 11) * 1.3)
+    def stripes(x, y):
+        p = c.part.get((x, y))
+        if p == 'head': return 5 <= y <= 7 and x in (12, 14, 16) and not (x == 14 and y == 7)  # 額の「M」
+        if p in ('haunch', 'side', 'shoulder') and (x, y - 2) not in c.part and (x, y - 1) in c.part: return True  # 背骨にそった濃い線（サドル）
+        if p in ('haunch', 'side'): return ((x - 27) + (y - 30) ** 2 * 0.05) % 4 < 1 and (x * 5 + y * 3) % 11 != 0 and y < 41  # 体に沿って曲がる、途切れた縞
+        if p == 'chest': return x >= 19 and y % 3 == 0
+        if p in ('leg', 'legback'): return x in (14, 18) and y < 37 and y % 3 == 0  # 足の外側の輪（ブレスレット）
+        if p == 'tail': return (x % 4 == 0 and x > 21) or x < 19  # しっぽの輪と、黒っぽい先
+        return False
+    d = {}
+    stamp(d, ['p', 'P'], 9, 5); stamp(d, ['p', 'P'], 19, 5)  # 耳の内側
+    # 目: 4×3のアーモンド形。上まぶたの線、琥珀の虹彩に縦長の瞳、左上に光1ドット
+    eye = ['mmm.', 'EHkE', '.Eke'] if not blink else ['....', 'mmmm', '....']
+    stamp(d, eye, 9, 9); stamp(d, [r[::-1] if blink else r for r in (['.mmm', 'EHkE', 'eEk.'] if not blink else eye)], 17, 9)
+    # 目じりから後ろへ流れる線と、ほおを横切る線（さばとら）
+    for p in [(8, 11), (7, 12), (21, 11), (22, 12), (7, 14), (22, 14)]: d[p] = 's'
+    # ふくらんだひげ袋（白）
+    for p in [(12, 14), (13, 14), (16, 14), (17, 14), (12, 15), (17, 15)]: d[p] = 'W'
+    stamp(d, ['pp', 'mm'], 14, 13); d[(13, 15)] = 'm'; d[(16, 15)] = 'm'  # 鼻（マズルのいちばん上）と、浅い「v」の口
+    # ひげ: 1ドットの細い線を2本ずつ
+    for i in range(6):  # 顔のふちから外へ、上の1本は少し上がり、下の1本は少し下がる
+        d[(7 - i, 14 - (i > 3))] = 'h'; d[(22 + i, 14 - (i > 3))] = 'h'
+        if i < 5: d[(7 - i, 15 + (i > 2))] = 'h'; d[(22 + i, 15 + (i > 2))] = 'h'
+    for x in range(10, 20):  # 細い首輪（首の丸みに沿って、両はしだけ1段上がる）
+        y = 17 if x in (10, 19) else 18
+        if (x, y) in c.part: d[(x, y)] = 'r'
+    stamp(d, ['Yy', 'yY'], 15, 19)
+    for y in range(33, 41): d[(15, y)] = 'v'  # 前足の間
+    d[(12, 42)] = 'v'  # 指の線
+    return c.paint(white, stripes, set(), d)
 
 def tama_sleep():
+    """丸くなって寝る: 体は長いだ円、頭は前足にのせて少し下を向き、しっぽは体の前を回って鼻先へ"""
     W, H = 44, 24
-    body = ellipse(20, 15, 17, 8)
-    head = ellipse(31, 15, 8, 6.5)
-    ears = tri((25, 11), (27, 4), (31, 9)) | tri((32, 9), (37, 5), (38, 12))
-    tail = set()
-    for t in range(0, 26):  # 体の前を回るしっぽ
-        x, y = 6 + t, 21 - abs(t - 13) * 0.12
-        tail |= {(round(x), round(y) + dy) for dy in (0, 1)}
-    parts = [body, head, ears, tail]
-    shade = lambda x, y: y > 18 and (x, y) not in tail
-    patch = lambda x, y: ((x, y) in ears) or ((x, y) in body and y < 12 and 6 < x < 24) or ((x, y) in tail and x < 11)
-    ex = {}
-    stamp(ex, ['KKK'], 27, 15); stamp(ex, ['KKK'], 33, 15)  # 閉じた目
-    stamp(ex, ['pp'], 30, 18)
-    for x in range(26, 37): ex[(x, 21)] = 'r'
-    ex[(31, 22)] = 'y'; ex[(32, 22)] = 'Y'
-    return cat_paint(W, H, parts, shade, patch, ex)
+    c = Cat(W, H)
+    c.add('body', ellipse(19, 14.5, 15.5, 7.5), (16, 11.5), (16, 8.5))
+    c.add('head', ellipse(32.5, 15.5, 6.5, 5) | ellipse(32.5, 17, 7, 3.2), (31, 14), (7, 6))
+    c.add('ear', tri((27, 12), (28, 6), (32, 10)) | tri((33, 10), (36, 6), (39, 12)), (33, 10), (7, 5))
+    c.add('paw', ellipse(30, 20.6, 3, 1.5) | ellipse(35, 20.8, 2.6, 1.4), (30, 20), (4, 2), 0.6)
+    c.add('tail', tail_curve([(5, 18), (9, 20.6), (16, 21.6), (23, 21.6), (28, 21.2)], 3), (16, 20), (13, 4))
+    white = lambda x, y: (c.part.get((x, y)) == 'head' and y >= 16 and abs(x - 32.5) <= (y - 15) * 1.5) or c.part.get((x, y)) == 'paw'
+    def stripes(x, y):
+        p = c.part.get((x, y))
+        if p == 'body': return y < 18 and ((x - 19) + (y - 10) ** 2 * 0.1) % 4.5 < 1 and (x * 5 + y * 3) % 9 != 0
+        if p == 'tail': return x % 4 == 1 or x > 25
+        if p == 'head': return y <= 12 and x in (31, 33)
+        return False
+    d = {}
+    stamp(d, ['p', 'P'], 29, 9); stamp(d, ['p', 'P'], 36, 9)
+    stamp(d, ['m.m', '.m.'], 28, 15); stamp(d, ['m.m', '.m.'], 34, 15)  # 閉じた目（下向きの弧）
+    stamp(d, ['pp', '.m'], 32, 17)
+    return c.paint(white, stripes, set(), d)
 
 if __name__ == '__main__':
     d = {}
-    # 男爵: マントの多角形（元の絵の座標）・頭のてっぺんの中心・口
+    # 男爵: マントの多角形（元の絵の座標）・口（頭の位置は絵から測る）
     walk_cape = [(26, 36), (16, 40), (8, 60), (3, 90), (0, 126), (36, 124), (36, 90), (30, 70), (32, 44)]
     talk_cape = [(28, 36), (16, 40), (8, 60), (2, 90), (0, 124), (28, 124), (28, 95), (24, 72), (22, 58), (30, 42)]
-    for pose, cape, head, mouth in [(0, walk_cape, (40, 2), (44, 31)), (1, walk_cape, (40, 2), (44, 31)),
-                                    (2, talk_cape, (40, 2), (39, 30)), (3, talk_cape, (37, 2), (38, 30))]:
-        d[f'baron_{pose}'] = baron(pose, cape, head, mouth)
-    d['tama_0'] = tama_sit(False)
-    d['tama_1'] = tama_sit(True)
+    for pose, cape, mouth in [(0, walk_cape, (44, 31)), (1, walk_cape, (44, 31)), (2, talk_cape, (39, 30)), (3, talk_cape, (38, 30))]:
+        d[f'baron_{pose}'] = baron(pose, cape, mouth)
+    d['tama_0'] = tama_sit()
+    d['tama_1'] = tama_sit(blink=True)
     d['tama_2'] = tama_sleep()
+    d['tama_3'] = tama_sit(flick=True)  # しっぽの先をぴくっと
     os.makedirs(os.path.join(ROOT, 'assets/editor/cast'), exist_ok=True)
     json.dump(d, open(os.path.join(ROOT, 'assets/editor/cast/cast.design.json'), 'w'), ensure_ascii=False)
     for k, v in d.items(): print(k, v['size'], len(v['touch']), len({t['color'] for t in v['touch']}))

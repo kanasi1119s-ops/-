@@ -324,7 +324,7 @@ Object.assign(POSE_ANIMS, {
     laugh: { loop: true, frames: [p(140, 3, { up: -2 }), p(140, 3)] }, // ふはは！（胸をそらして笑う）
   },
   tama: {
-    idle: { loop: true, frames: [p(2400, 0), p(150, 1), p(1800, 0), p(150, 1), p(150, 0), p(150, 1)] }, // ときどきまばたき
+    idle: { loop: true, frames: [p(2400, 0), p(150, 1), p(1400, 0), p(260, 3), p(260, 0), p(260, 3), p(1800, 0), p(150, 1), p(150, 0), p(150, 1)] }, // ときどきまばたき、しっぽの先をぴくぴく
     talk: { loop: true, frames: [p(600, 0), p(400, 1)] },
     sleep: { loop: true, frames: [p(1400, 2), p(1400, 2, { up: -1 })] }, // 寝息
   },
