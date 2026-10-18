@@ -98,7 +98,7 @@ export function simulate(p, cfg = CONFIG) {
   const saltiness = (100 * p.saltPct * (pickle.saltUptake ?? 1) * uptake * waterF * absorbed) / t.saltFullPct;
 
   // 重石（重石と工程）: 水が上がるまでは傷みやすく、水が上がったあとも重いままだと野菜がつぶれる
-  const wt = pickle.weight ? weightEffects(p, veg, days, cfg) : null;
+  const wt = pickle.weight ? weightEffects(p, veg, days, cfg, pickle) : null;
   const spoilDays = Math.max(0, days + (wt?.extraSpoilDays ?? 0));
   const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * Math.max(dr.spoilMin, 1 - dr.spoilDropPerDay * dry) * spoilDays));
 
@@ -128,7 +128,7 @@ export function waterRise(w, saltPct, veg, cfg = CONFIG) {
  * 水が上がるまでの「水の上がっていない時間」が、ふつうの重石より長いと傷みやすく、短いと傷みにくい。
  * 水が上がったあと重いままの時間だけ野菜がつぶれ、軽くしておくと少しシャキッとする。
  */
-export function weightEffects(p, veg, days, cfg = CONFIG) {
+export function weightEffects(p, veg, days, cfg = CONFIG, pickle = null) {
   const W = cfg.weight;
   const segs = (p.weights?.length ? p.weights : [{ d: 0, w: 1 }]).slice().sort((a, b) => a.d - b.d);
   let up = 0, unUp = 0, heavy = 0, light = 0;
@@ -144,7 +144,7 @@ export function weightEffects(p, veg, days, cfg = CONFIG) {
     if (dt > 0) { heavy += Math.max(0, w - 1) * dt; light += Math.max(0, 1 - w) * dt; }
   }
   const r1 = waterRise(1, p.saltPct, veg, cfg), run1 = Math.min(days, 1 / r1), ref = run1 - (r1 * run1 * run1) / 2;
-  const crushVeg = Math.min(2, Math.max(0.25, 20 / veg.crispTau)); // やわらかい野菜ほどつぶれやすい
+  const crushVeg = pickle?.crushProof ? 0 : Math.min(2, Math.max(0.25, 20 / veg.crispTau)); // やわらかい野菜ほどつぶれやすい（天下一の重石はつぶさない）
   return {
     waterUp: up,
     weight: segs.at(-1).w,

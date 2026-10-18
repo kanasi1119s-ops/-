@@ -12,6 +12,7 @@ import { SPECIALS } from '../data/specials.js';
 import { UPGRADES } from '../data/upgrades.js';
 import { REGIONAL, regionalPickles } from '../data/regional.js';
 import { PREFECTURE_PICKLES } from '../data/prefectures.js';
+import { HIDEN } from '../data/hiden.js';
 
 const FERMENT = {
   baseProgressPerDay: 1, // 【出典】塩3%・20℃の白菜漬けが約1週間で食べ頃（ripeAt=7と合わせて）
@@ -24,8 +25,8 @@ const FACILITY_CFG = facilitiesFrom(FACILITIES);
 const VEG_CFG = vegetablesFrom(VEGETABLES);
 // 全国の漬物（data/regional.js）は、資料の数値から食べ頃を計算して足す
 export const REGIONAL_PICKLES = regionalPickles(REGIONAL, { ferment: FERMENT, vegetables: VEG_CFG.vegetables, dataset: PREFECTURE_PICKLES });
-/** 漬物の定義すべて（data/pickles.js ＋ 全国の漬物） */
-export const PICKLE_DEFS = [...PICKLES, ...REGIONAL_PICKLES];
+/** 漬物の定義すべて（data/pickles.js ＋ 全国の漬物 ＋ 秘伝の漬物） */
+export const PICKLE_DEFS = [...PICKLES, ...REGIONAL_PICKLES, ...HIDEN];
 const PICKLE_CFG = picklesFrom(PICKLE_DEFS);
 
 export const CONFIG = {

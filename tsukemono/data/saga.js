@@ -12,7 +12,7 @@
 //   quest  : この章で始まる課題。{ id, name, days, kind, need, target, retryAfter }
 //            kind: greatGuests = 満足 need.sat 以上のお客を target 人 / agedSale = 寝かせ値打ち need.aging 以上で売る
 //                  variety = 違う漬物 target 種を、それぞれ満足 need.sat 以上で売る
-//   reward : { rep, money, xp }
+//   reward : { rep, money, xp, teach（秘伝の漬物を教わる。data/hiden.js の id） }
 //   repeat : 負けた章は、課題をやり直すたびに何度でも見る
 
 export const SAGA = [
@@ -60,6 +60,7 @@ export const SAGA = [
       { text: '宿敵は、思ったより話のわかる相手だった。帰りぎわ、男爵は「よろしく」と言って、手作りのたくあんを置いていった。' },
       { text: 'うまかった。それが一番、悔しかった。' },
     ],
+    reward: { teach: 'danshakuzuke' },
   },
   {
     id: 'nuka', no: '幕間', title: 'ぬか床は語る', after: 'prologue', when: { nukaMaturity: 1 },
@@ -74,7 +75,7 @@ export const SAGA = [
       { text: '店主は生まれて初めて、目覚まし時計を本気で恨んだ。' },
       { text: 'その日から、ぬか床を混ぜる手は少しだけ温かくなった。お湯で手を温めてから混ぜるようにしたからである。' },
     ],
-    reward: { rep: 2 },
+    reward: { rep: 2, teach: 'yumezuke' },
   },
   {
     id: 'tegami', no: '幕間', title: '遠くの便り', after: 'prologue', when: { letterLearned: true },
@@ -135,7 +136,7 @@ export const SAGA = [
       { who: '町内会長', text: 'それは反則じゃ。' },
       { text: '賞品は、町内会の商品券三千円と、タマ殿の肉球スタンプだった。スタンプは額に入れて、店でいちばん良い場所に飾った。' },
     ],
-    reward: { rep: 5, money: 3000, xp: 30 },
+    reward: { rep: 5, money: 3000, xp: 30, teach: 'nekomanma' },
   },
   {
     id: 'battle1Lose', no: '第三章', title: '猫は寝ていた', after: 'challenge', when: { questLost: 'battle1' }, repeat: true,
@@ -205,7 +206,7 @@ export const SAGA = [
       { text: 'その夜、裏山のほうから「ゴトッ」と音がした。重石が認めたのかもしれない。' },
       { text: '翌朝の町の広報には、こうあった。「裏山の石が転がりました。けが人はいません。町役場」' },
     ],
-    reward: { rep: 5, xp: 50 },
+    reward: { rep: 5, xp: 50, teach: 'omoshizuke' },
   },
   {
     id: 'final', no: '第五章', title: '最終決戦', after: 'stoneDone', when: { level: 6, day: 45 },
@@ -249,6 +250,6 @@ export const SAGA = [
       { text: 'タマ殿が、看板の下で丸くなった。審査員長が認めたので、それでよいことになった。' },
       { text: '（そして店は続く。最強の漬物への道に、終わりはない。冷蔵庫のプリンは、帰ってきた先代がその日のうちに食べた）' },
     ],
-    reward: { rep: 10, money: 10000, xp: 100 },
+    reward: { rep: 10, money: 10000, xp: 100, teach: 'sendaihiden' },
   },
 ];

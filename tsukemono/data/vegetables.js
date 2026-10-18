@@ -72,6 +72,8 @@ export const VEGETABLES = [
   { id: 'rakkyo', name: 'らっきょう', img: 'daikon', only: ['spring', 'summer'], water: 0.68, saltUptake: 0.9, fermentRate: 0.9, crisp0: 90, crispTau: 50, spoilMult: 0.9, cost: 600, seasons: { spring: 0.8, summer: 1.0, autumn: 2, winter: 2 }, note: '5〜6月が収穫。シャキシャキ' }, // 【仮置き】
   { id: 'iwashi', name: 'イワシ', img: 'saba', fish: true, water: 0.69, saltUptake: 1.2, fermentRate: 0.7, crisp0: 40, crispTau: 200, spoilMult: 6, cost: 600, seasons: { spring: 0.9, summer: 1.0, autumn: 0.9, winter: 1.1 }, note: '大漁の魚。すぐ保存しないと傷む' }, // 【仮置き】
   { id: 'ninniku', name: 'にんにく', img: 'daikon', water: 0.64, saltUptake: 0.8, fermentRate: 0.7, crisp0: 80, crispTau: 60, spoilMult: 0.7, cost: 700, seasons: { spring: 1.0, summer: 0.9, autumn: 1.1, winter: 1.2 }, note: '皮をむいて塩をまぶす' }, // 【仮置き】
+  { id: 'jagaimo', name: '男爵いも', img: 'daikon', water: 0.79, saltUptake: 0.8, fermentRate: 0.8, crisp0: 70, crispTau: 15, spoilMult: 1.0, cost: 300, seasons: { spring: 1.0, summer: 0.9, autumn: 0.8, winter: 1.1 }, note: 'ホクホク。名前に爵位がある' }, // 【仮置き】
+  { id: 'purin', name: 'プリン', img: 'daikon', water: 0.75, saltUptake: 1.2, fermentRate: 0.6, crisp0: 45, crispTau: 30, spoilMult: 1.8, cost: 600, seasons: { spring: 1, summer: 1, autumn: 1, winter: 1 }, note: 'コンビニで買った（先代のとは別）。ぷるぷる食感。漬物の材料ではない。たぶん' }, // 【仮置き】
   { id: 'tofu', name: '木綿豆腐', img: 'daikon', water: 0.86, saltUptake: 1.0, fermentRate: 0.8, crisp0: 30, crispTau: 100, spoilMult: 1.5, cost: 300, seasons: { spring: 1, summer: 1, autumn: 1, winter: 1 }, note: '水切りして、炭火で焼いてから' }, // 【仮置き】
 ];
 

@@ -452,7 +452,7 @@ WINS.brew = () => {
   const unknownN = Object.keys(C.pickles).filter((id) => !game.knows(id)).length;
   const pickles = Object.entries(C.pickles).filter(([id]) => game.knows(id)).map(([id, x]) => {
     const can = game.canBrew(id), star = masteryStars(id);
-    return `<button class="tile${r.pickle === id ? ' on' : ''}" data-pickle="${id}" ${can.ok ? '' : 'disabled'}>${game.recipeState(id) === 'known' && game.recipes[id].via !== 'start' ? '<i class="tag">新</i>' : ''}<b>${x.name}${star ? ` <small class="ukon">${star}</small>` : ''}</b>${x.region ? `<span class="ukon">${x.region}</span>` : ''}<span>${can.ok ? `${(x.realDays ?? x.ripeAt) >= 10 ? '長く漬ける' : (x.realDays ?? x.ripeAt) >= 3 ? '数日〜' : '早い'} ・ ${yen(x.price)}${x.portions ? `×${x.portions}` : ''}` : can.error}</span></button>`;
+    return `<button class="tile${r.pickle === id ? ' on' : ''}" data-pickle="${id}" ${can.ok ? '' : 'disabled'}>${game.recipeState(id) === 'known' && game.recipes[id].via !== 'start' ? '<i class="tag">新</i>' : ''}<b>${x.hiden ? '<i class="tag">秘伝</i>' : ''}${x.name}${star ? ` <small class="ukon">${star}</small>` : ''}</b>${x.region ? `<span class="ukon">${x.region}</span>` : ''}<span>${can.ok ? `${(x.realDays ?? x.ripeAt) >= 10 ? '長く漬ける' : (x.realDays ?? x.ripeAt) >= 3 ? '数日〜' : '早い'} ・ ${yen(x.price)}${x.portions ? `×${x.portions}` : ''}` : can.error}</span></button>`;
   }).join('') + (unknownN ? `<button class="tile" data-act="openRecipes"><b>？？？</b><span>まだ知らない作り方 ${unknownN}つ（レシピ帳）</span></button>` : '');
   const vegs = p.vegetables.map((id) => { const ok = game.vegAvailable(id), n = game.stockCount(id); return `<button class="tile${r.veg === id ? ' on' : ''}" data-veg="${id}" ${ok ? '' : 'disabled'}>${game.saleVeg() === id ? '<i class="tag">特</i>' : game.inSeason(id) ? '<i class="tag">旬</i>' : ''}<b>${C.vegetables[id].name}</b><span>${ok ? `${yen(game.vegCost(id))}${n ? ` ・ 在庫${n}` : ''}` : esc(game.vegLock(id))}</span></button>`; }).join('');
   const withs = game.withNeeds(r.pickle, r.count ?? game.standardCount(r.pickle)).map(([m, n]) => { const have = game.stockCount(m); return `${C.vegetables[m].name} ${n}個${have >= n ? `<span class="pos">（在庫${have}）</span>` : `<span class="warn">（在庫${have}・「仕入れ」で買う）</span>`}`; });
@@ -710,7 +710,7 @@ function recipeBook() {
       return `<div class="item recipe unknown"><span class="grow"><b class="q">？？？</b><br><span class="hint">${heard ? `噂: ${esc(u.hint)}` : `まだ噂も聞こえてこない（店のレベル${u.hintLevel}になると…）`}</span></span></div>`;
     }
     const can = game.canBrew(id);
-    const head = `<b>${p.name}</b> ${st === 'learned' ? `<span class="ukon">${masteryStars(id)} ${masteryName(id)}</span>` : '<span class="stage-tag raw">？ まだ成功していない</span>'}`;
+    const head = `${p.hiden ? '<i class="tag">秘伝</i> ' : ''}<b>${p.name}</b> ${st === 'learned' ? `<span class="ukon">${masteryStars(id)} ${masteryName(id)}</span>` : '<span class="stage-tag raw">？ まだ成功していない</span>'}`;
     const info = `<span class="hint">${VIA[rec.via] ?? ''}${rec.via !== 'start' ? `（${rec.day}日目）` : ''} ・ 作り方: ${p.steps.join(' → ')} ・ 塩 ${p.saltHint} ・ ${p.tempHint}</span>`;
     const affs = Object.keys(C.additives).map((a) => (affKnown(id, a) ? `${C.additives[a].name}${{ good: '◎', bad: '✕', neutral: '△' }[affinityOf(id, a, C)]}` : null)).filter(Boolean);
     const affLine = `<br><span class="hint">調味の相性（${affs.length}/${Object.keys(C.additives).length}）: ${affs.length ? affs.join(' ') : 'まだわからない（調味を入れて売るとわかる）'}</span>`;

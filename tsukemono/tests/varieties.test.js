@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CONFIG, PICKLE_DEFS, REGIONAL_PICKLES } from '../src/config.js';
+import { HIDEN } from '../data/hiden.js';
 import { simulate, daysToRipe, affinityOf } from '../src/model.js';
 import { createGame, bookKey, bookTotal } from '../src/game.js';
 
@@ -61,7 +62,7 @@ test('図鑑: 売った組み合わせが記録され、セーブで残る', () 
   assert.ok(h.restore(g.snapshot()));
   assert.deepEqual(h.book, g.book);
   // 組み合わせの総数: 漬物×野菜16通り × 調味8種から2つまで（なし1＋1つ8＋2つ28＝37通り）
-  assert.equal(bookTotal(), (43 + REGIONAL_PICKLES.reduce((s, p) => s + p.vegetables.length, 0)) * 37); // ＋全国の漬物（data/regional.js） // 漬物ごとの野菜の数の合計43（段階Fの地方の4種とすぐき菜、段階Eの梅干し・白瓜・みょうが、段階Dの赤かぶ、段階Cの隠れた4種も含む）× 調味の組み合わせ37 // 段階Cの隠れた4種（からし漬け3・柴漬け2・古漬け4・粕漬け4）も含む
+  assert.equal(bookTotal(), (44 + REGIONAL_PICKLES.reduce((s, p) => s + p.vegetables.length, 0) + HIDEN.reduce((s, p) => s + p.vegetables.length, 0)) * 37); // ＋浅漬けのプリン・全国の漬物（data/regional.js）・秘伝の漬物（data/hiden.js） // 漬物ごとの野菜の数の合計43（段階Fの地方の4種とすぐき菜、段階Eの梅干し・白瓜・みょうが、段階Dの赤かぶ、段階Cの隠れた4種も含む）× 調味の組み合わせ37 // 段階Cの隠れた4種（からし漬け3・柴漬け2・古漬け4・粕漬け4）も含む
 });
 
 test('客の好きな漬物は複数あってよい（たくあんは通・しょっぱめ好き・食感重視が好き）', () => {

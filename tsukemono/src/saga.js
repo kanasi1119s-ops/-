@@ -54,6 +54,7 @@ export function attachSaga(g, { cfg, saga = SAGA }) {
       if (rw.rep) g.reputation = Math.min(100, g.reputation + rw.rep);
       if (rw.money) { g.money += rw.money; g.stats.revenue += rw.money; }
       if (rw.xp) g.addXp(rw.xp);
+      if (rw.teach) g.learn(rw.teach, 'taught'); // 秘伝の漬物を教わる（data/hiden.js）
       if (ch.quest) startQuest(ch.quest, ch.id);
       g.events.push({ type: 'saga', id: ch.id });
       return ch;

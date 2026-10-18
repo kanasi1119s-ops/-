@@ -41,7 +41,7 @@ export const PICKLES = [
   {
     id: 'asazuke',
     name: '浅漬け',
-    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu', 'shirouri', 'myoga', 'suguki'],
+    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu', 'shirouri', 'myoga', 'suguki', 'purin'], // プリンは…秘伝の漬物のため
     steps: ['野菜を切る', '塩をまぶして重石をする', '冷暗所で半日〜1日'],
     saltHint: '2〜3%', // 【出典】
     salt: { lo: 2, hi: 3 }, // 【出典】
