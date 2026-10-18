@@ -160,6 +160,7 @@ function renderHud() {
     <span class="grow"></span>
     ${game.event() ? `<span class="ev" title="${esc(game.event().note)}">${game.event().name}</span>` : ''}
     ${Object.keys(C.upgrades).filter((id) => game.campaignLeft(id) > 0).map((id) => `<span class="ev" title="${esc(C.upgrades[id].note)}">${C.upgrades[id].name.replace(/(を|に).*$/, '')}中</span>`).join('')}
+    ${game.orders.board.filter((o) => o.state === 'active').map((o) => `<span class="ev" title="${esc(game.client(o.client).name)}: ${C.pickles[o.pickle].name} ${o.count}個">注文 あと${o.due - game.day()}日</span>`).join('')}
     <span class="lv" title="${esc(game.level().title)}"><span class="k">店</span>Lv.${game.level().level}</span>
     <span><span class="k">評判</span>${stars(game.reputation)}</span>
     <span class="money">${Math.round(ui.shownMoney).toLocaleString('ja-JP')}<small>円</small></span>`;
@@ -200,7 +201,7 @@ function renderCommands() {
   const cmd = (id, label, sub, dot = '') => `<button class="cmd" data-cmd="${id}" ${dis}>${label}${sub ? `<small>${sub}</small>` : ''}${dot ? `<span class="dot">${dot}</span>` : ''}</button>`;
   $('commands').innerHTML = [
     cmd('brew', '仕込む', '樽に漬ける', empty ? '空' : ''),
-    cmd('sell', '売る', ui.display != null && game.vessel(ui.display) ? `${vname(ui.display)}を出し中` : '店先に出す', anyRipe && (ui.display == null || !game.vessel(ui.display)) ? '◎' : ''),
+    cmd('sell', '売る', ui.display != null && game.vessel(ui.display) ? `${vname(ui.display)}を出し中` : '店先に出す', game.orders.board.some((o) => o.state === 'offer') ? '注' : anyRipe && (ui.display == null || !game.vessel(ui.display)) ? '◎' : ''),
     cmd('barrels', '樽', '味見など', anyCare ? '!' : ''),
     cmd('market', '仕入れ', '野菜を買う', game.saleVeg() ? '特' : ''),
     cmd('nuka', 'ぬか床', 'かき混ぜる', nukaTodo ? '!' : ''),
@@ -497,14 +498,35 @@ WINS.brew = () => {
   };
 };
 
+// 注文・依頼（売るの窓）
+function ordersBox(filled) {
+  const board = game.orders.board;
+  if (!board.length) return game.day() < C.orders.firstDay ? '' : '<div class="hint">注文はまだ来ていない（ときどき依頼主が頼みに来る）。</div>';
+  const rows = board.map((o) => {
+    const c = game.client(o.client), p = C.pickles[o.pickle];
+    const head = `<b>${esc(c.name)}</b>　${p.name} ${o.count}個 ・ お礼 ${yen(o.reward)} ・ 出来${o.minSat}以上${c.judge ? `（${C.customers.find((x) => x.id === c.judge).name}の舌で）` : ''}`;
+    if (o.state === 'offer') {
+      const can = game.canBrew(o.pickle);
+      return `<div class="item"><span class="grow">${head}<br><span class="hint">${esc(game.orderText(o))}${can.ok ? '' : ` ・ <span class="warn">${esc(can.error)}</span>`}</span></span><span class="row"><button class="btn main" data-order="accept" data-oid="${o.id}">受ける</button><button class="btn ghost" data-order="decline" data-oid="${o.id}">断る</button></span></div>`;
+    }
+    const left = o.due - game.day();
+    const fits = filled.filter((i) => game.vessel(i).pickle === o.pickle).map((i) => {
+      const b = game.vessel(i), sat = game.orderSat(o, i);
+      return `<button class="btn${sat >= o.minSat && b.portions >= o.count ? ' main' : ''}" data-order="deliver" data-oid="${o.id}" data-slot="${i}">${vname(i)}から納める（出来 ${Math.round(sat)}・${b.portions}個）</button>`;
+    }).join('');
+    return `<div class="item ok"><span class="grow">${head}<br><span class="${left <= 2 ? 'warn' : 'hint'}">期日まであと${left}日</span>${fits ? '' : `<span class="hint"> ・ ${p.name}を仕込んで、${o.count}個そろえて納める</span>`}</span><span class="row">${fits}</span></div>`;
+  }).join('');
+  return `<div class="sec"><h3>注文　<span class="hint">受けられるのは${C.orders.maxActive}つまで。期日を過ぎると評判が下がる</span></h3><div class="list">${rows}</div></div>`;
+}
+
 // 売る
 WINS.sell = () => {
   const filled = [...game.barrels.map((b, i) => (b ? i : null)), ...game.shelf.map((b, i) => (b ? SHELF + i : null))].filter((i) => i != null);
-  if (!filled.length) return { title: '売る', body: '<p>売れる樽がありません。まず「仕込む」。</p>' };
+  if (!filled.length) return { title: '売る', body: `${ordersBox(filled)}<p>売れる樽がありません。まず「仕込む」。</p>` };
   const now = !game.isOpen() ? '夜は閉店。出しておけば朝に店が開く。' : game.lastSaleTick === game.tick ? 'この時間帯のお客はもう来た。出しておけば次の時間帯から売れる。' : '出すとすぐ店が開き、この時間帯のお客が順に来る。';
   return {
     title: '店先に出す',
-    body: `<div class="hint">店先に出した樽は、店が開いている朝・昼・夕に、お客が来るたびに売れる（来る客は天気と評判しだい。時間帯ごとに入れ替わる）。${now}</div>
+    body: `${ordersBox(filled)}<div class="hint">店先に出した樽は、店が開いている朝・昼・夕に、お客が来るたびに売れる（来る客は天気と評判しだい。時間帯ごとに入れ替わる）。${now}</div>
     <div class="list">${filled.map((i) => {
       const b = game.vessel(i), t = game.tasteOf(i), on = ui.display === i;
       return `<div class="item${t.stage === 'ripe' ? ' ok' : ''}${on ? ' on' : ''}"><span class="grow">${vname(i)}　${barrelName(b)}${on ? ' <span class="ukon">出し中</span>' : ''}<br><span class="hint">${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個 ・ 定価 ${yen(C.pickles[b.pickle].price)}${agingFactor(C.pickles[b.pickle], t.ratio) > 1 ? ` ・ <span class="ukon">熟成もの ×${trim(agingFactor(C.pickles[b.pickle], t.ratio), 2)}</span>` : ''}</span></span><span class="stage-tag ${t.stage}">${t.stageLabel}</span>${on ? `<button class="btn" data-act="hideSlot" data-slot="${i}">下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${i}">店先に出す</button>`}</div>`;
@@ -775,6 +797,9 @@ function flushEvents() {
     if (e.type === 'wisdom') { sound.se('found'); openWin('wisdom', { e }); return; }
     if (e.type === 'wisdomHint') { say(`「${e.text}」`, game.grannyDef.name); continue; }
     if (e.type === 'tane') { floatText('種を取り分けた', 384, 130, 'good'); say(`${C.pickles[e.pickle].name}の種を取り分けた（種 ${e.n}）。次の樽に使える。`, '店主'); continue; }
+    if (e.type === 'orderOffer') { say(`${game.client(e.client).name}: ${e.line}（「売る」の窓で受けられる）`, game.client(e.client).name); continue; }
+    if (e.type === 'orderDone') { say(`${game.client(e.client).name}: ${e.line}（お礼 ${yen(e.pay)}）`, game.client(e.client).name); continue; }
+    if (e.type === 'orderFailed') { say(`${game.client(e.client).name}: ${e.line}（期日を過ぎた。評判が下がった）`, game.client(e.client).name); continue; }
     if (e.type === 'waterUp') { if (e.heavy) say(`樽${e.slot + 1}（${C.pickles[e.pickle].name}）の水が上がった。重石を軽くする頃だ。`, '店主'); continue; }
     if (e.type === 'starterReady') { say(`寝かせておいた${C.pickles[e.pickle].name}の床が、いい香りになった。もう漬けられる。`, '店主'); continue; }
     if (e.type === 'taneArrived') { say(`木曽から小包。「種を絶やしたな？ 今年だけじゃぞ」…${C.pickles[e.pickle].name}の種が届いた。`, '店主'); continue; }
@@ -1064,6 +1089,15 @@ document.addEventListener('click', (e) => {
   if (d.veg) { sound.se('select'); ui.recipe.veg = d.veg; renderWin(); return; }
   if (d.add) { sound.se('select'); const a = ui.recipe.additives; ui.recipe.additives = a.includes(d.add) ? a.filter((x) => x !== d.add) : [...a, d.add].slice(0, C.additiveMax); renderWin(); return; }
   if (d.place) { sound.se('select'); ui.recipe.place = d.place; renderWin(); return; }
+  if (d.order) {
+    const id = +d.oid;
+    const r = d.order === 'accept' ? game.acceptOrder(id) : d.order === 'decline' ? game.declineOrder(id) : game.deliver(id, +d.slot);
+    if (!r.ok) { sound.se('error'); say(r.error); return; }
+    if (d.order === 'deliver') { if (r.emptied && ui.display === +d.slot) ui.display = null; ui.shownMoney = game.money; sound.se('coin'); floatText(`+${yen(r.pay)}`, SCENE.lane.standX, 280); }
+    else sound.se('select');
+    if (d.order === 'accept') say('依頼を受けた。期日までに納めよう。', '店主');
+    renderAll(); flushEvents(); return;
+  }
   if (d.wsel) { sound.se('select'); ui.recipe.weight = d.wsel; renderWin(); return; }
   if (d.weight) { const r = game.setWeight(+d.wslot, d.weight); if (!r.ok) { say(r.error); return; } sound.se('care'); say(`樽${+d.wslot + 1}の重石を${C.weight.levels[d.weight].name}にした。`, '店主'); renderAll(); return; }
   if (d.work) { const r = game.doWork(+d.wslot, d.work); if (!r.ok) { say(r.error); return; } sound.se('care'); const w = C.pickles[game.barrels[+d.wslot].pickle].work.find((x) => x.id === d.work); say(`樽${+d.wslot + 1}: ${w.label}。${TIMING[r.timing]}。`, '店主'); world.careScene(); renderAll(); return; }

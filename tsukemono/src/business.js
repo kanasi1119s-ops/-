@@ -182,6 +182,7 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
       if (p.starter && !p.starterAfter && g.knows(id) && !(g.tane[p.starter] > 0) && g.season() === 'winter' && g.dayOfSeason() === 1 && !g.barrels.some((b) => b?.pickle === id)) { g.tane[p.starter] = 1; g.events.push({ type: 'taneArrived', pickle: id }); }
     }
     g.wisdomMorning(); // 梅子さん（知恵袋のおばあちゃん）
+    g.ordersMorning(); // 注文・依頼
     // 地方の便り: 地方の枠に入れた地方から、ときどき作り方の便りが届く（全国の漬物。data/regional.js）
     if (g.day() % cfg.letterEvery === 0) {
       const cand = Object.entries(cfg.pickles).filter(([id, p]) => p.unlock?.via === 'letter' && !g.knows(id) && g.regions.includes(p.region));

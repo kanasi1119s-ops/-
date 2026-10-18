@@ -7,6 +7,7 @@ import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
 import { attachSaga, newStory } from './saga.js';
 import { attachWisdom } from './wisdom.js';
+import { attachOrders, newOrders } from './orders.js';
 import { SAVE_VERSION, migrateSnapshot } from './save.js';
 import { REGIONS } from '../data/prefectures.js';
 import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
@@ -100,6 +101,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   attachBusiness(g, { cfg, rng, cal, seed });
   attachSaga(g, { cfg, saga: cfg.saga }); // cfg.saga で物語を差し替えられる（試験用）
   attachWisdom(g, { cfg });
+  attachOrders(g, { cfg });
 
   // ---- 店のレベルと作り方の解放（段階C） ----
   g.level = () => levelOf(g.xp, cfg);
@@ -687,7 +689,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, orders: g.orders, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -756,6 +758,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.contracts = Array.isArray(s.contracts) ? s.contracts.filter((v) => cfg.vegetables[v]?.contract) : [];
     for (const r of g.regulars) { r.name ??= g.regularName(r.id); r.age ??= 'middle'; r.bond ??= 0; r.chapters ??= []; }
     const sto = s.story;
+    const od = s.orders;
+    g.orders = od && Array.isArray(od.board) ? { ...newOrders(), ...od, board: od.board.filter((o) => o && cfg.pickles[o.pickle] && g.client(o.client) && Number.isInteger(o.count)).map((o) => ({ ...o })) } : newOrders();
     g.story = sto && Array.isArray(sto.seen) ? { ...newStory(), ...sto, seen: sto.seen.filter((id) => g.chapter(id)), won: Array.isArray(sto.won) ? sto.won : [], lostPending: Array.isArray(sto.lostPending) ? sto.lostPending : [] } : newStory();
     g.claim = s.claim && Array.isArray(s.claim.lines) && Number.isInteger(s.claim.slot) ? { ...s.claim } : null;
     if (s.rng != null && rng.setState) rng.setState(s.rng);

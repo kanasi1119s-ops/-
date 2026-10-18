@@ -95,6 +95,8 @@ export const CONFIG = {
   // 工程の早すぎ・遅すぎ（data/work.js の工程に共通）【仮置き】
   work: { early: { complexity: 0.9 }, late: { texture: 0.9 } },
   workGrace: 3, // 【仮置き】目安を過ぎても3日までは（遅れて）できる
+  // 注文・依頼（data/orders.js）【仮置き】
+  orders: { slack: 1.4, maxDays: 60, firstDay: 3, every: 3, max: 3, maxActive: 2, offerDays: 3, spoilMax: 30, bonusPerSat: 0.01, xp: 15, failRepMult: 2 },
   letterEvery: 5, // 【仮置き】地方の便りが届く間隔（日）
   kaonRange: [30, 55], // かぶらずしの糀は50℃前後（【出典】資料 p17-1）
   // 梅酢（梅干し。段階E）: 梅は梅酢に浸かっていればカビにくい。日がたつと梅が梅酢から出てくる 【仮置き】
