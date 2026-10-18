@@ -185,7 +185,7 @@ const OVER_WORDS = { great: ['うまーい！！', 'ズキューン！', 'バー
 function overEffect(v) {
   const good = v.reaction.key === 'great', words = OVER_WORDS[good ? 'great' : 'bad'];
   sound.se(good ? 'found' : 'bad');
-  floatText(words[Math.floor(Math.random() * words.length)], SCENE.lane.standX, 200, `over ${good ? 'good' : 'bad'}`);
+  floatText(words[Math.floor(Math.random() * words.length)], SCENE.lane.standX - 150, 70, `over ${good ? 'good' : 'bad'}`); // 吹き出しに隠れないよう、左上に
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const st = $('stageWrap'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
     setTimeout(() => st.classList.remove('shake'), 600);
