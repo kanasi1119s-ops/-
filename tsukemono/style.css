@@ -253,3 +253,9 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
 .panel.claim .bubble { margin: 4px 0; font: 400 18px/1.5 var(--brush); color: var(--sumi) }
 .hud .ev { font: 400 13px/1 var(--brush); background: var(--shu); color: var(--washi); padding: 4px 6px }
 details summary { cursor: pointer; color: var(--sumi); font-size: 14px }
+.saga { display: grid; gap: 10px; padding: 6px 4px 10px }
+.saga p { margin: 0; line-height: 1.9 }
+.saga .sg-narr { font: 400 17px/1.9 var(--mincho); color: var(--sumi) }
+.saga .sg-say { font-size: 17px }
+.saga .sg-say b { font: 400 14px/1 var(--brush); background: var(--sumi); color: var(--washi); padding: 3px 6px; margin-right: 6px; vertical-align: 2px }
+.panel.quest { border-color: var(--shu) }

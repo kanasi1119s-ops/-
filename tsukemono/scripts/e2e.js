@@ -38,12 +38,17 @@ try {
   check('タイトルが出る', await page.isVisible('#title'));
   await page.click('[data-title="new"]');
   check('はじめると店先になる', !(await page.isVisible('#title')));
+  check('序章（物語）の窓が出て、「次へ」で読み進められる', (await page.textContent('#winTitle')).includes('序章'));
+  for (let i = 0; i < 20 && (await page.$('[data-act="sagaNext"]')); i++) await page.click('[data-act="sagaNext"]');
+  await page.click('[data-act="closeWin"]');
   await page.evaluate(() => { window.__game.world.speed = 8; window.__game.ui.paused = true; }); // 確認のあいだ時間は止めておく
   const G = (f) => page.evaluate(f);
+  // 物語・ひらめき・レベルなどの知らせの窓を閉じる（遊んでいると自然に出てくる）
+  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup', 'saga', 'story', 'reformed'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
 
   // 仕込み（コマンド → 窓 → 仕込む）
   const money0 = await G(() => window.__game.game.money);
-  await page.click('[data-cmd="brew"]');
+  await closeNotices(); await page.click('[data-cmd=\"brew\"]');
   check('仕込みの窓が開く', await page.isVisible('#modal'));
   await page.click('[data-veg="kyuri"]');
   await page.click('[data-countset="12"]');
@@ -53,7 +58,7 @@ try {
   check('個数を選んで仕込める', brewed?.portions === 12);
 
   // 次へ（4回で翌朝。夜明けに一日のまとめ）
-  for (let i = 0; i < 4; i++) { await page.click('[data-cmd="next"]'); await idle(); }
+  for (let i = 0; i < 4; i++) { await closeNotices(); await page.click('[data-cmd=\"next\"]'); await idle(); }
   check('一日のまとめが出る', (await page.textContent('#winTitle')).includes('店じまい'));
   await page.click('[data-act="dayClose"]');
   check('翌朝になる', (await G(() => [window.__game.game.day(), window.__game.game.timeOfDay()].join())) === '2,morning');
@@ -68,32 +73,32 @@ try {
   await page.click('[data-chip="0"]');
   await page.click('[data-act="taste"]');
   check('味見できて、同じ時点では2回目ができない', await page.isDisabled('[data-act="taste"]'));
-  await page.click('#winClose');
+  await page.click('#winClose'); await closeNotices();
 
   // 売る（客が来なければ時間を変えて何度か）
   let sold = false;
   for (let i = 0; i < 8 && !sold; i++) {
     await G(() => { const g = window.__game.game; g.weather = 'sunny'; if (!g.barrels[0]) g.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); while (g.timeOfDay() !== 'noon' || g.lastSaleTick === g.tick) g.advance(1); window.__game.renderAll(); });
-    await page.click('[data-cmd="sell"]');
+    await closeNotices(); await page.click('[data-cmd=\"sell\"]');
     await page.click('#winBody [data-act="sellSlot"]'); await idle();
     sold = (await G(() => window.__game.ui.log.length)) > 0;
   }
   check('店先に出すと売れる', sold);
   check('出した樽は次の時間帯も店先に出たまま', (await G(() => window.__game.ui.display)) === 0 || (await G(() => window.__game.game.barrels[0] === null)));
-  await page.click('[data-cmd="book"]');
+  await closeNotices(); await page.click('[data-cmd=\"book\"]');
   check('帳面に記録が出る', (await page.textContent('#winBody')).includes('満足'));
   await page.click('[data-tab="book"]');
   check('図鑑に載る', (await page.textContent('#winBody')).includes('きゅうりの浅漬け'));
-  await page.click('#winClose');
+  await page.click('#winClose'); await closeNotices();
 
   // 投資: 樽を増やす・冷蔵庫を買う
   await G(() => { window.__game.game.money = 20000; window.__game.renderAll(); });
-  await page.click('[data-cmd="shop"]');
+  await closeNotices(); await page.click('[data-cmd=\"shop\"]');
   await page.click('[data-buy="barrel"]');
   await page.click('[data-buy="fridge"]');
   const inv = await G(() => ({ n: window.__game.game.barrels.length, places: window.__game.game.places }));
   check('樽を増やし、冷蔵庫を買える', inv.n === 4 && inv.places.includes('fridge'), JSON.stringify(inv));
-  await page.click('#winClose');
+  await page.click('#winClose'); await closeNotices();
   await page.click('[data-chip="3"]');
   await page.click('[data-act="openBrew"]');
   await page.click('[data-place="fridge"]');
@@ -103,7 +108,7 @@ try {
   check('樽が4個でも描画が落ちない', errors.length === 0, errors.join(' / '));
 
   // ぬか床
-  await page.click('[data-cmd="nuka"]');
+  await closeNotices(); await page.click('[data-cmd=\"nuka\"]');
   await page.click('[data-act="stir"]');
   check('ぬか床をかき混ぜられる', (await G(() => window.__game.game.nuka.lastStirDay)) === (await G(() => window.__game.game.day())));
 
@@ -115,13 +120,12 @@ try {
 
   // 休む・設定
   const d0 = await G(() => window.__game.game.day());
-  await page.click('[data-cmd="rest"]'); await page.click('[data-rest="3"]'); await idle();
+  await closeNotices(); await page.click('[data-cmd=\"rest\"]'); await page.click('[data-rest="3"]'); await idle();
   check('休むと日が進む', (await G(() => window.__game.game.day())) === d0 + 3);
-  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
   await closeNotices();
 
   // 段階C: レシピ帳・ひらめき・レベル
-  await page.click('[data-cmd="book"]'); await page.click('[data-tab="recipes"]');
+  await closeNotices(); await page.click('[data-cmd=\"book\"]'); await page.click('[data-tab="recipes"]');
   check('レシピ帳に「？？？」と噂が出る', (await page.textContent('#winBody')).includes('？？？') && (await page.textContent('#winBody')).includes('噂'));
   await page.click('#winClose'); await closeNotices();
   await G(() => { const g = window.__game.game; g.money = 50000; g.barrels = g.barrels.map(() => null); g.brew(0, { veg: 'nasu', pickle: 'asazuke', saltPct: 2.5, tempC: 15, additives: ['karashi'] }); window.__game.renderAll(); });
@@ -142,24 +146,24 @@ try {
   await page.click('[data-claim="apologize"]').catch(() => {});
   check('対応を選ぶと結果が出る', (await G(() => window.__game.game.claim)) === null && (await page.textContent('#winBody')).includes('評判'));
   await G(() => { window.__game.game.cfg.claimer.chance = 0.1; });
-  await page.click('#winClose'); await idle(); await closeNotices();
+  await page.click('#winClose'); await closeNotices(); await idle(); await closeNotices();
   // 段階D: 仕入れ・店の経営
   await G(() => { window.__game.game.money = 50000; window.__game.renderAll(); });
-  await page.click('[data-cmd="market"]');
+  await closeNotices(); await page.click('[data-cmd=\"market\"]');
   await page.click('[data-stock="kyuri:12"]');
   check('仕入れの窓で野菜を買って在庫にできる', (await G(() => window.__game.game.stockCount('kyuri'))) === 12);
   await page.click('#winClose'); await closeNotices();
-  await page.click('[data-cmd="shop"]');
+  await closeNotices(); await page.click('[data-cmd=\"shop\"]');
   await page.click('[data-hire="baito"]');
   check('店の窓で従業員を雇える', (await G(() => window.__game.game.staff.includes('baito'))));
   await page.click('#winClose'); await closeNotices();
-  await page.click('[data-cmd="brew"]');
+  await closeNotices(); await page.click('[data-cmd=\"brew\"]');
   check('ひらめいた作り方を仕込みの窓で選べる', (await page.textContent('#winBody')).includes('からし漬け'));
   await page.click('#winClose'); await closeNotices();
-  await page.click('[data-cmd="settings"]');
+  await closeNotices(); await page.click('[data-cmd=\"settings\"]');
   await page.fill('#vBgm', '0.3');
   check('設定で音量を変えられる', (await G(() => window.__game.settings.bgm)) === 0.3);
-  await page.click('#winClose');
+  await page.click('#winClose'); await closeNotices();
 
   // セーブ
   const before = await G(() => JSON.stringify(window.__game.game.snapshot()));

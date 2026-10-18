@@ -26,6 +26,8 @@ export function nextStep(g, ui = {}) {
   if (usesBed && (g.nuka.water ?? 0) >= 0.5) return 'ぬか床が水っぽい。ぬかと塩を足すと床がしまる。';
   if (usesBed && g.daysSinceSute() > cfg.nuka.suteEveryDays) return '捨て漬けを替えてから日がたった。キャベツの芯やにんじんの皮に替えると床が傷みにくい。';
   if (g.claim) return '難癖のお客が待っている…。どう対応するか決めよう（時間が進むと、聞こえないふりをしたことになる）。';
+  const q = g.story?.quest;
+  if (q && q.endDay - g.day() <= 3) return `課題「${q.name}」の期限まであと${Math.max(0, q.endDay - g.day())}日（${q.progress} / ${q.target}）。`;
   const fresh = Object.entries(g.recipes ?? {}).find(([id, r]) => r.via !== 'start' && r.made === 0 && g.canBrew(id).ok && !g.barrels.some((x) => x?.pickle === id));
   if (empty >= 0 && fresh && g.money >= cheapest) return `ひらめいた「${cfg.pickles[fresh[0]].name}」をまだ試していない。樽${empty + 1}で仕込んでみよう。`;
   if (empty >= 0 && g.money >= cheapest) return `樽${empty + 1}が空いている。塩分と置き場所を決めて仕込もう。`;

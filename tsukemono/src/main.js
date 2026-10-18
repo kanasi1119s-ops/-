@@ -246,6 +246,29 @@ WINS.market = () => {
   };
 };
 
+// 本編の物語（data/saga.js）。一行ずつ「次へ」で読む。読み返しは全部出す
+WINS.saga = (w) => {
+  const ch = game.chapter(w.id);
+  const all = w.all || w.step >= ch.lines.length - 1;
+  const shown = ch.lines.slice(0, all ? ch.lines.length : w.step + 1);
+  const q = ch.quest, rw = ch.reward;
+  const tail = all ? `${q ? `<div class="panel quest"><div class="ukon">課題: ${q.name}</div><div class="hint">${questText(q)}（${q.days}日以内）</div></div>` : ''}${rw && !w.all ? `<div class="hint" style="text-align:center">${[rw.rep && `評判 +${rw.rep}`, rw.money && `${yen(rw.money)}`, rw.xp && `経験 +${rw.xp}`].filter(Boolean).join(' ・ ')}</div>` : ''}` : '';
+  return {
+    title: `${ch.no}　${ch.title}`,
+    body: `<div class="saga">${shown.map((l) => (l.who ? `<p class="sg-say"><b>${esc(l.who)}</b>「${esc(l.text)}」</p>` : `<p class="sg-narr">${esc(l.text)}</p>`)).join('')}</div>${tail}
+      <div class="row end">${all ? '<button class="btn main" data-act="closeWin">閉じる</button>' : '<button class="btn main" data-act="sagaNext">次へ ▼</button>'}</div>`,
+  };
+};
+const questText = (q) => ({ greatGuests: `お客を${q.target}人、満足${q.need.sat}以上でうならせる`, agedSale: `寝かせた漬物（売り値×${q.need.aging}以上の熟成もの）を売る`, variety: `違う漬物${q.target}種を、それぞれ満足${q.need.sat}以上で売る` }[q.kind] ?? '');
+function storyTab() {
+  const st = game.story, q = st.quest;
+  const now = q ? `<div class="panel quest"><div class="ukon">いまの課題: ${q.name}</div><div>${questText(q)} ・ <b>${q.progress} / ${q.target}</b> ・ あと${Math.max(0, q.endDay - game.day())}日</div></div>`
+    : st.retry ? `<div class="panel quest"><div class="hint">${st.retry.quest.name}は、${Math.max(0, st.retry.day - game.day())}日後にやり直し。</div></div>` : '';
+  const list = st.seen.map((id) => game.chapter(id)).filter(Boolean).map((c) => `<button class="item" data-saga="${c.id}"><span class="grow">${c.no}　<b style="font-weight:400" class="ukon">${c.title}</b></span><span class="hint">読み返す</span></button>`).join('');
+  const left = game.sagaChapters.filter((c) => !st.seen.includes(c.id) && !c.repeat && !c.when?.questLost).length;
+  return `${now}<div class="list">${list}</div><div class="hint">まだ読んでいない章: ${left}。店のレベル・ひらめき・ぬか床・難癖のお客…いろいろなことで物語が進む。</div>`;
+}
+
 // 常連の物語
 WINS.story = ({ e }) => ({
   title: `${e.name}の話`,
@@ -444,9 +467,11 @@ WINS.shop = () => {
 
 // 帳面（記録・図鑑・お客）
 WINS.book = ({ tab = 'log' }) => {
-  const tabs = [['recipes', 'レシピ帳'], ['log', '販売の記録'], ['book', '組み合わせ'], ['guests', 'お客の好み']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
+  const tabs = [['story', '物語'], ['recipes', 'レシピ帳'], ['log', '販売の記録'], ['book', '組み合わせ'], ['guests', 'お客の好み']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
   let body = '';
-  if (tab === 'recipes') {
+  if (tab === 'story') {
+    body = storyTab();
+  } else if (tab === 'recipes') {
     body = recipeBook();
   } else if (tab === 'log') {
     const st = game.stats;
@@ -562,6 +587,10 @@ function flushEvents() {
       floatText('…？', 384, 150);
       continue;
     }
+    if (e.type === 'saga') { sound.se('regular'); openWin('saga', { id: e.id, step: 0 }); return; }
+    if (e.type === 'questStart') { say(`課題「${e.name}」が始まった（${e.days}日以内）。帳面の「物語」で進み具合が見られる。`, '店主'); continue; }
+    if (e.type === 'questWon') { sound.se('found'); floatText(`${e.name} 達成！`, 384, 100, 'good'); continue; }
+    if (e.type === 'questLost') { sound.se('bad'); say(`課題「${e.name}」は期限までに果たせなかった…。`, '店主'); continue; }
     if (e.type === 'season') { floatText(e.name, 384, 110, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
     if (e.type === 'peddler') { say('行商人が来ている。「店」の窓で、作り方の巻物を売っているらしい。（今日だけ）', '店主'); continue; }
     if (e.type === 'stockSpoiled') { say(`仕入れた野菜が${e.n}個分、傷んでしまった…。（買いすぎ注意）`, '店主'); continue; }
@@ -849,6 +878,7 @@ document.addEventListener('click', (e) => {
   if (d.salt) { sound.se('select'); ui.recipe.saltPct = Math.min(15, Math.max(1, ui.recipe.saltPct + +d.salt)); renderWin(); return; }
   if (d.care) { const r = game.nukaCare(d.care); say(r.ok ? `ぬか床：${r.care.name}。${r.care.note}。` : r.error, r.ok ? '店主' : undefined); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
   if (d.buy) { doBuy(d.buy); return; }
+  if (d.saga) { sound.se('select'); openWin('saga', { id: d.saga, all: true }); return; }
   if (d.stock) { const [veg, n] = d.stock.split(':'); const r = game.buyStock(veg, +n); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('buy'); say(`${C.vegetables[veg].name}を${n}個分仕入れた（${yen(r.cost)}）。`, '店主'); renderAll(); return; }
   if (d.hire) { const r = game.hire(d.hire); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('regular'); say(`${game.staffDef(d.hire).name}「${r.line}」`, '店主'); renderAll(); return; }
   if (d.fire) { game.fire(d.fire); sound.se('select'); say(`${game.staffDef(d.fire).name}にやめてもらった。「…お世話になりました」`, '店主'); renderAll(); return; }
@@ -882,6 +912,7 @@ document.addEventListener('click', (e) => {
   if (act === 'closeWin') { closeWin(); return; }
   if (act === 'dayClose') { closeWin(); say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目の朝。今日も店を開けよう。`); tryOpenShop(); return; }
   if (act === 'help') { openWin('help'); return; }
+  if (act === 'sagaNext') { sound.se('select'); ui.win.step++; renderWin(); return; }
   if (act === 'openMarket') { openWin('market'); return; }
   if (act === 'buyRecipe') { const r = game.buyRecipe(); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; closeWin(); return; }
   if (act === 'openRecipes') { openWin('book', { tab: 'recipes' }); return; }
@@ -960,6 +991,7 @@ $('title').addEventListener('click', (e) => {
     say(`おかえりなさい。${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[game.timeOfDay()]}から。`, '店主');
   }
   tryOpenShop();
+  flushEvents(); // 序章など
 });
 
 // ------------------------------------------------------------ 大きさと描画ループ

@@ -5,6 +5,7 @@ import { simulate, filmPerDay, nukaStep, nukaApply, applyCare } from './model.js
 import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
+import { attachSaga, newStory } from './saga.js';
 import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
@@ -87,6 +88,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   g.barrelAge = (b) => (g.tick - b.startTick) / cal.ticksPerDay; // 日
   g.weather = pickWeather();
   attachBusiness(g, { cfg, rng, cal, seed });
+  attachSaga(g, { cfg, saga: cfg.saga }); // cfg.saga で物語を差し替えられる（試験用）
 
   // ---- 店のレベルと作り方の解放（段階C） ----
   g.level = () => levelOf(g.xp, cfg);
@@ -200,11 +202,13 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (r.ban) { k.bannedUntil = g.tick + cfg.claimer.banDays * cal.ticksPerDay; k.disguise = true; banned = true; }
     else if (k.nerve <= 0) { // 改心: 難癖のお客が常連になる。しばらくして別の難癖のお客が現れる
       reformed = true;
+      g.stats.reformed = (g.stats.reformed ?? 0) + 1;
       if (g.regulars.length < cfg.regulars.max) g.regulars.push({ id: g.nextRegularId++, type: 'gourmet', look: k.look, visits: 1, misses: 0, since: g.day(), reformed: true });
       g.claimer = { nerve: cfg.claimer.startNerve, look: Math.floor(rng() * 1e9), visits: 0, wins: 0, bannedUntil: -1, disguise: false, reformedTick: g.tick };
       g.events.push({ type: 'reformed', line: REFORMED });
     }
     g.claim = null;
+    g.checkStory?.();
     return { ok: true, id: r.id, name: r.name, win, rep, line: lines[Math.floor(rng() * lines.length)], banned, reformed };
   };
 
@@ -307,6 +311,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       // ぬか床は店の中（外気温）。放っておくと 膜 → 酸っぱい → 傷む の順に進む（model.js の nukaStep）
       g.nuka = nukaStep(g.nuka, g.ambientTemp(), dt, (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay, cfg);
       for (const b of g.barrels) if (b) checkUnlocks(b); // ひらめき
+      g.checkStory(); // 本編の物語（saga.js）
     }
   };
 
@@ -346,6 +351,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       n.lastStirDay = g.day();
       n.maturity = Math.min(1, n.maturity + 1 / cfg.nuka.matureDays);
     }
+    g.checkStory?.();
     return { ok: true };
   };
   /** ぬか床の手入れ（data/nuka.js の id）。同じ手入れは1つの時間帯に1回まで。 */
@@ -512,12 +518,15 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (closed) g.barrels[slot] = null;
     // 樽の収支（空になったときだけ確定）
     const batch = { pickle: b.pickle, cost: b.cost, earned: b.earned, profit: b.earned - b.cost, closed };
-    return { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay(), reputation: { before: repBefore, after: g.reputation }, discovery, learned, xp };
+    const res = { ok: true, spoiled, visitors, revenue, sold, taste, batch, weather: g.weather, season, time: g.timeOfDay(), reputation: { before: repBefore, after: g.reputation }, discovery, learned, xp };
+    g.questOnSale(res, b); // 物語の課題（対決など）
+    g.checkStory();
+    return res;
   };
 
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, weather: g.weather, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -569,10 +578,13 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.staff = Array.isArray(s.staff) ? s.staff.filter((id) => g.staffDef(id)) : [];
     g.contracts = Array.isArray(s.contracts) ? s.contracts.filter((v) => cfg.vegetables[v]?.contract) : [];
     for (const r of g.regulars) { r.name ??= g.regularName(r.id); r.age ??= 'middle'; r.bond ??= 0; r.chapters ??= []; }
+    const sto = s.story;
+    g.story = sto && Array.isArray(sto.seen) ? { ...newStory(), ...sto, seen: sto.seen.filter((id) => g.chapter(id)), won: Array.isArray(sto.won) ? sto.won : [], lostPending: Array.isArray(sto.lostPending) ? sto.lostPending : [] } : newStory();
     g.claim = s.claim && Array.isArray(s.claim.lines) && Number.isInteger(s.claim.slot) ? { ...s.claim } : null;
     if (s.rng != null && rng.setState) rng.setState(s.rng);
     return true;
   };
 
+  g.checkStory(); // 序章
   return g;
 }
