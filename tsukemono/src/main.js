@@ -1220,7 +1220,7 @@ function showTitle() {
   ui.started = false;
   const t = $('title');
   const hasProgress = game.tick > 0 || game.stats.revenue > 0 || game.barrels.some(Boolean);
-  t.innerHTML = `<div class="logo"><h1>漬物！</h1><span class="hanko" aria-hidden="true">漬</span></div><div class="sub">最強の漬物への道</div>
+  t.innerHTML = `<div class="logo"><h1><small>俺の</small>漬物！</h1><span class="hanko" aria-hidden="true">漬</span></div><div class="sub">最強の漬物への道</div>
     <div class="menu">
       ${hasProgress ? '<button class="btn main" data-title="continue">つづきから</button>' : ''}
       <button class="btn${hasProgress ? '' : ' main'}" data-title="new">${hasProgress ? (ui.confirm === 'new' ? '本当に最初から？' : 'はじめから') : 'はじめる'}</button>

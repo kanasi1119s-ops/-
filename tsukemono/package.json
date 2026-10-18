@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "漬物！最強の漬物への道 — 最小版（MVP）",
+  "description": "俺の漬物！最強の漬物への道 — 最小版（MVP）",
   "scripts": {
     "start": "node scripts/serve.js",
     "test": "node --test \"tests/*.test.js\"",

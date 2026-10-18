@@ -1,4 +1,4 @@
-/* 漬物！ 画面の見た目（和）
+/* 俺の漬物！ 画面の見た目（和）
    考え方: 地は紺の青海波。店先の画面を焦げ茶の木枠で囲み、窓は和紙に墨の文字、見出しは筆。
    ボタンは木札、大事なところ（次へ・仕込む・売る）は朱の判子のような色。色は下のトークンだけを使う。 */
 :root {
@@ -96,6 +96,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 .title-screen { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 2cqw; line-height: 1.2;
   background: linear-gradient(#1a274066, #1a2740cc); text-align: center; padding: 4cqw }
 .title-screen .logo { position: relative; display: inline-block }
+.title-screen h1 small { font-size: .5em; margin-right: .08em; vertical-align: .12em }
 .title-screen h1 { margin: 0; font: 400 clamp(40px, 14cqw, 128px)/1 var(--brush); color: var(--washi); text-shadow: 3px 3px 0 var(--sumi), 6px 6px 0 #0007; letter-spacing: .04em }
 .title-screen .hanko { position: absolute; right: -0.9em; top: -0.2em; font: 400 clamp(14px, 4.4cqw, 40px)/1 var(--brush); color: var(--washi); background: var(--shu);
   width: 1.6em; height: 1.6em; display: grid; place-items: center; border-radius: 6px; rotate: 8deg; box-shadow: inset 0 0 0 3px var(--shu), inset 0 0 0 5px var(--washi) }

@@ -24,7 +24,7 @@ const markup = html.slice(html.indexOf('<!--GAME-->') + 11, html.indexOf('<!--/G
 const css = rd('style.css');
 const safe = (s) => s.replace(/<\/script/gi, '<\\/script');
 const parts = [
-  '<title>漬物！最強の漬物への道</title>',
+  '<title>俺の漬物！最強の漬物への道</title>',
   '<meta name="claude:viewport-fit-sides" content="cover">',
   '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Old+Mincho:wght@400;600;700;900&display=swap">',
   `<style>\n${css}</style>`,
