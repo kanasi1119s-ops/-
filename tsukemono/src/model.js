@@ -142,10 +142,35 @@ export function filmPerDay(tempC, cfg = CONFIG) {
   return interpolate(cfg.care.filmPerDay, tempC);
 }
 
-/** ぬか床をかき混ぜないとき、1日に増える酸味。高温・低塩分ほど増える。 */
-export function nukaSourPerDay(tempC, saltPct, cfg = CONFIG) {
+/** ぬか床をかき混ぜないとき、1日に増える酸味。高温・低塩分・水っぽいほど増える。 */
+export function nukaSourPerDay(tempC, saltPct, cfg = CONFIG, water = 0) {
   const n = cfg.nuka;
-  return interpolate(n.sourPerDay, tempC) * (1 + Math.max(0, n.startSalt - saltPct) * n.lowSaltSourBoost);
+  return interpolate(n.sourPerDay, tempC) * (1 + Math.max(0, n.startSalt - saltPct) * n.lowSaltSourBoost) * (1 + (n.waterSourBoost ?? 0) * water);
+}
+
+/**
+ * ぬか床の dt 日ぶんの変化（何もしないとき）。bed = { salt, sour, film, water, rot, umami, ... }、sinceSute = 捨て漬けを替えてからの日数。
+ * 放っておくと 膜 → 酸っぱい → 傷む の順に進む。新しい状態を返す（bed は書きかえない）。
+ */
+export function nukaStep(bed, tempC, dt, sinceSute, cfg = CONFIG) {
+  const n = cfg.nuka, cl = (v) => Math.min(1, Math.max(0, v));
+  const water = cl((bed.water ?? 0) + n.waterPerDay * dt);
+  const sour = cl(bed.sour + nukaSourPerDay(tempC, bed.salt, cfg, water) * dt);
+  const film = cl(bed.film + filmPerDay(tempC, cfg) * dt);
+  const rotRate = n.rotPerFilm * Math.max(0, film - n.rotFilmStart) + n.rotPerSour * Math.max(0, sour - n.rotSourStart)
+    + n.rotPerSuteDay * Math.max(0, sinceSute - n.suteEveryDays);
+  const rot = cl((bed.rot ?? 0) + rotRate * dt);
+  const umami = cl((bed.umami ?? 0) - n.umamiPerDay * dt);
+  return { ...bed, water, sour, film, rot, umami };
+}
+
+/** ぬか床の手入れ（data/nuka.js の1件）の効き目を床に足す。新しい状態を返す。 */
+export function nukaApply(bed, effects, cfg = CONFIG) {
+  const n = cfg.nuka, cl = (v) => Math.min(1, Math.max(0, v));
+  const out = { ...bed };
+  for (const k of ['sour', 'water', 'rot', 'film', 'umami', 'maturity']) if (effects[k]) out[k] = cl((out[k] ?? 0) + effects[k]);
+  if (effects.salt) out.salt = Math.min(n.maxSalt, Math.max(n.minSalt, out.salt + effects.salt));
+  return out;
 }
 
 /**
@@ -159,8 +184,13 @@ export function applyCare(taste, care, cfg = CONFIG) {
   const out = { ...taste, film, filmVisible: film >= c.filmVisible, careFactor: 1 - c.filmSatPenalty * harm };
   out.complexity = taste.complexity * (1 - c.filmComplexityPenalty * harm);
   if (care.bed) {
-    out.acid = Math.min(100, taste.acid + cfg.nuka.sourAcidBoost * care.bed.sour);
-    out.complexity *= 0.4 + 0.6 * care.bed.maturity;
+    const n = cfg.nuka, bed = care.bed;
+    out.acid = Math.min(100, taste.acid + n.sourAcidBoost * bed.sour);
+    out.complexity *= 0.4 + 0.6 * bed.maturity;
+    out.complexity *= (1 - n.rotComplexityLoss * (bed.rot ?? 0)) * (1 + n.umamiComplexityBoost * (bed.umami ?? 0));
+    out.saltiness = taste.saltiness * (1 - n.waterSaltLoss * (bed.water ?? 0));
+    out.spoilRisk = Math.min(100, taste.spoilRisk + n.rotSpoilBoost * (bed.rot ?? 0));
+    out.bedRot = bed.rot ?? 0;
   }
   return out;
 }

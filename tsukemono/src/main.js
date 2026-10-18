@@ -7,6 +7,7 @@ import { SceneRenderer } from './render.js';
 import { World } from './world.js';
 import { integerScale, loadImages } from './pixel.js';
 import { nextStep } from './guide.js';
+import { NUKA_CARE, NUKA_WHEN } from '../data/nuka.js';
 import { Sound } from './audio.js';
 import { SCENE, IMAGES } from '../assets/scene.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
@@ -289,7 +290,7 @@ WINS.brew = () => {
   if (settings.practice) {
     const days = daysToRipe(r), range = ripeRangeDays(r);
     let t = simulate({ ...r, quality: game.vegQuality(r.veg), days });
-    if (p.usesNukaBed) t = applyCare(t, { film: game.nuka.film, bed: { sour: game.nuka.sour, maturity: game.nuka.maturity } });
+    if (p.usesNukaBed) t = applyCare(t, { film: game.nuka.film, bed: game.nuka });
     predict = `<div class="panel"><div class="ukon">見立て（練習モード）</div><div>食べ頃まで <b class="ukon">${trim(days, 1)}日</b>（${trim(range.from, 1)}〜${trim(range.to, 1)}日）・ ${trim(range.sourFrom, 1)}日を過ぎると酸っぱすぎ</div>${bars(t, { numbers: true })}</div>`;
   }
   return {
@@ -328,19 +329,30 @@ WINS.sell = () => {
 
 // ぬか床
 WINS.nuka = () => {
-  const n = game.nuka, c = C.nuka;
+  const n = game.nuka;
   const stirred = n.lastStirTick === game.tick, today = n.lastStirDay === game.day();
   const bar = (label, v, col, w) => `<div class="bar"><span>${label}</span><i><s style="width:${Math.min(100, v * 100)}%;background:${col}"></s></i><span>${w}</span></div>`;
+  const sute = game.daysSinceSute(), suteLate = sute > C.nuka.suteEveryDays;
+  const groups = Object.entries(NUKA_WHEN).map(([when, title]) => {
+    const btns = NUKA_CARE.filter((a) => a.when === when).map((a) => {
+      const done = n.cared?.[a.id] === game.tick, full = a.effects.salt > 0 && n.salt >= C.nuka.maxSalt;
+      return `<button class="tile" data-care="${a.id}" title="${a.note}" ${done || full || game.money < a.cost ? 'disabled' : ''}><b>${a.name}</b><span>${done ? 'した' : a.cost ? yen(a.cost) : 'ただ'}・${a.note}</span></button>`;
+    }).join('');
+    return `<div class="sec"><h3>${title}</h3><div class="tiles wide">${btns}</div></div>`;
+  }).join('');
   return {
     title: 'ぬか床',
     body: `<div class="panel">
-      <div>塩分 <b class="ukon">${trim(n.salt, 1)}%</b> ・ 店の中 ${game.ambientTemp()}℃ ・ ${today ? '今日はかき混ぜた' : '<span class="warn">今日はまだかき混ぜていない</span>'}</div>
+      <div>塩分 <b class="ukon">${trim(n.salt, 1)}%</b> ・ 店の中 ${game.ambientTemp()}℃（適温20〜25℃） ・ ${today ? '今日はかき混ぜた' : '<span class="warn">今日はまだかき混ぜていない</span>'} ・ 捨て漬けを替えて${Math.floor(sute)}日${suteLate ? '（<span class="warn">そろそろ替えどき</span>）' : ''}</div>
       <div class="bars">${bar('酸味', n.sour, '#d29a2c', n.sour < 0.25 ? 'ちょうどいい' : n.sour < 0.5 ? 'やや酸っぱい' : n.sour < 0.8 ? '酸っぱい' : 'かなり酸っぱい')}
       ${bar('白い膜', n.film, '#9a8f7c', filmWord(n.film))}
+      ${bar('水っぽさ', n.water, '#5a86b0', n.water < 0.25 ? 'しまっている' : n.water < 0.5 ? 'やや水っぽい' : '水っぽい')}
+      ${bar('傷み', n.rot, '#8a3a2a', n.rot < 0.1 ? 'なし' : n.rot < 0.3 ? '少しにおう' : n.rot < 0.6 ? '傷みかけ' : '傷んでいる')}
+      ${bar('旨味', n.umami, '#c9822d', n.umami < 0.1 ? 'ふつう' : n.umami < 0.4 ? '旨味あり' : 'たっぷり')}
       ${bar('熟成度', n.maturity, '#6b4a7a', n.maturity < 0.3 ? '若い床' : n.maturity < 0.7 ? '育ってきた' : n.maturity < 1 ? 'いい床' : '最高の床')}</div></div>
-    <div class="row"><button class="btn main" data-act="stir" ${stirred ? 'disabled' : ''}>${stirred ? 'かき混ぜた' : 'かき混ぜる'}</button>
-      <button class="btn" data-act="saltNuka" ${n.salt >= c.maxSalt || game.money < c.addSaltCost ? 'disabled' : ''}>塩を足す（${yen(c.addSaltCost)}）</button></div>
-    <div class="hint">毎日かき混ぜると床が育ち、ぬか漬けの風味が深くなる。放っておくと酸っぱくなり、白い膜が張る。26℃以上は特に早い。</div>`,
+    <div class="row"><button class="btn main" data-act="stir" ${stirred ? 'disabled' : ''}>${stirred ? 'かき混ぜた' : '毎日かき混ぜる'}</button></div>
+    ${groups}
+    <div class="hint">毎日かき混ぜると床が育ち、ぬか漬けの風味が深くなる。放っておくと、白い膜 → 酸っぱい → 傷む と進む。26℃以上は特に早い。ぬか漬けを漬けるほど野菜の水で床が水っぽくなる。</div>`,
   };
 };
 
@@ -638,6 +650,7 @@ document.addEventListener('click', (e) => {
   if (d.place) { sound.se('select'); ui.recipe.place = d.place; renderWin(); return; }
   if (d.bslot) { sound.se('select'); ui.slot = +d.bslot; renderWin(); renderChips(); return; }
   if (d.salt) { sound.se('select'); ui.recipe.saltPct = Math.min(15, Math.max(1, ui.recipe.saltPct + +d.salt)); renderWin(); return; }
+  if (d.care) { const r = game.nukaCare(d.care); say(r.ok ? `ぬか床：${r.care.name}。${r.care.note}。` : r.error, r.ok ? '店主' : undefined); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
   if (d.buy) { doBuy(d.buy); return; }
   if (d.rest) { const days = +d.rest; closeWin(); const ticks = days === 1 ? ((4 - TIMES.indexOf(game.timeOfDay())) % 4 || 4) : days * 4; advance(ticks, { summary: false }); return; }
   const act = d.act;

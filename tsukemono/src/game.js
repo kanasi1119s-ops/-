@@ -1,7 +1,8 @@
 // ゲームの進行（画面なし）。仕込み→熟成→販売の1周を管理する。
 // 乱数は seed 付きで差し替え可能にして、テストで結果を固定できるようにする。
 import { CONFIG } from './config.js';
-import { simulate, filmPerDay, nukaSourPerDay, applyCare } from './model.js';
+import { simulate, filmPerDay, nukaStep, nukaApply, applyCare } from './model.js';
+import { NUKA_CARE } from '../data/nuka.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
 export function createRng(seed = 1) {
@@ -34,6 +35,9 @@ export function bookTotal(cfg = CONFIG) {
   return Object.values(cfg.pickles).reduce((s, p) => s + p.vegetables.length, 0) * combos;
 }
 
+/** まっさらなぬか床。water=水っぽさ・rot=傷み・umami=足した旨味（0〜1）、suteTick=捨て漬けを替えた時、cared=手入れごとの最後の時 */
+export const newBed = (cfg = CONFIG) => ({ salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0, water: 0, rot: 0, umami: 0, suteTick: 0, cared: {} });
+
 export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {}) {
   const cal = cfg.calendar;
   const g = {
@@ -45,7 +49,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     stats: { revenue: 0, cost: 0, sold: 0, visits: 0, spoiled: 0 },
     lastSaleTick: -1, // 販売は1つの時間帯（区切り）に1回まで
     // ぬか床（店にひとつ）: 塩分、酸味(0〜1)、白い膜(0〜1)、熟成度(0〜1)、最後にかき混ぜた日
-    nuka: { salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0 },
+    nuka: newBed(cfg),
     reputation: cfg.reputation.start, // 評判 0〜100
     book: {}, // 図鑑: 売った組み合わせ（漬物・野菜・調味）ごとの最高の満足度 { key: { best, day, n } }
     regulars: [], // 常連客 { id, type, look, visits, misses, since }
@@ -132,7 +136,10 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (cost > g.money) return { ok: false, error: 'お金が足りません' };
     g.money -= cost;
     g.stats.cost += cost;
-    if (p.usesNukaBed) g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
+    if (p.usesNukaBed) {
+      g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
+      g.nuka.water = Math.min(1, (g.nuka.water ?? 0) + cfg.nuka.waterPerBatch * (count / g.standardCount(pickle))); // 野菜から水が出る
+    }
     g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality: g.vegQuality(veg), startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
@@ -147,10 +154,8 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       for (const b of g.barrels) {
         if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * dt);
       }
-      // ぬか床は店の中（外気温）。かき混ぜないと酸っぱくなり、膜が張る
-      const n = g.nuka, t = g.ambientTemp();
-      n.sour = Math.min(1, n.sour + nukaSourPerDay(t, n.salt, cfg) * dt);
-      n.film = Math.min(1, n.film + filmPerDay(t, cfg) * dt);
+      // ぬか床は店の中（外気温）。放っておくと 膜 → 酸っぱい → 傷む の順に進む（model.js の nukaStep）
+      g.nuka = nukaStep(g.nuka, g.ambientTemp(), dt, (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay, cfg);
     }
   };
 
@@ -160,7 +165,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const p = cfg.pickles[b.pickle];
     const base = simulate({ ...b, days: g.barrelAge(b) }, cfg);
     const film = Math.max(b.film ?? 0, p.usesNukaBed ? g.nuka.film : 0);
-    return applyCare(base, { film, bed: p.usesNukaBed ? { sour: g.nuka.sour, maturity: g.nuka.maturity } : null }, cfg);
+    return applyCare(base, { film, bed: p.usesNukaBed ? g.nuka : null }, cfg);
   };
 
   // ---- 手入れ ----
@@ -182,23 +187,32 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     n.lastStirTick = g.tick;
     n.sour = Math.max(0, n.sour - cfg.nuka.stirSourDrop);
     n.film = 0;
+    n.rot = Math.max(0, (n.rot ?? 0) - cfg.nuka.rotStirDrop);
     if (n.lastStirDay !== g.day()) {
       n.lastStirDay = g.day();
       n.maturity = Math.min(1, n.maturity + 1 / cfg.nuka.matureDays);
     }
     return { ok: true };
   };
-  /** ぬか床に塩を足す（酸味が和らぎ、塩分が上がる）。 */
-  g.saltNuka = () => {
-    const n = g.nuka, c = cfg.nuka;
-    if (n.salt >= c.maxSalt) return { ok: false, error: 'これ以上は塩辛くなりすぎます' };
-    if (g.money < c.addSaltCost) return { ok: false, error: 'お金が足りません' };
-    g.money -= c.addSaltCost;
-    g.stats.cost += c.addSaltCost;
-    n.salt = Math.min(c.maxSalt, n.salt + c.addSaltPct);
-    n.sour = Math.max(0, n.sour - c.addSaltSourDrop);
-    return { ok: true };
+  /** ぬか床の手入れ（data/nuka.js の id）。同じ手入れは1つの時間帯に1回まで。 */
+  g.nukaCare = (id) => {
+    const a = NUKA_CARE.find((x) => x.id === id);
+    if (!a) return { ok: false, error: 'その手入れはありません' };
+    const n = g.nuka;
+    if (n.cared?.[id] === g.tick) return { ok: false, error: 'さっきしたばかりです' };
+    if (a.effects.salt > 0 && n.salt >= cfg.nuka.maxSalt) return { ok: false, error: 'これ以上は塩辛くなりすぎます' };
+    if (g.money < a.cost) return { ok: false, error: 'お金が足りません' };
+    g.money -= a.cost;
+    g.stats.cost += a.cost;
+    g.nuka = nukaApply(n, a.effects, cfg);
+    g.nuka.cared = { ...(n.cared ?? {}), [id]: g.tick };
+    if (a.resetsSute) g.nuka.suteTick = g.tick;
+    return { ok: true, care: a };
   };
+  /** ぬか床に塩を足す（酸味が和らぎ、塩分が上がる）。 */
+  g.saltNuka = () => g.nukaCare('salt');
+  /** 捨て漬けを替えてからの日数 */
+  g.daysSinceSute = () => (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay;
 
   /**
    * 味見。同じ樽の同じ時点では1回まで（時間が進めば、また味見できる）。
@@ -326,7 +340,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.stats = { ...g.stats, ...s.stats };
     g.lastSaleTick = Number.isInteger(s.lastSaleTick) ? s.lastSaleTick : -1;
     const n = s.nuka;
-    if (n && [n.salt, n.sour, n.film, n.maturity].every(Number.isFinite)) g.nuka = { ...g.nuka, ...n };
+    if (n && [n.salt, n.sour, n.film, n.maturity].every(Number.isFinite)) {
+      g.nuka = { ...newBed(cfg), ...n }; // 段階B より前のセーブには水っぽさ・傷み・旨味がないので、まっさらの値で補う
+      for (const k of ['water', 'rot', 'umami', 'suteTick']) if (!Number.isFinite(g.nuka[k])) g.nuka[k] = 0;
+      if (typeof g.nuka.cared !== 'object' || !g.nuka.cared) g.nuka.cared = {};
+    }
     for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; b.quality ??= 1; }
     if (Number.isFinite(s.reputation)) g.reputation = Math.min(100, Math.max(0, s.reputation));
     if (Array.isArray(s.places)) g.places = [...new Set([...g.places, ...s.places.filter((k) => cfg.places[k])])];

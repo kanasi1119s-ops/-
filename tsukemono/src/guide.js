@@ -21,7 +21,10 @@ export function nextStep(g, ui = {}) {
   if (filmy.length) return `${filmy.map(n).join('・')}に白い膜が出ている。「手入れ」で取ろう。`;
   const usesBed = items.some((x) => cfg.pickles[x.b.pickle].usesNukaBed) || g.nuka.maturity > 0;
   if (usesBed && g.nuka.lastStirDay !== g.day()) return 'ぬか床を今日はまだかき混ぜていない。「かき混ぜる」で床が育つ。';
-  if (usesBed && g.nuka.sour >= 0.5) return 'ぬか床が酸っぱくなっている。塩を足すと和らぐ。';
+  if (usesBed && (g.nuka.rot ?? 0) >= 0.3) return 'ぬか床が傷みかけている。捨て漬けを替えて、ぬかと塩を足そう。';
+  if (usesBed && g.nuka.sour >= 0.5) return 'ぬか床が酸っぱくなっている。塩・からし・卵の殻で和らぐ。';
+  if (usesBed && (g.nuka.water ?? 0) >= 0.5) return 'ぬか床が水っぽい。ぬかと塩を足すと床がしまる。';
+  if (usesBed && g.daysSinceSute() > cfg.nuka.suteEveryDays) return '捨て漬けを替えてから日がたった。キャベツの芯やにんじんの皮に替えると床が傷みにくい。';
   if (empty >= 0 && g.money >= cheapest) return `樽${empty + 1}が空いている。塩分と置き場所を決めて仕込もう。`;
   if (empty >= 0 && !items.length) return 'お金が足りず仕込めない…「確認用の操作」から最初からやり直せます。';
   // 手元に余裕があれば投資をすすめる（仕込み代を残しておく）

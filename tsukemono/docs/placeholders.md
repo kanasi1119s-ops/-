@@ -65,25 +65,51 @@
 | 207 | nuka.sourPerDay | `[[4, 0.02], [10, 0.06], [20, 0.1], [25, 0.12], [26, 0.2], [30, 0.3]…` | かき混ぜないと1日に増える酸味（26℃以上で急に増える） |
 | 208 | nuka.lowSaltSourBoost | `0.05` | 塩分が1%下がるごとに酸味の増え方+5% |
 | 209 | nuka.stirSourDrop | `0.35` | かき混ぜると酸味がこれだけ下がる |
-| 210 | nuka.addSaltPct | `1, addSaltCost: 10, addSaltSourDrop: 0.25` | 塩を足す（出典: 塩を足すと酸味が和らぐ） |
-| 211 | nuka.sourAcidBoost | `40` | 床の酸味1でぬか漬けの酸味+40 |
-| 212 | nuka.matureDays | `14` | 毎日かき混ぜて14日で熟成度が最大 |
-| 219 | sales.portionsPerBatch | `6` | 1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値） |
-| 220 | sales.barrelCapacity | `60` | 1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる） |
-| 221 | sales.satScale | `1.7` | 好みとのズレ(重み付き平均)×この値を100から引く |
-| 222 | sales.stageFactor | `{ raw: 1, ripe: 1, over: 0.92, sour: 0.7 }` | 過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる） |
-| 223 | sales.likeBonus | `8` | 好きな種類の漬物なら満足度+8 |
-| 224 | sales.unripeMinFactor | `0.5` | 未熟だと満足度に 0.5〜1.0 を掛ける |
-| 225 | sales.spoilSatPenalty | `0.8` | 傷みリスク100%で満足度×0.2（期待値） |
-| 226 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
-| 228 | sales.priceMin | `0.6, priceMax: 1.3` |  |
-| 229 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
-| 230 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
-| 231 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
-| 232 | sales.buyStep | `15` |  |
-| 239 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
-| 240 | calendar.daysPerSeason | `28` |  |
-| 268 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
+| 210 | nuka.sourAcidBoost | `40` | 床の酸味1でぬか漬けの酸味+40 |
+| 211 | nuka.matureDays | `14` | 毎日かき混ぜて14日で熟成度が最大 |
+| 213 | nuka.waterPerBatch | `0.08` | ぬか漬けを標準の個数ぶん漬けるごとに、野菜から出る水で床が水っぽくなる（個数に比例） |
+| 214 | nuka.waterPerDay | `0.01` | 何もしなくても少しずつ水が出る |
+| 215 | nuka.waterSourBoost | `0.6` | 水っぽさ1で酸味の増え方×1.6（水分過多は酸っぱくなる原因） |
+| 216 | nuka.waterSaltLoss | `0.3` | 水っぽさ1でぬか漬けの塩味×0.7（薄まる） |
+| 218 | nuka.rotFilmStart | `0.5, rotPerFilm: 0.35` | 膜が半分を超えると、超えたぶん×0.35/日 |
+| 219 | nuka.rotSourStart | `0.6, rotPerSour: 0.35` | 酸味が0.6を超えると、超えたぶん×0.35/日 |
+| 220 | nuka.suteEveryDays | `4, rotPerSuteDay: 0.02` | 捨て漬けを4日より長く替えないと、1日ごとに+0.02/日 |
+| 221 | nuka.rotStirDrop | `0.05` | かき混ぜると傷みが少し戻る（空気を入れて悪い菌をおさえる） |
+| 222 | nuka.rotSpoilBoost | `100` | 傷み1でぬか漬けの傷みリスク+100% |
+| 223 | nuka.rotComplexityLoss | `0.5` | 傷み1で風味の深さ×0.5 |
+| 224 | nuka.umamiPerDay | `0.02` | 足した旨味は1日に0.02ずつ抜けていく |
+| 225 | nuka.umamiComplexityBoost | `0.3` | 旨味1でぬか漬けの風味の深さ×1.3 |
+| 232 | sales.portionsPerBatch | `6` | 1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値） |
+| 233 | sales.barrelCapacity | `60` | 1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる） |
+| 234 | sales.satScale | `1.7` | 好みとのズレ(重み付き平均)×この値を100から引く |
+| 235 | sales.stageFactor | `{ raw: 1, ripe: 1, over: 0.92, sour: 0.7 }` | 過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる） |
+| 236 | sales.likeBonus | `8` | 好きな種類の漬物なら満足度+8 |
+| 237 | sales.unripeMinFactor | `0.5` | 未熟だと満足度に 0.5〜1.0 を掛ける |
+| 238 | sales.spoilSatPenalty | `0.8` | 傷みリスク100%で満足度×0.2（期待値） |
+| 239 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
+| 241 | sales.priceMin | `0.6, priceMax: 1.3` |  |
+| 242 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
+| 243 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
+| 244 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
+| 245 | sales.buyStep | `15` |  |
+| 252 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
+| 253 | calendar.daysPerSeason | `28` |  |
+| 281 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
+
+## data/nuka.js
+
+| 行 | 項目 | 値 | 理由・メモ |
+| --- | --- | --- | --- |
+| 14 | — | `{ id: 'salt', name: '塩を足す', when: 'sour', cost: 10, effects: { salt…` | 効き目 |
+| 15 | — | `{ id: 'karashi', name: 'からしを入れる（大さじ1）', when: 'sour', cost: 40, eff…` |  |
+| 16 | — | `{ id: 'egg', name: '卵の殻を入れる', when: 'sour', cost: 0, effects: { sou…` |  |
+| 18 | — | `{ id: 'nuka', name: 'ぬかと塩を足す（ぬか1カップに塩小さじ1〜大さじ½）', when: 'water', co…` |  |
+| 20 | — | `{ id: 'sute', name: '捨て漬けを替える（キャベツの芯・にんじんの皮）', when: 'rot', cost: 0…` | 効き目 |
+| 22 | — | `{ id: 'kombu', name: '昆布', when: 'umami', cost: 60, effects: { umam…` |  |
+| 23 | — | `{ id: 'akatogarashi', name: '赤唐辛子', when: 'umami', cost: 30, effect…` |  |
+| 24 | — | `{ id: 'niboshi', name: '煮干し', when: 'umami', cost: 50, effects: { u…` |  |
+| 25 | — | `{ id: 'sansho', name: '実山椒', when: 'umami', cost: 70, effects: { um…` |  |
+| 26 | — | `{ id: 'yuzu', name: 'ゆずの皮', when: 'umami', cost: 80, effects: { uma…` |  |
 
 ## data/pickles.js
 
@@ -122,4 +148,4 @@
 | 108 | nozawanazuke.complexityMax | `70` |  |
 | 109 | nozawanazuke.price | `450` |  |
 
-合計 110 件
+合計 131 件

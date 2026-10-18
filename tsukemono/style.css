@@ -143,6 +143,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
 
 /* 選べる札（タイル） */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px }
+.tiles.wide { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) }
 .tile { position: relative; text-align: left; background: #fbf5e4; border: 2px solid var(--washi-3); padding: 6px 8px; line-height: 1.3; min-width: 0; color: var(--sumi) }
 .tile b { display: block; font: 400 17px/1.3 var(--brush) }
 .tile span { display: block; font-size: 13px; color: var(--sumi-dim) }
