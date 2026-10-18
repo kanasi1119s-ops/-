@@ -7,6 +7,7 @@ import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
 import { attachSaga, newStory } from './saga.js';
 import { attachWisdom } from './wisdom.js';
+import { SAVE_VERSION, migrateSnapshot } from './save.js';
 import { TASTE_GRIPES, ABSURD_GRIPES, DEMANDS, DISGUISE, REFORMED, RESPONSES, IGNORE } from '../data/claimer.js';
 import { satisfaction, priceFor, reactionOf } from './sales.js';
 
@@ -25,7 +26,7 @@ export function createRng(seed = 1) {
   return rng;
 }
 
-export const SAVE_VERSION = 1;
+export { SAVE_VERSION } from './save.js';
 
 /** 難癖のお客（好みのタイプではない特別なお客） */
 export const CLAIMER_CUSTOMER = { id: 'claimer', name: '難癖のお客', hint: 'なんにでもケチをつける' };
@@ -600,7 +601,14 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
   }));
 
   /** セーブから戻す。形がおかしければ何もせず false。 */
-  g.restore = (s) => {
+  g.restore = (raw) => {
+    // 古い版は直してから読む。途中で何かあっても、元の状態に戻す（壊れたセーブで店が壊れない）
+    const s = migrateSnapshot(raw);
+    if (!s) return false;
+    const backup = g.snapshot();
+    try { return restoreInner(s) || (restoreInner(backup), false); } catch { restoreInner(backup); return false; }
+  };
+  const restoreInner = (s) => {
     const okBarrel = (b) => b === null || (b && cfg.vegetables[b.veg] && cfg.pickles[b.pickle] && Number.isFinite(b.saltPct) && Number.isFinite(b.tempC) && Number.isFinite(b.startTick) && Number.isFinite(b.portions));
     if (!s || s.v !== SAVE_VERSION || !Number.isInteger(s.tick) || s.tick < 0 || !Number.isFinite(s.money)
       || !Array.isArray(s.barrels) || s.barrels.length < BARREL_COUNT || s.barrels.length > cfg.barrelsInvest.max || !s.barrels.every(okBarrel)

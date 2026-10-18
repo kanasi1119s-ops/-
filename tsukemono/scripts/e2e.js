@@ -180,6 +180,19 @@ try {
   check('再読み込みしても続きから', before === after);
   await page.click('[data-title="continue"]');
 
+  // 段階H: ファイルに書き出して、読みこむ。壊れたセーブは安全に扱う
+  await closeNotices(); await page.click('[data-cmd="settings"]');
+  await page.click('[data-act="exportSave"]');
+  const exported = await G(() => window.__lastExport);
+  check('セーブをファイルに書き出せる（版番号つき）', !!exported && JSON.parse(exported).v === 2);
+  await page.click('#winClose');
+  const edited = JSON.parse(exported); edited.game.money = 123456;
+  await Promise.all([page.waitForEvent('load'), page.evaluate((t) => window.__game.importSaveText(t), JSON.stringify(edited)).catch(() => {})]);
+  await ready();
+  check('ファイルから読みこむと、その続きから遊べる', (await G(() => window.__game.game.money)) === 123456);
+  await page.evaluate(() => localStorage.setItem('tsukemono.save.v1', '{"game": {"v": 2, "tick": "こわれた"')); await page.reload(); await ready();
+  check('壊れたセーブは別に残して、最初から始められる', (await G(() => window.__game.game.tick)) === 0 && (await page.evaluate(() => !!localStorage.getItem('tsukemono.save.broken'))));
+
   // 見た目の切り替え
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     for (const weather of ['sunny', 'rain', 'snow']) {

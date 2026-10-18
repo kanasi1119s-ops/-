@@ -10,6 +10,7 @@ import { nextStep } from './guide.js';
 import { NUKA_CARE, NUKA_WHEN } from '../data/nuka.js';
 import { ALMOST, ALMOST_TAIL, MASTERY_NAMES, TOO_EARLY } from '../data/quips.js';
 import { nextLevelXp } from './unlock.js';
+import { encodeSave, decodeSave } from './save.js';
 import { agingFactor, STAFF, AGES } from './business.js';
 import { Sound } from './audio.js';
 import { SCENE, IMAGES } from '../assets/scene.js';
@@ -32,8 +33,13 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 保存できなくても遊べる */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* 同上 */ } },
 };
-const saved = store.get(SAVE_KEY);
-const hasSave = !!(saved && game.restore(saved.game));
+// 段階H: セーブには版番号がある（src/save.js）。壊れていたら別の名前で残して、最初から始める
+const SAVE_BROKEN_KEY = 'tsukemono.save.broken';
+const savedRaw = (() => { try { return localStorage.getItem(SAVE_KEY); } catch { return null; } })();
+let saved = store.get(SAVE_KEY);
+let hasSave = !!(saved && game.restore(saved.game));
+let brokenSave = false;
+if (savedRaw && !hasSave) { try { localStorage.setItem(SAVE_BROKEN_KEY, savedRaw); } catch { /* 残せなくても遊べる */ } store.del(SAVE_KEY); brokenSave = true; saved = null; }
 const settings = { bgm: 0.6, se: 0.8, practice: true, speed: 1, timeScale: 1, ...(store.get(SET_KEY) ?? {}) };
 sound.setVolumes(settings.bgm, settings.se);
 
@@ -712,7 +718,8 @@ WINS.settings = () => {
       <label class="row"><input type="checkbox" id="manual" ${o.manual ? 'checked' : ''}> 見た目だけ固定する（遊びには影響しない）</label>
       <div class="row">${sel('dSeason', SEASONS, Object.fromEntries(SEASONS.map((s) => [s, C.season[s].name])), o.season)} ${sel('dTime', TIMES, C.timeName, o.time)} ${sel('dWeather', WEATHERS, C.weatherName, o.weather)}</div>
       <div class="row"><button class="btn ghost" data-act="ambient">通りがかりの客を呼ぶ</button>${globalThis.TSUKEMONO_IMAGES ? '' : '<a class="hint" href="explorer.html" target="_blank" rel="noopener">味の確認表</a>'}</div></div>
-    <div class="sec"><h3>データ</h3><div class="hint">自動で保存しています（このブラウザの中だけ）。</div>
+    <div class="sec"><h3>データ</h3><div class="hint">自動で保存しています（このブラウザの中だけ）。ファイルに書き出しておくと、別の端末や、ブラウザのデータを消したあとでも続きから遊べる。</div>
+      <div class="row"><button class="btn" data-act="exportSave">ファイルに書き出す</button><button class="btn" data-act="importSave">ファイルから読みこむ</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>
       <div class="row"><button class="btn ghost" data-act="reset">${ui.confirm === 'reset' ? '本当に消して最初から' : '最初からやり直す'}</button></div></div>`,
   };
 };
@@ -972,6 +979,20 @@ document.addEventListener('click', (e) => {
   if (act === 'closeWin') { closeWin(); return; }
   if (act === 'dayClose') { closeWin(); say(`${C.season[game.season()].name} ${kanjiNum(game.day())}日目の朝。今日も店を開けよう。`); tryOpenShop(); return; }
   if (act === 'help') { openWin('help'); return; }
+  if (act === 'exportSave') {
+    const text = encodeSave(game, { log: ui.log, today: ui.today, clock: ui.clock, display: ui.display });
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      a.download = `tsukemono-save-${game.day()}日目.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      say(`${game.day()}日目のセーブをファイルに書き出した。`, '店主');
+    } catch { say('ファイルに書き出せなかった。'); }
+    window.__lastExport = text; // 動作確認用
+    return;
+  }
+  if (act === 'importSave') { $('importFile')?.click(); return; }
   if (act === 'sagaNext') { sound.se('select'); ui.win.step++; renderWin(); return; }
   if (act === 'openMarket') { openWin('market'); return; }
   if (act === 'buyRecipe') { const r = game.buyRecipe(); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; closeWin(); return; }
@@ -999,7 +1020,16 @@ document.addEventListener('input', (e) => {
   else if (t.id === 'dTime') o.time = t.value;
   else if (t.id === 'dWeather') o.weather = t.value;
 });
-document.addEventListener('change', (e) => { if (e.target.id === 'vSe') sound.se('coin'); });
+/** セーブのファイルを読みこむ（ためしに別のゲームで読んでから、入れかえる） */
+function importSaveText(text) {
+  const r = decodeSave(text, (snap) => createGame().restore(snap));
+  if (!r.ok) { sound.se('error'); say(r.error); return false; }
+  store.set(SAVE_KEY, { game: r.data.game, log: Array.isArray(r.data.log) ? r.data.log : [], today: r.data.today ?? null, clock: r.data.clock ?? { phase: 0 }, display: Number.isInteger(r.data.display) ? r.data.display : null });
+  location.reload();
+  return true;
+}
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'importFile' && e.target.files?.[0]) { e.target.files[0].text().then(importSaveText); e.target.value = ''; return; } if (e.target.id === 'vSe') sound.se('coin'); });
 
 // 店先の樽を直接押す
 canvas.addEventListener('click', (e) => {
@@ -1045,7 +1075,7 @@ $('title').addEventListener('click', (e) => {
   ui.started = true;
   ui.confirm = null;
   renderAll();
-  if (k === 'new' || (k !== 'continue' && game.tick === 0)) {
+  if (brokenSave) { brokenSave = false; say('前のセーブが壊れていて読めなかったので、最初から始める。（壊れたセーブは別に残してある）'); } else if (k === 'new' || (k !== 'continue' && game.tick === 0)) {
     say('いらっしゃい…じゃなくて、今日からここがあなたの漬物屋。まずは「仕込む」で、樽にきゅうりの浅漬けを漬けてみよう。浅漬けは1日で食べ頃になる。', '先代');
   } else {
     say(`おかえりなさい。${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[game.timeOfDay()]}から。`, '店主');
@@ -1114,4 +1144,4 @@ renderAll();
 showTitle();
 say('');
 requestAnimationFrame(frame);
-window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin }; // 動作確認用（scripts/e2e.js）
+window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText }; // 動作確認用（scripts/e2e.js）
