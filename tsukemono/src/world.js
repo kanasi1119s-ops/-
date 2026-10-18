@@ -4,6 +4,7 @@ import { SCENE } from '../assets/scene.js';
 import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES, BODIES } from '../assets/characters.js';
 import { POSE_ANIMS } from '../assets/animations.js';
 import { ANGRY_KEYS } from '../assets/faces.js';
+import { STAFF } from '../data/staff.js';
 
 const WALK_SPEED = 96; // px/秒 【仮置き】歩くコマ（150ms×2で1歩）と合う速さ
 
@@ -39,8 +40,41 @@ export class World {
   /** その人にその動きがあるか（子どもには驚いた顔がない） */
   hasAnim(a, name) { return BODIES[a.look?.body]?.kind === 'poses' && !!POSE_ANIMS[a.look.body]?.[name]; }
 
+  // ---- 従業員（店先の決まった所に立って、ときどき話したり仕事をしたりする）----
+  /** 雇っている人（data/staff.js の id）に合わせて、店先に出したり帰したりする */
+  syncStaff(ids) {
+    for (const a of this.actors.filter((a) => a.kind === 'staff' && !ids.includes(a.staffId))) this.remove(a);
+    for (const id of ids) {
+      const spot = SCENE.staff[id];
+      if (!spot || this.staffOf(id)) continue;
+      const a = this.spawn('staff', { body: `staff_${id}` }, spot.x, spot.y, 'idle');
+      Object.assign(a, { staffId: id, dir: spot.dir, hide: spot.hide ?? null, until: 0, nextAt: this.now() + 4000 + Math.random() * 8000 });
+    }
+  }
+  staffOf(id) { return this.actors.find((a) => a.kind === 'staff' && a.staffId === id); }
+  /** 従業員に一言しゃべらせる（anim: talk / work）。話している最中なら言わない */
+  staffSay(id, line, anim = 'talk', ms = 2400) {
+    const a = this.staffOf(id);
+    if (!a || a.until) return false;
+    a.bubble = line; this.setAnim(a, anim); a.until = this.now() + ms;
+    return true;
+  }
+  updateStaff() {
+    const now = this.now();
+    for (const a of this.actors.filter((a) => a.kind === 'staff')) {
+      if (a.until && now >= a.until) { a.bubble = null; this.setAnim(a, 'idle'); a.until = 0; a.nextAt = now + 14000 + Math.random() * 16000; continue; }
+      if (!a.until && now >= a.nextAt) {
+        const lines = STAFF.find((s) => s.id === a.staffId)?.chatter ?? [];
+        const [line, anim] = lines[Math.floor(Math.random() * lines.length)] ?? [null, 'work'];
+        if (line) this.staffSay(a.staffId, line, anim);
+        else { this.setAnim(a, 'work'); a.until = now + 2400; }
+      }
+    }
+  }
+
   /** dt(ms) ぶん進める。 */
   update(dtMs) {
+    this.updateStaff();
     const dt = (dtMs / 1000) * this.speed;
     for (const m of this.moves) {
       const d = m.x - m.actor.x, step = m.speed * dt;
@@ -99,6 +133,8 @@ export class World {
     const lane = SCENE.lane;
     const who = look ?? (v.claimer ? regularLook(v.claimer.look) : v.regular ? regularLook(v.regular.look, v.customer?.id) : randomLook(Math.random, season, v.customer?.id));
     const c = this.spawn('customer', who, lane.startX, lane.y, 'walk');
+    const wel = STAFF.find((s) => s.id === 'kanban')?.welcome;
+    if (wel && Math.random() < 0.5) this.staffSay('kanban', wel[Math.floor(Math.random() * wel.length)], 'talk', 1800); // 看板店員の呼びこみ
     const prevFree = this.standFree;
     let release;
     this.standFree = new Promise((r) => { release = r; });

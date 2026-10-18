@@ -297,6 +297,24 @@ for (const name of Object.keys(SURPRISE_BASE)) {
   const s = TRACE.poses[name].length;
   if (POSE_ANIMS[name]) POSE_ANIMS[name].surprise = { loop: false, frames: [p(90, s, { dy: -7 }), p(90, s, { dy: -3 }), p(120, s), p(90, s, { dy: -4 }), p(90, s, { dy: -1 }), p(2600, s)] };
 }
+// 従業員（assets/staff.js の姿勢の順）: idle 待つ・talk 話す・work 仕事（アルバイトは木箱の野菜を取る、弟子は重石を持ち上げる）
+Object.assign(POSE_ANIMS, {
+  staff_baito: {
+    idle: { loop: true, frames: [p(900, 0), p(900, 0, { up: -1 })] },
+    talk: { loop: true, frames: [p(400, 1), p(400, 1, { up: -1 })] },
+    work: { loop: true, frames: [p(350, 2), p(350, 2, { up: 2 }), p(350, 2), p(350, 2, { up: 1 })] },
+  },
+  staff_kanban: {
+    idle: { loop: true, frames: [p(800, 0), p(800, 0, { up: -1 })] },
+    talk: { loop: true, frames: [p(260, 1), p(260, 1, { up: -1 }), p(260, 0), p(260, 0, { up: -1 })] },
+    work: { loop: true, frames: [p(260, 1), p(260, 1, { up: -1 }), p(260, 0), p(260, 0, { up: -1 })] },
+  },
+  staff_deshi: {
+    idle: { loop: true, frames: [p(900, 0), p(900, 0, { up: -1 })] },
+    talk: { loop: true, frames: [p(400, 0), p(400, 0, { up: -1 })] },
+    work: { loop: true, frames: [p(450, 1, { up: 2 }), p(500, 1, { up: -1 }), p(600, 0)] },
+  },
+});
 // 怒った顔: どんと足を踏みならして、ぷるぷる震え続ける（驚いた顔の次の番号）
 for (const name of Object.keys(ANGRY_BASE)) {
   const a = TRACE.poses[name].length + (SURPRISE_BASE[name] != null ? 1 : 0);

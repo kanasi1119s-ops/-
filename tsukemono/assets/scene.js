@@ -3,6 +3,7 @@
 import { SURPRISE_BASE, ANGRY_BASE, OVER_WORDS } from './faces.js';
 import { VEGETABLES } from '../data/vegetables.js'; // 野菜を足すと、樽の中身の絵（slot{0..2}_{id}.png）も読みこむ
 import { TRACE } from './trace.js';
+import { STAFF_IMAGES } from './staff.js';
 import { WALK } from './walk.js';
 
 const [W, H] = TRACE.size;
@@ -34,6 +35,12 @@ export const SCENE = {
   sunPos: { morning: [104, 80], noon: [380, 28], evening: [660, 80] },
   moonPos: [636, 40],
   stars: 60,
+  // 従業員の立つ所（足元）。dir = 向き（1 右・-1 左）。hide = 手前の物にかくれる範囲 [x, y, 幅, 高さ]
+  staff: {
+    kanban: { x: 44, y: 424, dir: 1 }, // 電柱の前で呼びこみ
+    baito: { x: 136, y: 398, dir: 1, hide: [102, 352, 96, 48] }, // 野菜の木箱の後ろ（脚は箱と樽の陰にかくれる。かがむと右の樽から漬物を取る）
+    deshi: { x: 716, y: 422, dir: -1 }, // 大八車の横で、店のほうを向いて重石を持つ
+  },
 };
 
 function pos(name) { const [x, y] = TRACE.hanging[name]; return { x, y }; }
@@ -46,6 +53,7 @@ export const IMAGES = [
   ...Object.keys(SURPRISE_BASE).map((n) => `surprise_${n}`), // 驚いた顔（assets/faces.js）
   ...Object.keys(ANGRY_BASE).map((n) => `angry_${n}`), // 怒った顔
   ...OVER_WORDS.great.concat(OVER_WORDS.bad).map((n) => `over_${n}`), // オーバーリアクションの描き文字
+  ...STAFF_IMAGES, // 従業員（assets/staff.js）
   ...Object.values(WALK).flatMap((fs) => fs.map((f) => f.img)), // 描き直した歩くコマ（tools/walk_frames.py）
   'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
   ...[0, 1, 2].flatMap((i) => ['empty', 'takuan', ...VEGETABLES.filter((v) => !v.img).map((v) => v.id)].map((v) => `slot${i}_${v}`)),

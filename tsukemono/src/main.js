@@ -1128,7 +1128,8 @@ document.addEventListener('click', (e) => {
   if (d.buy) { doBuy(d.buy); return; }
   if (d.saga) { sound.se('select'); openWin('saga', { id: d.saga, all: true }); return; }
   if (d.stock) { const [veg, n] = d.stock.split(':'); const r = game.buyStock(veg, +n); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('buy'); say(`${C.vegetables[veg].name}を${n}個分仕入れた（${yen(r.cost)}）。`, '店主'); renderAll(); return; }
-  if (d.hire) { const r = game.hire(d.hire); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('regular'); say(`${game.staffDef(d.hire).name}「${r.line}」`, '店主'); renderAll(); return; }
+  if (d.hire) { const r = game.hire(d.hire); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('regular'); say(`${game.staffDef(d.hire).name}「${r.line}」`, '店主');
+    world.syncStaff(game.staff); world.staffSay(d.hire, r.line, 'talk', 3200); /* 店先に立って、あいさつ */ renderAll(); return; }
   if (d.fire) { game.fire(d.fire); sound.se('select'); say(`${game.staffDef(d.fire).name}にやめてもらった。「…お世話になりました」`, '店主'); renderAll(); return; }
   if (d.contract) { const r = game.buyContract(d.contract); if (!r.ok) { sound.se('error'); say(r.error); return; } ui.today.cost += r.cost; ui.shownMoney = game.money; sound.se('buy'); say(`${C.vegetables[d.contract].contract.farmer}と契約した。${C.vegetables[d.contract].name}が仕入れられる。`, '店主'); renderAll(); return; }
   if (d.claim) {
@@ -1308,10 +1309,11 @@ function renderBubbles() {
       const left = Math.max(8, Math.min(a.x - w * 0.22, SCENE.w - w - 8));
       el.style.left = `${(left / SCENE.w) * 100}%`;
       el.style.setProperty('--tail', `${Math.max(8, Math.min(92, ((a.x - left) / w) * 100))}%`);
-    } else {
-      const x = Math.min(SCENE.w - 100, Math.max(100, a.x));
+    } else { // 画面の端からはみ出さないように（幅を測って寄せる。しっぽは話している人のほうへ）
+      const sw = $('stageWrap').clientWidth || 1, w = (el.offsetWidth / sw) * SCENE.w;
+      const x = Math.min(SCENE.w - w / 2 - 8, Math.max(w / 2 + 8, a.x));
       el.style.left = `${(x / SCENE.w) * 100}%`;
-      el.style.setProperty('--tail', `${50 + ((a.x - x) / 2)}%`);
+      el.style.setProperty('--tail', `${Math.max(8, Math.min(92, 50 + ((a.x - x) / Math.max(1, w)) * 100))}%`);
     }
     el.style.top = `${(((a.headTop ?? a.y - 120) - 6) / SCENE.h) * 100}%`;
   }
@@ -1321,6 +1323,7 @@ function renderBubbles() {
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - last); last = now;
+  world.syncStaff(game.staff); // 雇っている従業員を店先に
   world.update(dt);
   tickClock(dt);
   renderer.draw(view(), now);

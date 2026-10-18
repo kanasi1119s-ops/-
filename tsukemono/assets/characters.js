@@ -7,6 +7,7 @@
 // faces: 絵の向き。'right' / 'left' / 'front'。進む向きに合わせて左右反転する。
 import { TRACE } from './trace.js';
 import { EXTRA_FACES } from './faces.js';
+import { STAFF_ART } from './staff.js';
 
 // ポーズ集の絵。驚いた顔・怒った顔（エディタで描いた絵）があれば、いちばん後ろの番号に足す（assets/faces.js）
 const posesOf = (name) => [
@@ -45,6 +46,10 @@ export const BODIES = {
   kid1: { kind: 'shift', faces: 'left', img: 'char_kid1', hipY: 76, legX: 18, headY: 32, hand: [-8, 44] },
   kid2: { kind: 'shift', faces: 'left', img: 'char_kid2', hipY: 76, legX: 20, headY: 30, hand: [-8, 44] },
   kid3: { kind: 'shift', faces: 'left', img: 'char_kid3', hipY: 76, legX: 22, headY: 30, hand: [-8, 44] },
+  // 従業員（assets/staff.js）。staff_baito など
+  ...Object.fromEntries(Object.entries(STAFF_ART).map(([id, s]) => [`staff_${id}`, {
+    kind: 'poses', faces: 'right', poses: s.poses.map((i) => ({ ...TRACE.poses[s.base][i], img: `staff_${id}_${i}` })),
+  }])),
 };
 
 // 色の差し替え（同じ絵から色違いの人を作る）。rules は上から順に、当てはまった最初のものを使う。

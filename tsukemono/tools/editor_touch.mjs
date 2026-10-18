@@ -6,7 +6,7 @@
 // エディタでの手順（絵ごと）:
 //   1. 元の絵（assets/img/<名前>.png）を、色の表つきの作品にして「作品を開く」で開く
 //   2. 色ごとに「えんぴつ」で、設計図のドットを描く（消すドットは「消しゴム」）
-//   3. 「PNG」で書き出し → assets/img/<名前>.png。「作品を保存」の JSON → assets/editor/faces/<名前>.json
+//   3. 「PNG」で書き出し → assets/img/<名前>.png。「作品を保存」の JSON → assets/editor/faces/<名前>.json（EDITOR_OUT で変えられる）
 // 書き出した絵が、元の絵＋設計図と1ドットも違わないことを確かめる。Playwright が必要（PLAYWRIGHT_MODULE / CHROME_PATH）。
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,7 +16,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pw = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const { chromium } = pw.default ?? pw;
 const EDITOR = process.env.EDITOR_HTML || path.join(root, 'tools/pixel-editor.html');
-const OUT = path.join(root, 'assets/editor/faces');
+const OUT = path.join(root, process.env.EDITOR_OUT || 'assets/editor/faces'); // 作品（JSON）の置き場所
 const [designFile, ...only] = process.argv.slice(2);
 const design = JSON.parse(fs.readFileSync(designFile, 'utf8'));
 const SYMS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -25,7 +25,7 @@ const png64 = (name) => `data:image/png;base64,${fs.readFileSync(path.join(root,
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ['--no-sandbox'] });
-const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
+const page = await browser.newPage({ viewport: { width: 1500, height: 1400 } }); // 背の高い絵（全身）もキャンバスが画面に収まるように
 await page.goto(pathToFileURL(EDITOR).href);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
@@ -61,7 +61,7 @@ for (const [name, spec] of Object.entries(design)) {
   await modalAction('読み込む');
   if (await page.isChecked('#symmetry')) await page.click('#symmetry');
   if (await page.isChecked('#symmetryV')) await page.click('#symmetryV');
-  await setRange('#zoom', base.w > 90 ? 6 : 8);
+  await setRange('#zoom', base.w > 90 || base.h > 110 ? 6 : 8);
   await setRange('#brushSize', 1);
   await page.keyboard.press('Escape');
   let B;

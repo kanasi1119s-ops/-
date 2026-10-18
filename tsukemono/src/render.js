@@ -211,8 +211,12 @@ export class SceneRenderer {
     // 絵の向きと進む向きが逆なら左右反転
     const flip = body.faces === 'right' ? (a.dir ?? -1) < 0 : body.faces === 'left' ? (a.dir ?? -1) > 0 : false;
     const outfit = a.kind === 'customer' ? theme.outfit : null;
-    // 足もとの影（歩くコマは絵の中に影がある）
-    if (f.walk == null) {
+    if (a.hide) { // 手前の物にかくれる範囲（木箱の後ろの従業員など）は描かない
+      const [hx, hy, hw, hh] = a.hide;
+      this.ctx.save(); this.ctx.beginPath(); this.ctx.rect(0, 0, SCENE.w, SCENE.h); this.ctx.rect(hx, hy, hw, hh); this.ctx.clip('evenodd');
+    }
+    // 足もとの影（歩くコマは絵の中に影がある。かくれている人は描かない）
+    if (f.walk == null && !a.hide) {
       const pw = body.kind === 'poses' ? body.poses[f.pose].w : getImage(body.img).width;
       this.groundShadow(a.x, a.y, Math.max(16, Math.round(pw * 0.62)));
     }
@@ -234,6 +238,7 @@ export class SceneRenderer {
       if (theme.weather === 'snow') this.ctx.drawImage(getSprite('umbrella_snow'), ux, uy);
       headTop -= UMB_Y;
     }
+    if (a.hide) this.ctx.restore();
     a.headTop = headTop;
   }
 
