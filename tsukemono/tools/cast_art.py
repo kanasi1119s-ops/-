@@ -4,8 +4,8 @@
 #   エディタのえんぴつで、まっさらなキャンバスに1ドットずつ描いて書き出す（assets/img/baron_<番号>.png・tama_<番号>.png）
 # 漬物男爵: 背広の紳士（pose_suit_0〜3）を、シルクハットが入るように上を HAT ドット広げたキャンバスに写し、
 #   背中に裏地の赤い黒マント（かごと肩掛けかばんはマントの下）、シルクハット、白いカイゼルひげを描き足す
-# タマ殿: まっさらなキャンバスに描く。灰色のさばとらに白い胸と足先、赤い首輪に金の鈴。座る（目を開ける・まばたき・しっぽの先を動かす）と、丸くなって寝る
-import json, os
+# タマ殿: まっさらなキャンバスに描く。形は、オープンソースのゲーム用タイル集（Cataclysm: DDA の UltimateCataclysm・MShockXotto+）の写実的な座った猫を1ドットずつ見て学んだ（絵は使わない）。灰色のさばとらに白い胸と足先、赤い首輪に金の鈴。座る（目を開ける・まばたき・しっぽの先を動かす）と、丸くなって寝る
+import json, math, os
 from PIL import Image
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 HAT = 22  # 男爵のキャンバスを上に広げる行数（シルクハットの分）
@@ -181,11 +181,12 @@ class Cat:
                 nz = max(0.0, 1 - nx * nx - ny * ny) ** 0.5 * flat
                 l = (nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / max(0.3, (nx * nx + ny * ny + nz * nz) ** 0.5)
                 self.part[(x, y)] = name; self.shade[(x, y)] = l
-    def paint(self, white, stripes, tufts, details):
+    def paint(self, white, stripes, tufts, details, lines=None, gain=1.0):
         px = {}
         tone = lambda l: '5' if l > 0.62 else '4' if l > 0.3 else '3' if l > 0.0 else '2' if l > -0.35 else '1'
         wtone = lambda l: 'W' if l > 0.05 else 'w' if l > -0.4 else 'v'
         for (x, y), l in self.shade.items():
+            l *= gain
             c = wtone(l) if white(x, y) else ('s' if stripes(x, y) and l < 0.62 else tone(l))
             c = jitter('12345', c, x, y, 36, 5) if c in '12345' else jitter('vwW', c, x, y, 22, 6) if c in 'vwW' else c  # 毛の手ざわり
             px[(x, y)] = c
@@ -194,7 +195,7 @@ class Cat:
         for (x, y), name in self.part.items():
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 q = (x + dx, y + dy)
-                if q in self.part and order.index(self.part[q]) < order.index(name) and self.part[q] not in ('ear',) and name not in ('tailtip',):
+                if q in self.part and order.index(self.part[q]) < order.index(name) and self.part[q] not in ('ear',) and (lines is None or name in lines):
                     c = px[q]
                     px[q] = {'5': '3', '4': '2', '3': '2', '2': '1', '1': '1', 's': '1', 'W': 'w', 'w': 'v', 'v': 'v'}[c]
         # ふちどり: 外に面したドット。光の当たる側（左上）は明るい線、ほかは暗い線
@@ -223,54 +224,52 @@ def tail_curve(points, thick):
     return cells
 
 def tama_sit(blink=False, flick=False):
-    """本物の猫の座り姿の比率: 頭は座った高さの4分の1くらいで横に広い（ほほのふくらみ）。耳は付け根の広い三角。
-    首から背中が後ろへ下がって、大きく張った腰につながる。前足は細くまっすぐ。しっぽは前足のまわりに巻く"""
+    """実際の猫のドット絵（ゲームの写実的な猫の絵）を1ドットずつ見て学んだ形で描く:
+    座った猫は三角形。小さな頭が上の前、背中は後ろへななめに下がって、後ろ下の大きな腰へ。胸は前でまっすぐ、底は平ら。
+    首は見えず、頭は体に直接のる。耳は小さくて近い。目は前を向いた小さな色の点。前足は胸の前の1本の柱、
+    後ろ足は腰の明るい弧（ももの線）だけで見せる。しっぽは底にそって前へ。毛は4〜5段の色をドットごとに散らし、
+    なめらかなぼかしは使わない。体の中に線は引かず、ふちは毛のいちばん暗い色＋外側に1ドットのこげ茶のふちどり"""
+    # 形は手本の座った猫（14×15ドット）の輪郭を、行ごとに読んで約2.8倍にしたもの:
+    #   頭は幅の43%・高さの3分の1で右上。頭の後ろからそのまま背中になり（首は見えない）、背中は1行に1ドットずつ（45度）下がる。
+    #   胸の前はほぼまっすぐで、その下に前足。底は平ら。毛はほとんど中くらいから暗めの色で、明るい色は少し
     W, H = 44, 44
     c = Cat(W, H)
-    # 奥から: 腰・胴（横腹）・胸・頭・耳・奥の前足・手前の前足・しっぽ
-    c.add('haunch', ellipse(28.5, 34.5, 10, 8.5), (27, 32), (10.5, 9.5))
-    c.add('side', ellipse(23, 27, 8.5, 8), (21, 25), (9, 8.5))
-    c.add('shoulder', ellipse(20.5, 19.5, 3.5, 2.8), (19.5, 18.5), (4, 3))  # 肩甲骨のこぶ（座った猫の背中の上に出る）
-    c.add('chest', ellipse(15.5, 25.5, 6, 10), (14.5, 23), (6.5, 10.5))
-    c.add('head', ellipse(14.5, 11, 7.5, 5.8) | ellipse(14.5, 13.5, 8.2, 3.6), (13.5, 10), (8.5, 7))
-    c.add('ear', tri((6, 9), (7, 0), (12, 6)) | tri((17, 6), (22, 0), (23, 9)), (14.5, 6), (9, 7))
-    c.add('legback', {(x, y) for x in range(12, 15) for y in range(30, 42)} | ellipse(13.2, 42, 2.2, 1.3), (12.5, 33), (3, 12), 0.6)
-    c.add('leg', {(x, y) for x in range(16, 19) for y in range(30, 43)} | ellipse(17.6, 42.6, 2.4, 1.3), (16.5, 33), (3, 12), 0.6)
-    tip = [(18, 39.5), (17, 37.5)] if flick else [(18, 41.2), (16, 40.4)]  # しっぽの先は手前の前足の上
-    c.add('tail', tail_curve([(36, 41.8), (31, 42.6), (26, 42.8), (22, 42.4)] + tip, 3), (27, 41), (11, 4))
-    white = lambda x, y: (c.part.get((x, y)) == 'chest' and y >= 17 and abs(x - 15.5) <= 2 + (y - 17) * 0.22) \
-        or (c.part.get((x, y)) in ('leg', 'legback') and (y >= 38 or x in (12, 13, 16, 17))) \
-        or (c.part.get((x, y)) == 'head' and y >= 12 and abs(x - 14.5) <= (y - 11) * 1.3)
+    # 背中は外へふくらむ弧（まっすぐな斜めにすると、くさびに見える）。腰は丸く、底の角も丸める
+    back = [(28, 10), (24, 11.5), (20, 13.5), (16, 16.5), (12.5, 20.5), (9.5, 25), (7.5, 30), (6.5, 35), (7, 39.5), (9.5, 43), (36, 43), (37, 36), (38, 28), (39, 20), (40, 13)]
+    body = {(x, y) for y in range(H) for x in range(W) if inside(back, x, y)} | ellipse(14, 36, 8.5, 7)
+    c.add('body', body, (18, 26), (17, 17))
+    c.add('head', ellipse(33, 9.5, 7.6, 6) | ellipse(33, 11.5, 8, 3.6), (31.5, 8), (8.5, 7))
+    c.add('ear', tri((27, 6), (28, 0), (31, 4)) | tri((35, 4), (38, 0), (39, 7)), (33, 4), (7, 5))
+    c.add('legfar', {(x, y) for x in range(28, 32) for y in range(31, 43)}, (29, 34), (3, 12), 0.5)
+    c.add('leg', {(x, y) for x in range(33, 38) for y in range(28, 43)} | ellipse(35.5, 42.6, 3, 1.3), (34, 32), (4, 12), 0.6)
+    tip = [(30, 41), (32, 38.5)] if flick else [(30, 42), (32, 41.5)]
+    c.add('tail', tail_curve([(8, 41.8), (13, 42.5), (19, 42.6), (26, 42.6)] + tip, 3), (16, 41), (14, 4))
+    thigh = {(round(14 + 8 * math.cos(math.pi * (1.05 + t / 20))), round(38 + 7 * math.sin(math.pi * (1.05 + t / 20)))) for t in range(0, 19)}
+    white = lambda x, y: (c.part.get((x, y)) == 'body' and x >= 34 and 14 <= y <= 34) or (c.part.get((x, y)) in ('leg', 'legfar') and (y >= 39 or x >= 34)) \
+        or (c.part.get((x, y)) == 'head' and y >= 11 and abs(x - 33) <= (y - 10) * 1.1)
     def stripes(x, y):
         p = c.part.get((x, y))
-        if p == 'head': return 5 <= y <= 7 and x in (12, 14, 16) and not (x == 14 and y == 7)  # 額の「M」
-        if p in ('haunch', 'side', 'shoulder') and (x, y - 2) not in c.part and (x, y - 1) in c.part: return True  # 背骨にそった濃い線（サドル）
-        if p in ('haunch', 'side'): return ((x - 27) + (y - 30) ** 2 * 0.05) % 4 < 1 and (x * 5 + y * 3) % 11 != 0 and y < 41  # 体に沿って曲がる、途切れた縞
-        if p == 'chest': return x >= 19 and y % 3 == 0
-        if p in ('leg', 'legback'): return x in (14, 18) and y < 37 and y % 3 == 0  # 足の外側の輪（ブレスレット）
-        if p == 'tail': return (x % 4 == 0 and x > 21) or x < 19  # しっぽの輪と、黒っぽい先
+        if p == 'head': return 3 <= y <= 6 and x in (31, 33, 35) and not (x == 33 and y == 6)  # 額の「M」
+        if (x, y) in thigh: return False
+        if p == 'body': return x < 33 and (x + 0.35 * y) % 5 < 1.2 and grain(x, y, 9) > 25  # たての縞（ところどころ切れる）
+        if p == 'tail': return x % 4 == 0 or x < 8
+        if p == 'legfar': return y % 3 == 0 and y < 39
         return False
     d = {}
-    stamp(d, ['p', 'P'], 9, 5); stamp(d, ['p', 'P'], 19, 5)  # 耳の内側
-    # 目: 4×3のアーモンド形。上まぶたの線、琥珀の虹彩に縦長の瞳、左上に光1ドット
-    eye = ['mmm.', 'EHkE', '.Eke'] if not blink else ['....', 'mmmm', '....']
-    stamp(d, eye, 9, 9); stamp(d, [r[::-1] if blink else r for r in (['.mmm', 'EHkE', 'eEk.'] if not blink else eye)], 17, 9)
-    # 目じりから後ろへ流れる線と、ほおを横切る線（さばとら）
-    for p in [(8, 11), (7, 12), (21, 11), (22, 12), (7, 14), (22, 14)]: d[p] = 's'
-    # ふくらんだひげ袋（白）
-    for p in [(12, 14), (13, 14), (16, 14), (17, 14), (12, 15), (17, 15)]: d[p] = 'W'
-    stamp(d, ['pp', 'mm'], 14, 13); d[(13, 15)] = 'm'; d[(16, 15)] = 'm'  # 鼻（マズルのいちばん上）と、浅い「v」の口
-    # ひげ: 1ドットの細い線を2本ずつ
-    for i in range(6):  # 顔のふちから外へ、上の1本は少し上がり、下の1本は少し下がる
-        d[(7 - i, 14 - (i > 3))] = 'h'; d[(22 + i, 14 - (i > 3))] = 'h'
-        if i < 5: d[(7 - i, 15 + (i > 2))] = 'h'; d[(22 + i, 15 + (i > 2))] = 'h'
-    for x in range(10, 20):  # 細い首輪（首の丸みに沿って、両はしだけ1段上がる）
-        y = 17 if x in (10, 19) else 18
-        if (x, y) in c.part: d[(x, y)] = 'r'
-    stamp(d, ['Yy', 'yY'], 15, 19)
-    for y in range(33, 41): d[(15, y)] = 'v'  # 前足の間
-    d[(12, 42)] = 'v'  # 指の線
-    return c.paint(white, stripes, set(), d)
+    for p in thigh:  # ももの明るい弧
+        if c.part.get(p) == 'body': d[p] = '4' if grain(*p, 11) < 75 else '5'
+    stamp(d, ['P'], 29, 3); stamp(d, ['P'], 37, 3)  # 耳の中
+    if blink: stamp(d, ['mm'], 29, 9); stamp(d, ['mm'], 35, 9)
+    else: stamp(d, ['Ek', 'Ek'], 29, 8); stamp(d, ['kE', 'kE'], 35, 8)  # 前を向いた琥珀の目（瞳は内側）
+    stamp(d, ['pp'], 32, 11); stamp(d, ['mm'], 32, 12)  # 鼻と口
+    for i in range(2): d[(25 - i, 11)] = 'h'  # ひげ: 奥のほうは短く、手前は顔の外へ長く
+    for i in range(3): d[(41 + i, 11 + (i > 1))] = 'h'
+    for x in range(30, 40):  # 首輪（あごの下、首の前だけ。両はしは1段上がる）
+        y = 15 if x in (30, 39) else 16
+        if c.part.get((x, y)) == 'body': d[(x, y)] = 'r'
+    stamp(d, ['y', 'Y'], 34, 17)
+    for y in range(34, 42): d[(32, y)] = 'v'  # 前足の間
+    return c.paint(white, stripes, set(), d, lines={'leg', 'legfar', 'tail'}, gain=0.8)
 
 def tama_sleep():
     """丸くなって寝る: 体は長いだ円、頭は前足にのせて少し下を向き、しっぽは体の前を回って鼻先へ"""
