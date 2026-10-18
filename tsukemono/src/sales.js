@@ -1,5 +1,6 @@
 // 客の満足度・売上の計算（乱数なし）。
 import { CONFIG } from './config.js';
+import { GREAT, AWFUL } from '../data/reactions.js';
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const AXES = ['acid', 'salt', 'texture', 'complexity'];
@@ -65,7 +66,24 @@ export const LINES = {
 const pick = (key, variant) => { const l = LINES[key]; return l[((variant % l.length) + l.length) % l.length]; };
 
 /** 最もズレた軸から客の一言を決める。variant で言い回しを変える。 */
+/**
+ * お客の反応。とても満足（とてもがっかり）すると、大げさに反応する（over: true。data/reactions.js）。
+ * 秘伝の漬物は、満足の境目が低く、専用の大げさな反応がある（data/hiden.js の over）。
+ */
 export function reactionOf(taste, pickle, customer, sat, season = 'spring', cfg = CONFIG, variant = 0) {
+  const r = plainReaction(taste, pickle, customer, sat, season, cfg, variant);
+  const o = cfg.over, p = cfg.pickles[pickle];
+  if (!o || r.key === 'rotten' || r.key === 'film') return r;
+  const n = variant + Math.floor(sat * 7);
+  if (sat >= (p?.hiden ? o.hidenSat : o.sat)) {
+    const pool = p?.over?.length ? p.over : [...(GREAT[customer.id] ?? []), ...GREAT.generic];
+    return { key: 'great', over: true, line: pool[n % pool.length] };
+  }
+  if (sat < o.awfulSat && AWFUL[r.key] && variant % 2 === 0) return { key: r.key, over: true, line: AWFUL[r.key][n % AWFUL[r.key].length] };
+  return r;
+}
+
+function plainReaction(taste, pickle, customer, sat, season, cfg, variant) {
   if (taste.spoilRisk >= 60 && sat < cfg.sales.buyThreshold) return { key: 'rotten', line: pick('rotten', variant) };
   const target = targetFor(customer, season, cfg);
   if (taste.filmVisible && sat < 60) return { key: 'film', line: pick('film', variant) };

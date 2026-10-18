@@ -180,6 +180,17 @@ function renderChips() {
     return `<button class="chip${cls}${sel}" style="${pos}" data-chip="${i}" aria-label="樽${i + 1} ${esc(barrelName(b))}">${mark}<span class="long"> ${C.pickles[b.pickle].name}</span></button>`;
   }).join('');
 }
+/** オーバーリアクションの演出: 画面が揺れて、大きな文字が出る */
+const OVER_WORDS = { great: ['うまーい！！', 'ズキューン！', 'バーン！', 'ドーン！！', 'うおおお！'], bad: ['ガーン！', 'ズーン…', 'ぎゃー！'] };
+function overEffect(v) {
+  const good = v.reaction.key === 'great', words = OVER_WORDS[good ? 'great' : 'bad'];
+  sound.se(good ? 'found' : 'bad');
+  floatText(words[Math.floor(Math.random() * words.length)], SCENE.lane.standX, 200, `over ${good ? 'good' : 'bad'}`);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const st = $('stageWrap'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
+    setTimeout(() => st.classList.remove('shake'), 600);
+  }
+}
 function floatText(text, x, y, cls = '') {
   const el = document.createElement('div');
   el.className = `float ${cls}`;
@@ -1027,6 +1038,7 @@ async function startSale(slot) {
   await world.saleScene(res.visitors, res.season, (v) => {
     if (res.spoiled) { sound.se('bad'); floatText('傷んでる！', lane.standX, 280, 'bad'); return; }
     if (v.claimer) { sound.se('bad'); floatText('難癖！', lane.standX, 250, 'bad'); setTimeout(() => flushEvents(), 2000 * v.claimer.lines.length + 300); return; } // 言い終わったら対応の窓（窓が開くと時間が止まる）
+    if (v.reaction?.over) overEffect(v);
     if (v.price > 0) { ui.shownMoney += v.price; sound.se('coin'); floatText(`${v.qty > 1 ? `${v.qty}個 ` : ''}+${yen(v.price)}`, lane.standX, 280); renderHud(); }
     else if (!v.soldOut) floatText('買わない…', lane.standX, 280, 'bad');
     if (v.regular?.joined) { sound.se('regular'); setTimeout(() => floatText('常連になった！', lane.standX, 240, 'good'), 500); }
@@ -1289,6 +1301,7 @@ function renderBubbles() {
     let el = bubbleEls.get(a);
     if (!el) { el = document.createElement('div'); el.className = 'say'; layer.appendChild(el); bubbleEls.set(a, el); }
     if (el.textContent !== a.bubble) el.textContent = a.bubble;
+    el.classList.toggle('over', !!a.over);
     const x = Math.min(SCENE.w - 100, Math.max(100, a.x));
     el.style.left = `${(x / SCENE.w) * 100}%`;
     el.style.top = `${(((a.headTop ?? a.y - 120) - 6) / SCENE.h) * 100}%`;

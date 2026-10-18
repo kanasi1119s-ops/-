@@ -90,6 +90,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
   animation: rise 1.4s steps(14) forwards; white-space: nowrap }
 .float.good { color: #c9ec9a }
 .float.bad { color: #ff9a85 }
+/* オーバーリアクション */
+.float.over { font-size: clamp(22px, 7cqw, 56px); animation: pop 1.4s steps(14) forwards; -webkit-text-stroke: 1px var(--sumi) }
+@keyframes pop { from { opacity: 0; scale: .4; rotate: -8deg } 15% { opacity: 1; scale: 1.25; rotate: 4deg } 30% { scale: 1; rotate: 0deg } 75% { opacity: 1 } to { opacity: 0; translate: 0 -1em } }
+.say.over { font-size: clamp(14px, 3.6cqw, 26px); background: #fff3c4; border-width: 3px; border-color: var(--shu); max-width: 60cqw; box-shadow: 4px 4px 0 var(--shu) }
+.stage.shake { animation: shake .5s steps(10) }
+@keyframes shake { 0%, 100% { translate: 0 0 } 20% { translate: -6px 3px } 40% { translate: 5px -4px } 60% { translate: -4px 2px } 80% { translate: 3px -1px } }
 @keyframes rise { from { opacity: 1; translate: 0 0 } 70% { opacity: 1 } to { opacity: 0; translate: 0 -2.4em } }
 
 /* タイトル */
@@ -237,7 +243,7 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
   .bar { grid-template-columns: 5.5em 1fr 5.5em }
 }
 @media (min-width: 1400px) { .win { width: min(900px, 100%) } .win-b { font-size: 16px } }
-@media (prefers-reduced-motion: reduce) { .float, .win, .msgbox .caret { animation: none } }
+@media (prefers-reduced-motion: reduce) { .float, .win, .msgbox .caret, .stage.shake { animation: none } }
 .title-screen .btn.ghost { color: var(--washi); border-color: var(--washi); background: #1a274099 }
 .say { position: absolute; transform: translate(-50%, -100%); pointer-events: none; max-width: 48cqw; width: max-content;
   font: 700 clamp(13px, 3.1cqw, 22px)/1.35 var(--mincho); color: var(--sumi); background: #fffaf0; border: 2px solid var(--sumi);

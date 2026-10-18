@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { AWFUL } from '../data/reactions.js';
 import assert from 'node:assert/strict';
 import { simulate, daysToRipe } from '../src/model.js';
 import { satisfaction, priceFor, targetFor, reactionOf, LINES } from '../src/sales.js';
@@ -68,5 +69,5 @@ test('客の一言は言い回しが数通りあり、ズレの向きに合う',
   const s = satisfaction(t, 'hakusaizuke', c);
   const lines = new Set([0, 1, 2].map((v) => reactionOf(t, 'hakusaizuke', c, s, 'spring', CONFIG, v).line));
   assert.ok(lines.size >= 2);
-  for (const l of lines) assert.ok(LINES.salt_high.includes(l), l);
+  for (const l of lines) assert.ok([...LINES.salt_high, ...AWFUL.salt_high].includes(l), l); // とてもがっかりすると大げさ（data/reactions.js）
 });

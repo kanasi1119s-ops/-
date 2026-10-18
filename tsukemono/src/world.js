@@ -125,8 +125,10 @@ export class World {
     if (v.bought) { this.setAnim(c, 'buy'); await this.wait(1100); }
     this.setAnim(c, v.bought ? 'talk_basket' : 'talk');
     c.bubble = line ?? v.reaction.line;
+    c.over = !!v.reaction?.over; // オーバーリアクション（大きな吹き出しで、長めに）
     onTalk?.(v);
-    await this.wait(1900);
+    await this.wait(c.over ? 3600 : 1900);
+    c.over = false;
     const after = v.regular?.joined ? REGULAR_LINES.joined : v.regular?.left ? REGULAR_LINES.left : null;
     if (after) { c.bubble = after; await this.wait(1200); }
     c.bubble = null;
