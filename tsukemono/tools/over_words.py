@@ -39,7 +39,7 @@ def word(name, text, kind):
     gap = 2
     tw = sum(c.width for c in cells) + gap * (len(cells) - 1)
     th = 18 + 4
-    pad_x, pad_y = 16, 13
+    pad_x, pad_y = 12, 10
     W, H = tw + pad_x * 2 + 4, th + pad_y * 2 + 4
     # 爆発吹き出し（ギザギザの星形）
     cx, cy, rx, ry = (W - 3) / 2, (H - 3) / 2, (W - 5) / 2, (H - 5) / 2

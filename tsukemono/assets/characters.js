@@ -92,8 +92,8 @@ export const PASSERS = [
   { body: 'parasol', ownUmbrella: true, likes: [L], seasons: ['spring', 'summer'] }, // 日傘を持っているので傘は重ねない
   { body: 'witch', umbrella: '#2a1c3a', likes: [SO], seasons: ['autumn'] }, // ハロウィンの季節（秋）だけ
   { body: 'demon', umbrella: '#2a1c14', likes: [SO, SA], seasons: ['autumn'] }, // ハロウィンの季節（秋）だけ
-  { body: 'alien', umbrella: '#7aa3cc', likes: [GO], weight: 0.2 }, // めったに来ない
-  { body: 'centaur', umbrella: '#8d5c2e', likes: [SA], weight: 0.2 }, // めったに来ない
+  { body: 'alien', umbrella: '#7aa3cc', likes: [GO], weight: 0.6 }, // たまに来る（40人に1人くらい）
+  { body: 'centaur', umbrella: '#8d5c2e', likes: [SA], weight: 0.6 }, // たまに来る（40人に1人くらい）
   // 店先の絵から切り抜いたランドセルの子ども（1枚の絵をずらして動かすので、少なめ）
   { body: 'kid1', umbrella: '#e0b43c', likes: [CR], weight: 0.4 },
   { body: 'kid2', umbrella: '#c63d2f', likes: [CR], weight: 0.4 },

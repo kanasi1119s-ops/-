@@ -186,7 +186,7 @@ function renderChips() {
 function overEffect(v) {
   const good = v.reaction.key === 'great', words = OVER_WORDS[good ? 'great' : 'bad'];
   sound.se(good ? 'found' : 'bad');
-  world.burst(`over_${words[Math.floor(Math.random() * words.length)]}`, SCENE.lane.standX - 250, 82);
+  world.burst(`over_${words[Math.floor(Math.random() * words.length)]}`, SCENE.lane.standX - 250, 78);
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const st = $('stageWrap'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
     setTimeout(() => st.classList.remove('shake'), 600);
