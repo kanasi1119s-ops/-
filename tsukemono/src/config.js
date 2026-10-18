@@ -87,6 +87,27 @@ export const CONFIG = {
       spoilMult: 1.2, // 【仮置き】
       cost: 350, // 【仮置き】
     },
+    kabu: {
+      name: 'かぶ',
+      fermentRate: 1.1, // 【仮置き】やわらかく、早く漬かる
+      crisp0: 85, crispTau: 12, // 【仮置き】
+      spoilMult: 1.1, // 【仮置き】
+      cost: 300, // 【仮置き】
+    },
+    ninjin: {
+      name: 'にんじん',
+      fermentRate: 0.8, // 【仮置き】かたく、ゆっくり漬かる
+      crisp0: 90, crispTau: 40, // 【仮置き】長くポリポリ
+      spoilMult: 0.9, // 【仮置き】
+      cost: 250, // 【仮置き】
+    },
+    kyabetsu: {
+      name: 'キャベツ',
+      fermentRate: 1.1, // 【仮置き】
+      crisp0: 80, crispTau: 12, // 【仮置き】
+      spoilMult: 1.1, // 【仮置き】
+      cost: 300, // 【仮置き】
+    },
   },
 
   // ---------------------------------------------------------------
@@ -98,7 +119,7 @@ export const CONFIG = {
   pickles: {
     asazuke: {
       name: '浅漬け',
-      vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon'],
+      vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin'],
       ripeAt: 1, // 【出典】半日でしんなり、数時間〜数日で完成（3%・20℃で1日を食べ頃の中心に）
       window: { lo: 0.5, hi: 3, sour: 5 }, // 【仮置き】日持ちは数日
       complexityMax: 35, // 【仮置き】浅漬けは風味が単純
@@ -117,7 +138,7 @@ export const CONFIG = {
     },
     nukazuke: {
       name: 'ぬか漬け',
-      vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon'],
+      vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon', 'kabu', 'ninjin'],
       usesNukaBed: true, // 塩分はぬか床の塩分を使う（仕込みで塩分は選ばない）
       ripeAt: 0.8, // 【仮置き】きゅうりを20〜25℃の床で一晩〜1日
       window: { lo: 0.5, hi: 2, sour: 3.5 }, // 【仮置き】
@@ -163,15 +184,19 @@ export const CONFIG = {
     togarashi: { name: '唐辛子', cost: 30, complexity: 8, salt: 0, acid: 0, spoil: 0.85 },
     zarame: { name: 'ざらめ', cost: 40, complexity: 10, salt: -10, acid: -5, spoil: 1 },
     yuzu: { name: 'ゆず', cost: 80, complexity: 10, salt: 0, acid: 6, spoil: 1 },
+    shoga: { name: '生姜', cost: 50, complexity: 10, salt: 0, acid: 0, spoil: 0.9 }, // 【仮置き】さっぱり・日持ちを少し良く
+    akajiso: { name: '赤しそ', cost: 70, complexity: 12, salt: 0, acid: 4, spoil: 0.9 }, // 【仮置き】香りと色
+    karashi: { name: 'からし', cost: 40, complexity: 9, salt: 0, acid: 0, spoil: 0.85 }, // 【仮置き】ぬか床に入れると傷みにくい
+    sakekasu: { name: '酒粕', cost: 90, complexity: 16, salt: -4, acid: -3, spoil: 1 }, // 【仮置き】まろやかでコクが出る（粕漬け）
   },
   additiveMax: 2,
   // 相性。good=効き目そのまま＋ほめられる、bad=風味が濁る（風味の深さ−badPenalty）、ふつう=効き目の半分
   affinity: {
-    asazuke: { kombu: 'good', yuzu: 'good', zarame: 'bad' },
-    hakusaizuke: { kombu: 'good', togarashi: 'good', yuzu: 'good' },
-    nukazuke: { kombu: 'good', togarashi: 'good', zarame: 'bad', yuzu: 'bad' },
-    takuan: { zarame: 'good', togarashi: 'good', kombu: 'good', yuzu: 'bad' },
-    nozawanazuke: { togarashi: 'good', kombu: 'good', zarame: 'bad' },
+    asazuke: { kombu: 'good', yuzu: 'good', zarame: 'bad', shoga: 'good', akajiso: 'good', sakekasu: 'bad' },
+    hakusaizuke: { kombu: 'good', togarashi: 'good', yuzu: 'good', shoga: 'good', sakekasu: 'bad' },
+    nukazuke: { kombu: 'good', togarashi: 'good', zarame: 'bad', yuzu: 'bad', karashi: 'good', shoga: 'good', sakekasu: 'bad' },
+    takuan: { zarame: 'good', togarashi: 'good', kombu: 'good', yuzu: 'bad', sakekasu: 'good', akajiso: 'bad' },
+    nozawanazuke: { togarashi: 'good', kombu: 'good', zarame: 'bad', shoga: 'good', sakekasu: 'bad' },
   },
   affinityBadPenalty: 15, // 【仮置き】
   affinitySatBonus: 6, // 【仮置き】相性の良い調味1つにつき、どのお客の満足度も+6（悪いと−6）
@@ -188,6 +213,9 @@ export const CONFIG = {
       daikon: { spring: 1.1, summer: 1.4, autumn: 0.9, winter: 0.7 }, // 冬が旬（たくあんの仕込み時期）
       nozawana: { spring: 1.2, summer: 1.5, autumn: 0.9, winter: 0.7 }, // 晩秋〜冬
       nasu: { spring: 1.2, summer: 0.7, autumn: 0.9, winter: 1.5 }, // 夏〜秋
+      kabu: { spring: 1.0, summer: 1.3, autumn: 0.8, winter: 0.8 }, // 秋〜冬
+      ninjin: { spring: 1.0, summer: 1.2, autumn: 0.8, winter: 0.9 }, // 秋〜冬
+      kyabetsu: { spring: 0.7, summer: 1.0, autumn: 1.1, winter: 1.0 }, // 春キャベツ
     },
     // 品質（食感の初期値に掛ける）＝ 2 − 価格の倍率 を、この範囲に収める 【仮置き】
     qualityRange: [0.85, 1.15],
@@ -250,7 +278,7 @@ export const CONFIG = {
   // ---------------------------------------------------------------
   sales: {
     portionsPerBatch: 6, // 【仮置き】1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値）
-    barrelCapacity: 24, // 【仮置き】1樽に仕込める最大の個数（たくあんの標準18個より少し多い）
+    barrelCapacity: 60, // 【仮置き】1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる）
     satScale: 1.7, // 【仮置き】好みとのズレ(重み付き平均)×この値を100から引く
     stageFactor: { raw: 1, ripe: 1, over: 0.92, sour: 0.7 }, // 【仮置き】過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる）
     likeBonus: 8, // 【仮置き】好きな種類の漬物なら満足度+8
@@ -276,7 +304,7 @@ export const CONFIG = {
     // 実際には、どの時間帯でも仕込み・販売はできる（夜は閉店）。
     storeOpen: { morning: true, noon: true, evening: true, night: false },
     // 時間制: 各時間帯が実時間で何秒つづくか（設定の速さで割る）。夜は短い 【仮置き】
-    realSeconds: { morning: 40, noon: 40, evening: 40, night: 10 },
+    realSeconds: { morning: 90, noon: 90, evening: 90, night: 30 }, // ×1で1日 5分
   },
   season: {
     spring: { name: '春', ambientTemp: 15, prefShift: {} },

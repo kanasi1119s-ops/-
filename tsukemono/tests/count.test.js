@@ -33,7 +33,8 @@ test('仕込みの個数: 1個未満・樽の上限を超える・お金が足�
   assert.equal(g.brew(0, { ...r, count: 0 }).ok, false);
   assert.equal(g.brew(0, { ...r, count: CONFIG.sales.barrelCapacity + 1 }).ok, false);
   assert.equal(g.brew(0, { ...r, count: 2.5 }).ok, false);
+  g.money = 1e6; // 上限いっぱいはお金がたくさん要る
   assert.ok(g.brew(0, { ...r, count: CONFIG.sales.barrelCapacity }).ok);
   g.money = 100;
-  assert.equal(g.brew(1, { ...r, count: 24 }).ok, false);
+  assert.equal(g.brew(1, { ...r, count: 24 }).ok, false); // お金が足りない
 });

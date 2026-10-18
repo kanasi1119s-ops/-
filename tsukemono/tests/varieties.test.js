@@ -60,8 +60,8 @@ test('図鑑: 売った組み合わせが記録され、セーブで残る', () 
   const h = createGame({ seed: 1 });
   assert.ok(h.restore(g.snapshot()));
   assert.deepEqual(h.book, g.book);
-  // 組み合わせの総数: 漬物×野菜11通り × 調味（なし1＋1つ4＋2つ6＝11通り）
-  assert.equal(bookTotal(), 11 * 11);
+  // 組み合わせの総数: 漬物×野菜16通り × 調味8種から2つまで（なし1＋1つ8＋2つ28＝37通り）
+  assert.equal(bookTotal(), 16 * 37);
 });
 
 test('客の好きな漬物は複数あってよい（たくあんは通・しょっぱめ好き・食感重視が好き）', () => {

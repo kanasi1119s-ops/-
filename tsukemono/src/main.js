@@ -304,8 +304,8 @@ WINS.brew = () => {
     <div class="sec"><h3>調味（${C.additiveMax}つまで）　<span class="hint">◎合う △ふつう ✕合わない ？まだわからない</span></h3><div class="tiles">${adds}</div></div>
     <div class="sec"><h3>置き場所　<span class="hint">外は今 ${game.ambientTemp()}℃</span></h3><div class="tiles">${places}</div></div>
     <div class="sec"><h3>個数　<span class="hint">標準 ${game.standardCount(r.pickle)}個 ・ 1樽に最大 ${CAP()}個。多く仕込むほど材料代が増え、売れ残ると酸っぱくなる</span></h3>
-      <div class="count"><button class="stepper" data-count="-6" aria-label="6個減らす">−6</button><button class="stepper" data-count="-1" aria-label="1個減らす">－</button><input id="count" type="number" inputmode="numeric" min="1" max="${CAP()}" step="1" value="${r.count}" aria-label="個数"><span class="unit">個</span><button class="stepper" data-count="1" aria-label="1個増やす">＋</button><button class="stepper" data-count="6" aria-label="6個増やす">＋6</button>
-      <span class="presets">${[6, 12, 18, 24].filter((n) => n <= CAP()).map((n) => `<button class="tile${r.count === n ? ' on' : ''}" data-countset="${n}">${n}</button>`).join('')}</span></div></div>
+      <div class="count"><button class="stepper" data-count="-10" aria-label="10個減らす">−10</button><button class="stepper" data-count="-1" aria-label="1個減らす">－</button><input id="count" type="number" inputmode="numeric" min="1" max="${CAP()}" step="1" value="${r.count}" aria-label="個数"><span class="unit">個</span><button class="stepper" data-count="1" aria-label="1個増やす">＋</button><button class="stepper" data-count="10" aria-label="10個増やす">＋10</button>
+      <span class="presets">${[6, 12, 18, 24, 36, 48, 60].filter((n) => n <= CAP()).map((n) => `<button class="tile${r.count === n ? ' on' : ''}" data-countset="${n}">${n}</button>`).join('')}</span></div></div>
     ${predict}
     <div class="row end"><span class="hint">所持金 ${yen(game.money)}</span><button class="btn main" data-act="brew" ${cost > game.money ? 'disabled' : ''}>樽${ui.slot + 1}に${r.count}個仕込む（${yen(cost)}）</button></div>`,
   };
@@ -496,7 +496,7 @@ async function advance(ticks, { summary = true } = {}) {
 const clockRunning = () => ui.started && !ui.paused && !ui.win && !ui.busy;
 function tickClock(dtMs) {
   if (!clockRunning()) return;
-  const secs = C.calendar.realSeconds[game.timeOfDay()] ?? 40;
+  const secs = C.calendar.realSeconds[game.timeOfDay()] ?? 90;
   ui.clock.phase += (dtMs / 1000) * settings.timeScale / secs;
   const fill = $('clockFill');
   if (fill) fill.style.width = `${Math.min(100, ui.clock.phase * 100)}%`;
@@ -556,7 +556,7 @@ async function startSale(slot) {
   sound.se('open');
   say(`店を開けた。${C.timeName[res.time]}のうちに${res.visitors.length}人来そうだ。`);
   // 客は時間帯の残りに散らして来る（最初の1人は少し早く）。速さの設定で短くなる
-  const secs = (C.calendar.realSeconds[game.timeOfDay()] ?? 40) / settings.timeScale;
+  const secs = (C.calendar.realSeconds[game.timeOfDay()] ?? 90) / settings.timeScale;
   const remain = Math.max(8, secs * (1 - ui.clock.phase)) * 1000;
   const span = remain * 0.7, n = res.visitors.length;
   const gaps = res.visitors.map((_, i) => (i === 0 ? 800 + Math.random() * 1500 : Math.max(2600, (span / n) * (0.6 + Math.random() * 0.8))));

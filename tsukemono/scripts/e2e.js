@@ -62,7 +62,7 @@ try {
   await G(() => { const g = window.__game; g.game.cfg.calendar.realSeconds.morning = 1; g.ui.paused = false; });
   await page.waitForFunction(() => window.__game.game.timeOfDay() === 'noon', null, { timeout: 8000 }).catch(() => {});
   check('時間が自動で進む', (await G(() => window.__game.game.timeOfDay())) === 'noon');
-  await G(() => { const g = window.__game; g.ui.paused = true; g.game.cfg.calendar.realSeconds.morning = 40; });
+  await G(() => { const g = window.__game; g.ui.paused = true; g.game.cfg.calendar.realSeconds.morning = 90; });
 
   // 樽の札 → 味見は同じ時点で1回まで
   await page.click('[data-chip="0"]');
