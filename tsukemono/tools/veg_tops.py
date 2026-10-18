@@ -1,5 +1,5 @@
 # 新しい野菜の樽の中身の絵を、似た野菜の絵の色を変えて作る（仮置き。あとでエディタで描き直せる）
-#   かぶ ← 大根（白に少し紫）、にんじん ← たくあん（黄色をオレンジに）、キャベツ ← 白菜（白を薄い黄緑に）、赤かぶ ← 大根（白を赤紫に）
+#   かぶ ← 大根（白に少し紫）、にんじん ← たくあん（黄色をオレンジに）、キャベツ ← 白菜（白を薄い黄緑に）、赤かぶ ← 大根（白を赤紫に）、梅 ← なす（黄色がかった橙に）、白瓜 ← きゅうり（薄い緑に）、みょうが ← なす（薄紅に）
 import os, colorsys
 import numpy as np
 from PIL import Image
@@ -50,4 +50,27 @@ def akakabu(h, l, s):  # 白い身を赤紫に（赤かぶ）
 
 
 recolor('daikon', 'akakabu', akakabu)
+
+
+def ume(h, l, s):  # なすの紫 → 漬けた梅の黄色がかった橙
+    if l < 0.85 and s > 0.1:
+        return (42 if l > 0.3 else 30) / 360, min(0.72, l * 1.6 + 0.1), min(0.75, s * 0.6 + 0.2)
+    return h / 360, l, s
+
+
+def shirouri(h, l, s):  # きゅうりの濃い緑 → 白瓜の薄い緑
+    if 60 <= h <= 170:
+        return (h + 5) / 360, min(0.9, l * 1.35 + 0.1), s * 0.55
+    return h / 360, l, s
+
+
+def myoga(h, l, s):  # なすの紫 → みょうがの薄紅
+    if l < 0.85 and s > 0.1:
+        return 345 / 360, min(0.8, l * 1.8 + 0.2), min(0.75, s * 0.8 + 0.15)
+    return h / 360, l, s
+
+
+recolor('nasu', 'ume', ume)
+recolor('kyuri', 'shirouri', shirouri)
+recolor('nasu', 'myoga', myoga)
 print('ok')

@@ -13,7 +13,7 @@ const testzuke = {
   ripeAt: 5, window: { lo: 0.8, hi: 2, sour: 3 }, complexityMax: 70, price: 400, affinity: { akajiso: 'good' },
 };
 
-test('漬物はデータの定義から作られる（はじめから知っているのは今までの5種）', () => {
+test('漬物はデータの定義から作られる（はじめから知っているのは今までの5種と梅干し）', () => {
   assert.deepEqual(Object.keys(CONFIG.pickles), PICKLES.map((p) => p.id));
   assert.equal(CONFIG.pickles.hakusaizuke.ripeAt, 7);
   assert.equal(CONFIG.affinity.takuan.zarame, 'good');
@@ -22,7 +22,7 @@ test('漬物はデータの定義から作られる（はじめから知って�
     assert.ok(p.tempHint && p.saltHint, `${p.name}: 目安`);
   }
   const start = Object.entries(CONFIG.pickles).filter(([, p]) => !p.unlock);
-  assert.deepEqual(start.map(([id]) => id), ['asazuke', 'hakusaizuke', 'nukazuke', 'takuan', 'nozawanazuke']);
+  assert.deepEqual(start.map(([id]) => id), ['asazuke', 'hakusaizuke', 'nukazuke', 'takuan', 'nozawanazuke', 'umeboshi']);
   for (const [, p] of start) assert.equal(p.level, 1);
 });
 

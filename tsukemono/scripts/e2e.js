@@ -44,7 +44,7 @@ try {
   await page.evaluate(() => { window.__game.world.speed = 8; window.__game.ui.paused = true; }); // 確認のあいだ時間は止めておく
   const G = (f) => page.evaluate(f);
   // 物語・ひらめき・レベルなどの知らせの窓を閉じる（遊んでいると自然に出てくる）
-  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup', 'saga', 'story', 'reformed'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
+  const closeNotices = () => G(() => { const w = window.__game; let n = 0; while (w.ui.win && ['idea', 'levelup', 'saga', 'story', 'reformed', 'claim', 'dayend'].includes(w.ui.win.kind) && n++ < 20) w.closeWin(); });
 
   // 仕込み（コマンド → 窓 → 仕込む）
   const money0 = await G(() => window.__game.game.money);
@@ -147,6 +147,14 @@ try {
   check('対応を選ぶと結果が出る', (await G(() => window.__game.game.claim)) === null && (await page.textContent('#winBody')).includes('評判'));
   await G(() => { window.__game.game.cfg.claimer.chance = 0.1; });
   await page.click('#winClose'); await closeNotices(); await idle(); await closeNotices();
+  // 段階E: 干す日数を選んでたくあんを仕込む
+  await G(() => { const g = window.__game.game; g.money = 50000; g.barrels = g.barrels.map(() => null); window.__game.ui.slot = 0; window.__game.renderAll(); });
+  await closeNotices(); await page.click('[data-cmd="brew"]');
+  await page.click('[data-pickle="takuan"]');
+  await page.click('[data-dryset="10"]');
+  await page.click('[data-act="brew"]'); await idle(); await closeNotices();
+  check('干す日数を選んでたくあんを仕込める', (await G(() => window.__game.game.barrels.find((b) => b?.pickle === 'takuan')?.dry)) === 10);
+
   // 段階D: 仕入れ・店の経営
   await G(() => { window.__game.game.money = 50000; window.__game.renderAll(); });
   await closeNotices(); await page.click('[data-cmd=\"market\"]');

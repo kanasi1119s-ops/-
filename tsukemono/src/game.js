@@ -1,7 +1,7 @@
 // ゲームの進行（画面なし）。仕込み→熟成→販売の1周を管理する。
 // 乱数は seed 付きで差し替え可能にして、テストで結果を固定できるようにする。
 import { CONFIG } from './config.js';
-import { simulate, filmPerDay, nukaStep, nukaApply, applyCare } from './model.js';
+import { simulate, filmPerDay, nukaStep, nukaApply, applyCare, affinityOf } from './model.js';
 import { NUKA_CARE } from '../data/nuka.js';
 import { unmet, levelOf, masteryOf } from './unlock.js';
 import { attachBusiness, agingFactor, hash01 } from './business.js';
@@ -263,7 +263,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return { ok: true, cost };
   };
 
-  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count }) => {
+  g.brew = (slot, { veg, pickle, saltPct, tempC, place, additives = [], count, dry }) => {
     additives = [...new Set(additives)];
     count = count ?? g.standardCount(pickle);
     if (!Number.isInteger(count) || count < 1 || count > cfg.sales.barrelCapacity) return { ok: false, error: `個数は1〜${cfg.sales.barrelCapacity}個です` };
@@ -280,6 +280,9 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     if (!g.vegAvailable(veg)) return { ok: false, error: `${v.name}は${v.contract.farmer}と契約すると仕入れられます` };
     const can = g.canBrew(pickle);
     if (!can.ok) return can;
+    // 干す日数（たくあんなど。段階E）。干しているあいだも樽はふさがる
+    dry = p.drying ? (dry ?? p.drying.default ?? 0) : 0;
+    if (!Number.isInteger(dry) || dry < 0 || dry > (p.drying?.max ?? 0)) return { ok: false, error: `干す日数は0〜${p.drying?.max ?? 0}日です` };
     if (g.barrels[slot] === undefined) return { ok: false, error: '樽がありません' };
     if (g.barrels[slot]) return { ok: false, error: '樽が空いていません' };
     if (p.usesNukaBed) saltPct = g.nuka.salt; // ぬか漬けはぬか床の塩分で漬かる
@@ -289,11 +292,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.stats.cost += cost;
     if (p.usesNukaBed) {
       g.nuka.salt = Math.max(cfg.nuka.minSalt, g.nuka.salt - cfg.nuka.saltLossPerBatch);
-      g.nuka.water = Math.min(1, (g.nuka.water ?? 0) + cfg.nuka.waterPerBatch * (count / g.standardCount(pickle))); // 野菜から水が出る
+      g.nuka.water = Math.min(1, (g.nuka.water ?? 0) + cfg.nuka.waterPerBatch * (count / g.standardCount(pickle)) * ((v.water ?? cfg.water.base) / cfg.water.base)); // 野菜から水が出る（水分の多い野菜ほど）
     }
     const st = g.useStock(veg, count); // 在庫を古い順に使う（鮮度が品質に響く）。足りない分は今日の相場で買う
     const quality = g.vegQuality(veg) * ((st.used * st.quality + (count - st.used)) / count);
-    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
+    g.barrels[slot] = { veg, pickle, saltPct, tempC, place: place ?? null, additives, quality, fromStock: st.used, dry, exposed: 0, startTick: g.tick, portions: count, cost, earned: 0, film: 0, lastCareTick: -1 };
     return { ok: true, cost };
   };
 
@@ -306,7 +309,13 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       if (g.tick % cal.ticksPerDay === 0) { g.weather = pickWeather(); g.newDay(); } // 朝: 天気・維持費・従業員の仕事（business.js）
       // 白い膜は、放っておくと少しずつ広がる（手入れで取れる）
       for (const b of g.barrels) {
-        if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * dt);
+        if (!b) continue;
+        const pk = cfg.pickles[b.pickle];
+        if (g.dryingLeft(b) > 0) continue; // 干しているあいだは漬かっていない
+        // 梅干し: 梅が梅酢から出てくると、カビ（膜）がつきやすい（段階E）
+        let mold = 1;
+        if (pk.umezu) { b.exposed = Math.min(1, (b.exposed ?? 0) + cfg.umezu.exposePerDay * dt); mold = b.exposed > cfg.umezu.safe ? cfg.umezu.moldExposed : cfg.umezu.moldInBrine; }
+        if (pk.film && !pk.usesNukaBed) b.film = Math.min(1, (b.film ?? 0) + filmPerDay(b.tempC, cfg) * mold * dt);
       }
       // ぬか床は店の中（外気温）。放っておくと 膜 → 酸っぱい → 傷む の順に進む（model.js の nukaStep）
       g.nuka = nukaStep(g.nuka, g.ambientTemp(), dt, (g.tick - (g.nuka.suteTick ?? 0)) / cal.ticksPerDay, cfg);
@@ -319,12 +328,26 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     const b = g.barrels[slot];
     if (!b) return null;
     const p = cfg.pickles[b.pickle];
-    const base = simulate({ ...b, days: g.barrelAge(b) }, cfg);
+    const left = g.dryingLeft(b);
+    const base = simulate({ ...b, days: Math.max(0, g.barrelAge(b) - (b.dry ?? 0)) }, cfg);
+    if (left > 0) return { ...base, stage: 'raw', stageLabel: '干している', drying: left }; // まだ干している
     const film = Math.max(b.film ?? 0, p.usesNukaBed ? g.nuka.film : 0);
     const t = applyCare(base, { film, bed: p.usesNukaBed ? g.nuka : null }, cfg);
     // 作り方を磨くと品質が上がる（腕前 0〜1）
     const m = g.mastery(b.pickle), pr = cfg.progress;
     return m > 0 ? { ...t, complexity: Math.min(100, t.complexity * (1 + pr.masterComplexity * m)), texture: Math.min(100, t.texture * (1 + pr.masterTexture * m)), mastery: m } : t;
+  };
+
+  /** 干し終わるまでの日数（0 = 漬かりはじめている） */
+  g.dryingLeft = (b) => Math.max(0, (b.dry ?? 0) - g.barrelAge(b));
+  /** 梅干し: 重石を直して、梅を梅酢に沈める（同じ樽は1つの時間帯に1回） */
+  g.sink = (slot) => {
+    const b = g.barrels[slot];
+    if (!b || !cfg.pickles[b.pickle].umezu) return { ok: false, error: '梅酢に漬けている樽ではありません' };
+    if (b.lastSinkTick === g.tick) return { ok: false, error: 'さっき直したばかりです' };
+    b.lastSinkTick = g.tick;
+    b.exposed = 0;
+    return { ok: true };
   };
 
   // ---- 手入れ ----
@@ -481,6 +504,11 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       const key = bookKey(b);
       const avg = rated.reduce((s, v) => s + v.sat, 0) / rated.length;
       const prev = g.book[key];
+      // 調味の相性を初めて知った（段階E: レシピ帳が埋まる）
+      for (const a of b.additives ?? []) {
+        const known = Object.keys(g.book).some((k) => { const [pk, , ...ad] = k.split(':'); return pk === b.pickle && ad.includes(a); });
+        if (!known) { const aff = affinityOf(b.pickle, a, cfg); g.events.push({ type: 'affinity', pickle: b.pickle, additive: a, aff }); if (aff === 'good') g.addXp(cfg.progress.xpNewBook); }
+      }
       discovery = { key, avg, isNew: !prev, best: !prev || avg > prev.best };
       g.book[key] = { best: Math.max(prev?.best ?? 0, avg), day: prev?.day ?? g.day(), n: (prev?.n ?? 0) + 1 };
       if (!prev) g.addXp(cfg.progress.xpNewBook);
@@ -548,7 +576,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
       for (const k of ['water', 'rot', 'umami', 'suteTick']) if (!Number.isFinite(g.nuka[k])) g.nuka[k] = 0;
       if (typeof g.nuka.cared !== 'object' || !g.nuka.cared) g.nuka.cared = {};
     }
-    for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; b.quality ??= 1; }
+    for (const b of g.barrels) if (b) { b.film = Number.isFinite(b.film) ? b.film : 0; b.lastCareTick ??= -1; b.quality ??= 1; b.dry = Number.isInteger(b.dry) ? b.dry : 0; b.exposed = Number.isFinite(b.exposed) ? b.exposed : 0; }
     if (Number.isFinite(s.reputation)) g.reputation = Math.min(100, Math.max(0, s.reputation));
     if (Array.isArray(s.places)) g.places = [...new Set([...g.places, ...s.places.filter((k) => cfg.facilities[k])])];
     if (s.book && typeof s.book === 'object') {

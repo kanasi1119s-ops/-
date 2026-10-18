@@ -6,9 +6,11 @@
 import { PICKLES, picklesFrom } from '../data/pickles.js';
 import { FACILITIES, facilitiesFrom } from '../data/facilities.js';
 import { LEVELS, LEVEL_AFTER_LAST } from '../data/levels.js';
+import { VEGETABLES, vegetablesFrom } from '../data/vegetables.js';
 
 const PICKLE_CFG = picklesFrom(PICKLES);
 const FACILITY_CFG = facilitiesFrom(FACILITIES);
+const VEG_CFG = vegetablesFrom(VEGETABLES);
 
 export const CONFIG = {
   // ---------------------------------------------------------------
@@ -57,73 +59,15 @@ export const CONFIG = {
   // ---------------------------------------------------------------
   // 野菜（最小版は2種）
   // ---------------------------------------------------------------
-  vegetables: {
-    hakusai: {
-      name: '白菜',
-      fermentRate: 1.0, // 【出典】基準
-      crisp0: 80, crispTau: 20, // 【仮置き】
-      spoilMult: 1.0, // 【仮置き】
-      cost: 500, // 【仮置き】1樽分の仕入れ値(円)
-    },
-    kyuri: {
-      name: 'きゅうり',
-      fermentRate: 1.1, // 【仮置き】
-      crisp0: 95, crispTau: 8, // 【仮置き】シャキシャキだが早く柔らかくなる
-      spoilMult: 1.3, // 【仮置き】
-      cost: 300, // 【仮置き】
-    },
-    // 段階5で追加
-    daikon: {
-      name: '大根',
-      fermentRate: 0.8, // 【仮置き】かたく、ゆっくり漬かる
-      crisp0: 90, crispTau: 80, // 【仮置き】長く漬けてもポリポリ（たくあん）
-      spoilMult: 0.8, // 【仮置き】
-      cost: 400, // 【仮置き】
-    },
-    nozawana: {
-      name: '野沢菜',
-      fermentRate: 1.0, // 【仮置き】
-      crisp0: 85, crispTau: 15, // 【仮置き】
-      spoilMult: 1.0, // 【仮置き】
-      cost: 450, // 【仮置き】
-    },
-    nasu: {
-      name: 'なす',
-      fermentRate: 1.1, // 【仮置き】
-      crisp0: 70, crispTau: 10, // 【仮置き】やわらかめ
-      spoilMult: 1.2, // 【仮置き】
-      cost: 350, // 【仮置き】
-    },
-    kabu: {
-      name: 'かぶ',
-      fermentRate: 1.1, // 【仮置き】やわらかく、早く漬かる
-      crisp0: 85, crispTau: 12, // 【仮置き】
-      spoilMult: 1.1, // 【仮置き】
-      cost: 300, // 【仮置き】
-    },
-    akakabu: {
-      name: '赤かぶ',
-      fermentRate: 1.1, // 【仮置き】かぶと同じくらい
-      crisp0: 88, crispTau: 14, // 【仮置き】
-      spoilMult: 1.1, // 【仮置き】
-      cost: 400, // 【仮置き】
-      contract: { cost: 3000, level: 2, farmer: '山あいの赤かぶ農家' }, // 【仮置き】契約しないと仕入れられない（段階D「新しい野菜」）
-    },
-    ninjin: {
-      name: 'にんじん',
-      fermentRate: 0.8, // 【仮置き】かたく、ゆっくり漬かる
-      crisp0: 90, crispTau: 40, // 【仮置き】長くポリポリ
-      spoilMult: 0.9, // 【仮置き】
-      cost: 250, // 【仮置き】
-    },
-    kyabetsu: {
-      name: 'キャベツ',
-      fermentRate: 1.1, // 【仮置き】
-      crisp0: 80, crispTau: 12, // 【仮置き】
-      spoilMult: 1.1, // 【仮置き】
-      cost: 300, // 【仮置き】
-    },
-  },
+  // 野菜: data/vegetables.js の定義から作る（段階E。水分量・塩の入り方・食感の変わり方を野菜ごとに持つ）
+  vegetables: VEG_CFG.vegetables,
+  // 水分量の差: 水分が基準より多いほど塩味が薄まる（基準 0.93）【仮置き】
+  water: { base: 0.93, saltDilution: 1.5 },
+  // 干す（たくあんなど。段階E）: 干した日数だけ水分が抜け、食感・塩味が締まり、傷みにくくなる 【仮置き】
+  drying: { waterLossPerDay: 0.03, crispPerDay: 0.03, crispMax: 1.3, spoilDropPerDay: 0.05, spoilMin: 0.5 },
+  // 梅酢（梅干し。段階E）: 梅は梅酢に浸かっていればカビにくい。日がたつと梅が梅酢から出てくる 【仮置き】
+  umezu: { exposePerDay: 0.08, safe: 0.3, moldInBrine: 0.2, moldExposed: 3 },
+
 
   // ---------------------------------------------------------------
   // 漬物は data/pickles.js の定義から作る（1件足すだけで増える）。相性（affinity）も定義の中に持つ。
@@ -157,17 +101,7 @@ export const CONFIG = {
   // ---------------------------------------------------------------
   // 旬: 【出典: 企画書】旬の野菜は安く品質が高い（白菜は冬、きゅうりは夏）。倍率は【仮置き】
   market: {
-    priceBySeason: {
-      hakusai: { spring: 1.1, summer: 1.3, autumn: 0.9, winter: 0.7 },
-      kyuri: { spring: 1.0, summer: 0.7, autumn: 1.1, winter: 1.4 },
-      daikon: { spring: 1.1, summer: 1.4, autumn: 0.9, winter: 0.7 }, // 冬が旬（たくあんの仕込み時期）
-      nozawana: { spring: 1.2, summer: 1.5, autumn: 0.9, winter: 0.7 }, // 晩秋〜冬
-      nasu: { spring: 1.2, summer: 0.7, autumn: 0.9, winter: 1.5 }, // 夏〜秋
-      kabu: { spring: 1.0, summer: 1.3, autumn: 0.8, winter: 0.8 }, // 秋〜冬
-      ninjin: { spring: 1.0, summer: 1.2, autumn: 0.8, winter: 0.9 }, // 秋〜冬
-      kyabetsu: { spring: 0.7, summer: 1.0, autumn: 1.1, winter: 1.0 }, // 春キャベツ
-      akakabu: { spring: 1.1, summer: 1.4, autumn: 0.8, winter: 0.8 }, // 秋〜冬
-    },
+    priceBySeason: VEG_CFG.priceBySeason, // data/vegetables.js の seasons
     // 品質（食感の初期値に掛ける）＝ 2 − 価格の倍率 を、この範囲に収める 【仮置き】
     qualityRange: [0.85, 1.15],
     // 段階D: 毎日の相場。季節の倍率に、日ごとの揺れと特売をかける 【仮置き】

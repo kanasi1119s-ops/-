@@ -23,6 +23,8 @@
 //                   line  : ひらめいたときの一言
 //   needs       : 仕込むのに要る設備（data/facilities.js の id の配列）
 //   praise      : お客のほめ言葉（なくてもよい。満足したお客がときどき言う）
+//   drying      : 干してから漬ける（段階E）。{ max, ideal: [lo, hi], default }: 干す日数（そのあいだ樽はふさがる）。干すと食感・塩味が締まり、傷みにくい
+//   umezu       : 梅酢に浸す漬物（梅干し。段階E）。梅が梅酢から出るとカビやすい。重石を直して沈め、カビは清潔なスプーンで取る
 //   aging       : 寝かせると値打ちが上がる（段階D）。{ from, full, max }: 進み/ripeAt が from から full まで寝かせると、売り値が最大 ×(1+max)
 //   affinity    : 調味との相性（good / bad。書いてなければふつう）
 //   そのほか    : portions（標準の個数）、usesNukaBed（ぬか床を使う）、saltUptake、acidHalfProgress、film（白い膜が出る）、top（樽の中身の絵）
@@ -31,7 +33,7 @@ export const PICKLES = [
   {
     id: 'asazuke',
     name: '浅漬け',
-    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu'],
+    vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin', 'akakabu', 'shirouri', 'myoga'],
     steps: ['野菜を切る', '塩をまぶして重石をする', '冷暗所で半日〜1日'],
     saltHint: '2〜3%', // 【出典】
     salt: { lo: 2, hi: 3 }, // 【出典】
@@ -66,7 +68,7 @@ export const PICKLES = [
   {
     id: 'nukazuke',
     name: 'ぬか漬け',
-    vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon', 'kabu', 'ninjin', 'akakabu'],
+    vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon', 'kabu', 'ninjin', 'akakabu', 'shirouri', 'myoga'],
     steps: ['野菜に塩をすり込む', 'ぬか床に埋める', '20〜25℃で一晩〜1日', '毎日かき混ぜる'],
     usesNukaBed: true, // 塩分はぬか床の塩分を使う（仕込みで塩分は選ばない）
     saltHint: 'ぬか床の塩分',
@@ -102,6 +104,7 @@ export const PICKLES = [
     top: 'takuan', // 樽の中身の絵（黄色）
     level: 1,
     unlock: null,
+    drying: { max: 14, ideal: [5, 10], default: 7 }, // 【仮置き】出典は「干してから塩漬け」。干す日数（1〜2週間ほど、の字に曲がるまで）
     aging: { from: 1.3, full: 3, max: 0.5 }, // 【仮置き】寝かせるほど高く売れる
     affinity: { zarame: 'good', togarashi: 'good', kombu: 'good', yuzu: 'bad', sakekasu: 'good', akajiso: 'bad' },
   },
@@ -124,6 +127,32 @@ export const PICKLES = [
     affinity: { togarashi: 'good', kombu: 'good', zarame: 'bad', shoga: 'good', sakekasu: 'bad' },
   },
 
+  {
+    id: 'umeboshi',
+    name: '梅干し',
+    vegetables: ['ume'],
+    steps: ['青梅を洗い、へたを取る', '塩をまぶして壺に漬ける（梅酢が上がる）', '梅が梅酢に浸かるよう重石を直す', '約1か月（表面にカビが出たら清潔なスプーンで取る）'],
+    saltHint: '15〜20%（減塩なら10%ほど。傷みやすくなる）', // 【出典】伝統的な梅干しは18〜20%前後
+    salt: { lo: 15, hi: 20 }, // 【仮置き】
+    tempHint: '冷暗所（15〜25℃）', // 【仮置き】
+    temp: { lo: 15, hi: 25 }, // 【仮置き】
+    ripeAt: 1.6, // 【仮置き】塩18%・20℃で約1か月
+    window: { lo: 0.8, hi: 30, sour: 60 }, // 【仮置き】ほぼ傷まず、いつまでも置ける
+    acidHalfProgress: 0.3, // 【仮置き】梅はもともと酸っぱい
+    saltUptake: 0.4, // 【仮置き】塩分は高いが、感じる塩味は果肉の酸味でやわらぐ（梅の塩の入り方0.6と合わせて、18%で塩味75ほど）
+    complexityMax: 75, // 【仮置き】
+    price: 150, // 【仮置き】1粒より少し多めの1包み
+    portions: 24, // 【仮置き】壺いっぱいに漬ける
+    needs: ['tsubo'], // 壺がいる（店のレベル2で買える）
+    umezu: true,
+    film: true, // 梅酢から出るとカビ（白い膜と同じ扱いで、清潔なスプーンで取る）
+    top: 'ume',
+    level: 1,
+    unlock: null,
+    aging: { from: 1, full: 12, max: 1.0 }, // 【仮置き】古い梅干しほど値打ちがある
+    praise: ['すっぱーい！ …でも、ご飯がすすむ', 'これぞ梅干し。おばあちゃん家の味', '一粒で白いご飯が二杯いける'],
+    affinity: { akajiso: 'good', kombu: 'good', zarame: 'good', karashi: 'bad', sakekasu: 'bad', togarashi: 'bad' },
+  },
   // ---- ここから下は、はじめは知らない作り方（段階C）。図鑑に「？？？」で載り、条件が合うとひらめく ----
   {
     id: 'karashizuke',
@@ -151,7 +180,7 @@ export const PICKLES = [
   {
     id: 'shibazuke',
     name: '柴漬け',
-    vegetables: ['nasu', 'kyuri'],
+    vegetables: ['nasu', 'kyuri', 'myoga'],
     steps: ['なすときゅうりを刻む', '赤しそと塩で漬ける', '重石をして乳酸発酵させる'],
     saltHint: '3〜5%', // 【仮置き】
     salt: { lo: 3, hi: 5 }, // 【仮置き】
@@ -199,7 +228,7 @@ export const PICKLES = [
   {
     id: 'kasuzuke',
     name: '粕漬け',
-    vegetables: ['kyuri', 'daikon', 'ninjin', 'kabu'],
+    vegetables: ['kyuri', 'daikon', 'ninjin', 'kabu', 'shirouri'],
     steps: ['野菜を塩で下漬けして水を抜く', '酒粕に漬け替える', '涼しい所でじっくり数週間'],
     saltHint: '3〜6%（下漬け）', // 【仮置き】
     salt: { lo: 3, hi: 6 }, // 【仮置き】

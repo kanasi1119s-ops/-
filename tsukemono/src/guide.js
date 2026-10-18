@@ -22,6 +22,8 @@ export function nextStep(g, ui = {}) {
   const usesBed = items.some((x) => cfg.pickles[x.b.pickle].usesNukaBed) || g.nuka.maturity > 0;
   if (usesBed && g.nuka.lastStirDay !== g.day()) return 'ぬか床を今日はまだかき混ぜていない。「かき混ぜる」で床が育つ。';
   if (usesBed && (g.nuka.rot ?? 0) >= 0.3) return 'ぬか床が傷みかけている。捨て漬けを替えて、ぬかと塩を足そう。';
+  const ume = g.barrels.findIndex((b) => b && cfg.pickles[b.pickle].umezu && (b.exposed ?? 0) > cfg.umezu.safe);
+  if (ume >= 0) return `樽${ume + 1}の梅が梅酢から出ている。「樽」から重石を直して沈めないとカビやすい。`;
   if (usesBed && g.nuka.sour >= 0.5) return 'ぬか床が酸っぱくなっている。塩・からし・卵の殻で和らぐ。';
   if (usesBed && (g.nuka.water ?? 0) >= 0.5) return 'ぬか床が水っぽい。ぬかと塩を足すと床がしまる。';
   if (usesBed && g.daysSinceSute() > cfg.nuka.suteEveryDays) return '捨て漬けを替えてから日がたった。キャベツの芯やにんじんの皮に替えると床が傷みにくい。';

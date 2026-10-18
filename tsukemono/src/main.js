@@ -111,7 +111,7 @@ function kanjiNum(n) {
   }
   return s + (n ? D[n] : '');
 }
-const barrelName = (b) => `${C.vegetables[b.veg].name}の${C.pickles[b.pickle].name}`;
+const barrelName = (b) => (C.pickles[b.pickle].name.includes(C.vegetables[b.veg].name) ? C.pickles[b.pickle].name : `${C.vegetables[b.veg].name}の${C.pickles[b.pickle].name}`); // 梅の梅干し → 梅干し
 const stageOfSlot = (i) => (game.barrels[i] ? game.tasteOf(i).stage : null);
 const canSellNow = () => game.isOpen() && game.lastSaleTick !== game.tick;
 const filmOf = (b) => (C.pickles[b.pickle].usesNukaBed ? game.nuka.film : (b.film ?? 0));
@@ -300,12 +300,15 @@ WINS.barrel = ({ slot }) => {
     body: `${nav}
     <div class="panel">
       <div><span class="stage-tag ${t.stage}">${t.stageLabel}</span>　${trim(game.barrelAge(b), 1)}日目 ・ 残り${b.portions}個${agingFactor(p, t.ratio) > 1 ? ` ・ <span class="ukon">熟成もの（売り値 ×${trim(agingFactor(p, t.ratio), 2)}）</span>` : p.aging ? ' ・ <span class="hint">寝かせるほど高く売れる</span>' : ''}</div>
+      ${t.drying ? `<div class="ukon">大根を干している（あと${trim(t.drying, 1)}日。干し終わると漬かりはじめる）</div>` : b.dry ? `<div class="hint">${b.dry}日干してから漬けた</div>` : ''}
+      ${p.umezu ? `<div class="${(b.exposed ?? 0) > C.umezu.safe ? 'warn' : 'hint'}">梅酢: ${(b.exposed ?? 0) > C.umezu.safe ? '梅の頭が梅酢から出ている！ カビやすい' : (b.exposed ?? 0) > 0.1 ? '梅が少し浮いてきた' : '梅はしっかり梅酢に浸かっている'}</div>` : ''}
       <div class="hint">塩${trim(b.saltPct, 1)}% ・ ${b.place ? C.places[b.place].name : ''} ${b.tempC}℃${adds ? ` ・ ${adds}` : ''}${p.film ? ` ・ 白い膜: <span class="${fv >= C.care.filmVisible ? 'warn' : ''}">${filmWord(fv)}${p.usesNukaBed ? '（ぬか床）' : ''}</span>` : ''}</div>
     </div>
     ${tasteBox}
     <div class="row">
       <button class="btn" data-act="taste" data-slot="${slot}" ${tasted ? 'disabled' : ''}>${tasted ? '味見した' : '味見'}</button>
-      ${p.film && !p.usesNukaBed ? `<button class="btn" data-act="care" data-slot="${slot}" ${cared || fv < 0.05 ? 'disabled' : ''}>${cared ? '手入れした' : '手入れ（膜を取る）'}</button>` : ''}
+      ${p.umezu ? `<button class="btn" data-act="sink" data-slot="${slot}" ${b.lastSinkTick === game.tick || (b.exposed ?? 0) < 0.05 ? 'disabled' : ''}>重石を直して梅を沈める</button>` : ''}
+      ${p.film && !p.usesNukaBed ? `<button class="btn" data-act="care" data-slot="${slot}" ${cared || fv < 0.05 ? 'disabled' : ''}>${cared ? '手入れした' : p.umezu ? '清潔なスプーンでカビを取る' : '手入れ（膜を取る）'}</button>` : ''}
       ${p.usesNukaBed ? '<button class="btn" data-act="openNuka">ぬか床を見る</button>' : ''}
       ${onDisplay ? `<button class="btn" data-act="hideSlot" data-slot="${slot}">店先から下げる</button>` : `<button class="btn main" data-act="sellSlot" data-slot="${slot}">店先に出す</button>`}
       <button class="btn ghost" data-act="discard" data-slot="${slot}">${disc ? '本当に捨てる' : '捨てる'}</button>
@@ -334,7 +337,8 @@ const CAP = () => C.sales.barrelCapacity;
 const clampCount = (n) => Math.min(CAP(), Math.max(1, Math.round(Number.isFinite(n) ? n : 1)));
 const affKnown = (pickle, id) => Object.keys(game.book).some((k) => { const [pk, , ...ad] = k.split(':'); return pk === pickle && ad.includes(id); });
 const affMark = (pickle, id) => (!affKnown(pickle, id) ? '？' : { good: '◎', bad: '✕', neutral: '△' }[affinityOf(pickle, id, C)]);
-const SALT_DEFAULT = { asazuke: 2.5, takuan: 5 };
+const SALT_DEFAULT = { asazuke: 2.5, takuan: 5, umeboshi: 18 };
+const SALT_MAX = () => Math.max(15, C.pickles[ui.recipe.pickle]?.salt?.hi ?? 0, ui.recipe.saltPct); // 梅干しは20%まで
 WINS.brew = () => {
   const r = effRecipe(), p = C.pickles[r.pickle];
   const empties = game.barrels.map((b, i) => (b ? null : i)).filter((i) => i != null);
@@ -351,20 +355,26 @@ WINS.brew = () => {
   const places = Object.entries(C.places).filter(([id, x]) => x.level <= game.level().level || game.places.includes(id)).map(([id, x]) => { const own = game.places.includes(id); return `<button class="tile${r.place === id ? ' on' : ''}" data-place="${id}" ${own ? '' : 'disabled'}><b>${x.name}</b><span>${own ? `${game.placeTemp(id)}℃` : '未購入（店で買う）'}</span></button>`; }).join('');
   let predict = '';
   if (settings.practice) {
-    const days = daysToRipe(r), range = ripeRangeDays(r);
-    let t = simulate({ ...r, quality: game.vegQuality(r.veg), days });
+    const dry = p.drying ? (r.dry ?? p.drying.default) : 0; // 干す日数ぶん後ろにずれる
+    const d0 = daysToRipe(r), r0 = ripeRangeDays(r);
+    const days = d0 + dry, range = { from: r0.from + dry, to: r0.to + dry, sourFrom: r0.sourFrom + dry };
+    let t = simulate({ ...r, dry, quality: game.vegQuality(r.veg), days: d0 });
     if (p.usesNukaBed) t = applyCare(t, { film: game.nuka.film, bed: game.nuka });
-    predict = `<div class="panel"><div class="ukon">見立て（練習モード）</div><div>食べ頃まで <b class="ukon">${trim(days, 1)}日</b>（${trim(range.from, 1)}〜${trim(range.to, 1)}日）・ ${trim(range.sourFrom, 1)}日を過ぎると酸っぱすぎ</div>${bars(t, { numbers: true })}</div>`;
+    predict = `<div class="panel"><div class="ukon">見立て（練習モード）</div><div>食べ頃まで <b class="ukon">${trim(days, 1)}日</b>${dry ? `<span class="hint">（干す${dry}日を含む）</span>` : ''}（${trim(range.from, 1)}〜${trim(range.to, 1)}日）・ ${trim(range.sourFrom, 1)}日を過ぎると酸っぱすぎ</div>${bars(t, { numbers: true })}</div>`;
   }
   return {
     title: '仕込む',
     body: `
     <div class="sec"><h3>樽</h3><div class="row">${empties.map((i) => `<button class="tile${ui.slot === i ? ' on' : ''}" data-bslot="${i}" style="flex:0 0 auto">樽${i + 1}</button>`).join('')}</div></div>
     <div class="sec"><h3>漬物</h3><div class="tiles">${pickles}</div><div class="hint">作り方: ${p.steps.join(' → ')}　・　温度の目安 ${p.tempHint}</div></div>
-    <div class="sec"><h3>野菜　<span class="hint">値段は今日の相場（6個分）。在庫があれば先に使う</span> <button class="btn ghost" data-act="openMarket" style="padding:2px 8px">仕入れ</button></h3><div class="tiles">${vegs}</div></div>
+    <div class="sec"><h3>野菜　<span class="hint">値段は今日の相場（6個分）。在庫があれば先に使う</span> <button class="btn ghost" data-act="openMarket" style="padding:2px 8px">仕入れ</button></h3><div class="tiles">${vegs}</div><div class="hint">${C.vegetables[r.veg].name}: 水分${Math.round(C.vegetables[r.veg].water * 1000) / 10}% ・ 塩の入り方 ${C.vegetables[r.veg].saltUptake >= 1.1 ? '速い' : C.vegetables[r.veg].saltUptake <= 0.85 ? 'ゆっくり' : 'ふつう'} ・ ${C.vegetables[r.veg].note ?? ''}</div></div>
     <div class="sec"><h3>塩　<span class="hint">目安 ${p.saltHint}</span></h3>
       ${p.usesNukaBed ? `<div class="hint">ぬか漬けの塩はぬか床の塩分（今 ${trim(game.nuka.salt, 1)}%）。ぬか床の窓で足せる。</div>`
-        : `<div class="salt"><button class="stepper" data-salt="-0.5" aria-label="塩を減らす">－</button><input id="salt" type="range" min="1" max="15" step="0.5" value="${r.saltPct}" aria-label="塩分"><button class="stepper" data-salt="0.5" aria-label="塩を増やす">＋</button><output id="saltV">${trim(r.saltPct, 1)}%</output></div>`}</div>
+        : `<div class="salt"><button class="stepper" data-salt="-0.5" aria-label="塩を減らす">－</button><input id="salt" type="range" min="1" max="${SALT_MAX()}" step="0.5" value="${r.saltPct}" aria-label="塩分"><button class="stepper" data-salt="0.5" aria-label="塩を増やす">＋</button><output id="saltV">${trim(r.saltPct, 1)}%</output></div>`}</div>
+    ${p.drying ? `<div class="sec"><h3>干す　<span class="hint">目安 ${p.drying.ideal[0]}〜${p.drying.ideal[1]}日。干すほど食感と塩味が締まり、傷みにくい（そのあいだ樽はふさがる）</span></h3>
+      <div class="count"><button class="stepper" data-dry="-1" aria-label="1日減らす">－</button><output class="ukon" style="min-width:4em;text-align:center">${r.dry ?? p.drying.default}日</output><button class="stepper" data-dry="1" aria-label="1日増やす">＋</button>
+      <span class="presets">${[0, 3, 5, 7, 10, 14].filter((n) => n <= p.drying.max).map((n) => `<button class="tile${(r.dry ?? p.drying.default) === n ? ' on' : ''}" data-dryset="${n}">${n}</button>`).join('')}</span></div></div>` : ''}
+    ${p.umezu ? '<div class="hint">梅は梅酢に浸かっていればカビにくい。毎日「樽」から重石を直して沈めよう。カビが出たら清潔なスプーンで取る。</div>' : ''}
     <div class="sec"><h3>調味（${C.additiveMax}つまで）　<span class="hint">◎合う △ふつう ✕合わない ？まだわからない</span></h3><div class="tiles">${adds}</div></div>
     <div class="sec"><h3>置き場所　<span class="hint">外は今 ${game.ambientTemp()}℃</span></h3><div class="tiles">${places}</div></div>
     <div class="sec"><h3>個数　<span class="hint">標準 ${game.standardCount(r.pickle)}個 ・ 1樽に最大 ${CAP()}個。多く仕込むほど材料代が増え、売れ残ると酸っぱくなる</span></h3>
@@ -505,6 +515,7 @@ function recipeBook() {
   const lv = game.level().level;
   const ids = Object.keys(C.pickles);
   const filled = ids.filter((id) => game.recipeState(id) === 'learned').length;
+  const affTotal = ids.length * Object.keys(C.additives).length, affFound = ids.reduce((n, id) => n + Object.keys(C.additives).filter((a) => affKnown(id, a)).length, 0);
   const bestOf = (id) => Math.max(0, ...Object.entries(game.book).filter(([k]) => k.startsWith(`${id}:`)).map(([, e]) => e.best));
   const cards = ids.map((id) => {
     const p = C.pickles[id], st = game.recipeState(id), rec = game.recipes[id];
@@ -515,11 +526,13 @@ function recipeBook() {
     const can = game.canBrew(id);
     const head = `<b>${p.name}</b> ${st === 'learned' ? `<span class="ukon">${masteryStars(id)} ${masteryName(id)}</span>` : '<span class="stage-tag raw">？ まだ成功していない</span>'}`;
     const info = `<span class="hint">${VIA[rec.via] ?? ''}${rec.via !== 'start' ? `（${rec.day}日目）` : ''} ・ 作り方: ${p.steps.join(' → ')} ・ 塩 ${p.saltHint} ・ ${p.tempHint}</span>`;
-    const made = st === 'learned' ? `<br><span class="hint">うまくいった樽 ${rec.made} ・ いちばん良かった満足 ${Math.round(bestOf(id))}</span>` : '';
+    const affs = Object.keys(C.additives).map((a) => (affKnown(id, a) ? `${C.additives[a].name}${{ good: '◎', bad: '✕', neutral: '△' }[affinityOf(id, a, C)]}` : null)).filter(Boolean);
+    const affLine = `<br><span class="hint">調味の相性（${affs.length}/${Object.keys(C.additives).length}）: ${affs.length ? affs.join(' ') : 'まだわからない（調味を入れて売るとわかる）'}</span>`;
+    const made = affLine + (st === 'learned' ? `<br><span class="hint">うまくいった樽 ${rec.made} ・ いちばん良かった満足 ${Math.round(bestOf(id))}</span>` : '');
     const btn = can.ok ? `<button class="btn" data-act="tryRecipe" data-id="${id}">仕込む</button>` : `<span class="hint">${can.error}</span>`;
     return `<div class="item recipe${st === 'learned' ? ' ok' : ''}"><span class="grow">${head}<br>${info}${made}</span>${btn}</div>`;
   }).join('');
-  return `<div>埋まった作り方 <b class="ukon">${filled}</b> / ${ids.length}</div>
+  return `<div>埋まった作り方 <b class="ukon">${filled}</b> / ${ids.length} ・ わかった調味の相性 <b class="ukon">${affFound}</b> / ${affTotal}</div>
     <div class="hint">売って「うまい！」と言わせると埋まる。同じ作り方でうまくいくほど腕が上がり、風味と食感が良くなる（${MASTERY_NAMES.join(' → ')}）。「？？？」は、噂を手がかりに材料・季節・温度・日数を組み合わせるとひらめく。</div>
     <div class="list">${cards}</div>`;
 }
@@ -591,6 +604,7 @@ function flushEvents() {
     if (e.type === 'questStart') { say(`課題「${e.name}」が始まった（${e.days}日以内）。帳面の「物語」で進み具合が見られる。`, '店主'); continue; }
     if (e.type === 'questWon') { sound.se('found'); floatText(`${e.name} 達成！`, 384, 100, 'good'); continue; }
     if (e.type === 'questLost') { sound.se('bad'); say(`課題「${e.name}」は期限までに果たせなかった…。`, '店主'); continue; }
+    if (e.type === 'affinity') { if (e.aff === 'good') { sound.se('found'); floatText(`相性◎ ${C.pickles[e.pickle].name}×${C.additives[e.additive].name}`, 384, 130, 'good'); } say(`${C.pickles[e.pickle].name}と${C.additives[e.additive].name}の相性は${{ good: '◎（よく合う）', bad: '✕（合わない）', neutral: '△（ふつう）' }[e.aff]}。レシピ帳に書いておこう。`, '店主'); continue; }
     if (e.type === 'season') { floatText(e.name, 384, 110, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
     if (e.type === 'peddler') { say('行商人が来ている。「店」の窓で、作り方の巻物を売っているらしい。（今日だけ）', '店主'); continue; }
     if (e.type === 'stockSpoiled') { say(`仕入れた野菜が${e.n}個分、傷んでしまった…。（買いすぎ注意）`, '店主'); continue; }
@@ -868,14 +882,15 @@ document.addEventListener('click', (e) => {
   if (d.chip != null) { sound.se('select'); ui.slot = +d.chip; openWin('barrel', { slot: +d.chip }); return; }
   if (d.goto != null) { sound.se('select'); ui.slot = +d.goto; ui.win = { kind: 'barrel', slot: +d.goto }; ui.confirm = null; renderWin(); $('modal').hidden = false; renderChips(); return; }
   if (d.tab) { sound.se('select'); ui.win.tab = d.tab; renderWin(); return; }
-  if (d.pickle) { sound.se('select'); ui.recipe.pickle = d.pickle; ui.recipe.saltPct = SALT_DEFAULT[d.pickle] ?? 3; ui.recipe.count = game.standardCount(d.pickle); clampRecipe(); renderWin(); return; }
+  if (d.pickle) { sound.se('select'); ui.recipe.pickle = d.pickle; ui.recipe.dry = undefined; ui.recipe.saltPct = SALT_DEFAULT[d.pickle] ?? 3; ui.recipe.count = game.standardCount(d.pickle); clampRecipe(); renderWin(); return; }
   if (d.count) { sound.se('select'); ui.recipe.count = clampCount((ui.recipe.count ?? 1) + +d.count); renderWin(); return; }
   if (d.countset) { sound.se('select'); ui.recipe.count = clampCount(+d.countset); renderWin(); return; }
   if (d.veg) { sound.se('select'); ui.recipe.veg = d.veg; renderWin(); return; }
   if (d.add) { sound.se('select'); const a = ui.recipe.additives; ui.recipe.additives = a.includes(d.add) ? a.filter((x) => x !== d.add) : [...a, d.add].slice(0, C.additiveMax); renderWin(); return; }
   if (d.place) { sound.se('select'); ui.recipe.place = d.place; renderWin(); return; }
   if (d.bslot) { sound.se('select'); ui.slot = +d.bslot; renderWin(); renderChips(); return; }
-  if (d.salt) { sound.se('select'); ui.recipe.saltPct = Math.min(15, Math.max(1, ui.recipe.saltPct + +d.salt)); renderWin(); return; }
+  if (d.dry || d.dryset) { const p = C.pickles[ui.recipe.pickle]; if (!p.drying) return; sound.se('select'); ui.recipe.dry = Math.min(p.drying.max, Math.max(0, d.dryset != null ? +d.dryset : (ui.recipe.dry ?? p.drying.default) + +d.dry)); renderWin(); return; }
+  if (d.salt) { sound.se('select'); ui.recipe.saltPct = Math.min(SALT_MAX(), Math.max(1, ui.recipe.saltPct + +d.salt)); renderWin(); return; }
   if (d.care) { const r = game.nukaCare(d.care); say(r.ok ? `ぬか床：${r.care.name}。${r.care.note}。` : r.error, r.ok ? '店主' : undefined); ui.shownMoney = game.money; sound.se(r.ok ? 'care' : 'error'); renderAll(); return; }
   if (d.buy) { doBuy(d.buy); return; }
   if (d.saga) { sound.se('select'); openWin('saga', { id: d.saga, all: true }); return; }
@@ -902,7 +917,8 @@ document.addEventListener('click', (e) => {
   if (act === 'sellSlot') { doSell(slot); return; }
   if (act === 'hideSlot') { hideSlot(slot); return; }
   if (act === 'taste') { const r = game.tasteTest(slot); sound.se('taste'); if (r?.ok === false) say(r.error); renderWin(); renderChips(); return; }
-  if (act === 'care') { const r = game.care(slot); if (!r.ok) { say(r.error); return; } sound.se('care'); say(`樽${slot + 1}の白い膜を取った。`, '店主'); world.careScene(); renderAll(); return; }
+  if (act === 'sink') { const r = game.sink(slot); if (!r.ok) { say(r.error); return; } sound.se('care'); say(`樽${slot + 1}の重石を直した。梅がしっかり梅酢に沈んだ。`, '店主'); world.careScene(); renderAll(); return; }
+  if (act === 'care') { const r = game.care(slot); if (!r.ok) { say(r.error); return; } sound.se('care'); say(C.pickles[game.barrels[slot]?.pickle]?.umezu ? `樽${slot + 1}のカビを清潔なスプーンで取った。` : `樽${slot + 1}の白い膜を取った。`, '店主'); world.careScene(); renderAll(); return; }
   if (act === 'discard') {
     if (ui.confirm !== `discard${slot}`) { ui.confirm = `discard${slot}`; renderWin(); return; }
     game.discard(slot); sound.se('discard'); say(`樽${slot + 1}を空にした。`); ui.confirm = null; renderAll(); return;

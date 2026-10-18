@@ -137,6 +137,7 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     g.lastUpkeep = { day: g.day(), upkeep: up, wages };
     // 従業員の朝の仕事
     if (g.staffDoes('stir').length && g.nuka.lastStirDay !== g.day()) g.stirNuka();
+    if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].umezu && (b.exposed ?? 0) > 0.1) g.sink(i); }); // 梅も沈めておいてくれる
     if (g.staffDoes('film').length) g.barrels.forEach((b, i) => { if (b && cfg.pickles[b.pickle].film && !cfg.pickles[b.pickle].usesNukaBed && b.film >= cfg.care.filmHarmless) g.care(i); });
     const ev = g.event();
     if (ev && ev.from === g.dayOfSeason()) g.events.push({ type: 'season', id: ev.id, name: ev.name, note: ev.note });

@@ -86,12 +86,17 @@ export function simulate(p, cfg = CONFIG) {
   const half = pickle.acidHalfProgress ?? t.acidHalfProgress;
   const acid = (100 * progress) / (progress + half);
 
-  const absorbed = 1 - Math.exp(-days / t.saltAbsorbTauDays);
-  const saltiness = (100 * p.saltPct * (pickle.saltUptake ?? 1) * absorbed) / t.saltFullPct;
+  // 塩の入り方は野菜ごと（saltUptake）。水分が多いほど塩味は薄まり、干して水分を抜くと締まる（段階E）
+  const dr = cfg.drying, dry = Math.max(0, p.dry ?? 0);
+  const water = (veg.water ?? cfg.water.base) * (1 - Math.min(0.6, dr.waterLossPerDay * dry));
+  const waterF = clamp(1 + cfg.water.saltDilution * (cfg.water.base - water), 0.7, 1.8);
+  const uptake = veg.saltUptake ?? 1;
+  const absorbed = 1 - Math.exp(-(days * uptake) / t.saltAbsorbTauDays);
+  const saltiness = (100 * p.saltPct * (pickle.saltUptake ?? 1) * uptake * waterF * absorbed) / t.saltFullPct;
 
-  const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * days));
+  const spoilRisk = 100 * (1 - Math.exp(-spoilHazard(p, cfg) * Math.max(dr.spoilMin, 1 - dr.spoilDropPerDay * dry) * days));
 
-  const crisp = veg.crisp0 * (p.quality ?? 1) * Math.exp(-progress / veg.crispTau); // quality = 旬の品質
+  const crisp = veg.crisp0 * (p.quality ?? 1) * Math.min(dr.crispMax, 1 + dr.crispPerDay * dry) * Math.exp(-progress / veg.crispTau); // quality = 旬の品質
   const texture = crisp * (1 - cfg.texture.spoilPenalty * (spoilRisk / 100));
 
   const maturity = Math.sqrt(Math.min(1, ratio));
