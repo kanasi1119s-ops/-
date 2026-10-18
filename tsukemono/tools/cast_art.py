@@ -262,6 +262,50 @@ def tama_trace():
     idx = cov.argmax(0) - 1
     return {(x, y): 'abcdefghij'[idx[y, x]] for y in range(th) for x in range(tw) if idx[y, x] >= 0}, (tw, th)
 
+# ---- ゲームの人物の絵になじませる ----
+# 人物の絵を測ると: 暗い色はまっ黒ではなく少し青紫や茶に寄り（#303541・#322823・#3c2644 など）、白も真っ白ではなくクリームや青みの白
+# （#f8f5e6・#d9e9ef など）。となり合うドットの半分以上が少しずつ違う色（絵の具のような手ざわり）。参考の絵どおりの猫は
+# まっ黒のふちと、のっぺりした黒・白なので、そこから浮く。そこで:
+#   ふちどり → 茶寄りの黒と紺寄りの黒をまぜる（人物のふちと同じ）
+#   黒い毛 → 青紫に寄せた4段、白い毛 → クリームから青灰の4段。光は左上から当てて体を丸く見せる（輪郭からの距離で丸みを作る）
+#   段の中でドットを少しずつゆらして、人物と同じくらいの手ざわりに
+FUR_OUT = ['#1c1822', '#2a201c']  # ふちどり（紺寄り・茶寄り）
+FUR_BLACK = ['#1d1b25', '#292733', '#363443', '#4a4757']  # 黒い毛（暗い → 光）
+FUR_WHITE = ['#9c99a0', '#bfbcbe', '#dcddd6', '#f4f1e4']  # 白い毛（深い陰 → 光）
+
+def fur_blend(d, W, H):
+    """記号の絵 d（{(x, y): 'a' ふち / 'b' 'i' 'e' 黒い毛 / 'f' 'h' 白 / 'c' 'k' 'd' 白の陰 / ほかはそのまま}）を、人物になじむ色にする"""
+    import numpy as np, cv2
+    m = np.zeros((H, W), np.uint8)
+    for (x, y) in d:
+        if 0 <= x < W and 0 <= y < H: m[y, x] = 1
+    dist = cv2.distanceTransform(m, cv2.DIST_L2, 3)
+    dome = cv2.GaussianBlur(np.sqrt(dist), (0, 0), 1.6)  # 輪郭から内へふくらむ丸み
+    gy, gx = np.gradient(dome)
+    lit = {}
+    for (x, y) in d:
+        if not (0 <= x < W and 0 <= y < H): continue
+        nx, ny, nz = -gx[y, x] * 3, -gy[y, x] * 3, 1.0
+        n = (nx * nx + ny * ny + nz * nz) ** 0.5
+        lit[(x, y)] = (-0.55 * nx - 0.65 * ny + 0.52 * nz) / n  # 左上からの光
+    out = {}
+    for (x, y), ch in d.items():
+        if not (0 <= x < W and 0 <= y < H): continue
+        l, r = lit[(x, y)], grain(x, y, 21)
+        step = 1 if r < 16 else -1 if r < 32 else 0  # 手ざわり
+        if ch == 'a': c = FUR_OUT[0] if grain(x, y, 22) < 55 else FUR_OUT[1]
+        elif ch in 'bie':
+            k = 3 if ch == 'e' else min(2, max(0, round(l * 3.2 - 0.4)))
+            c = FUR_BLACK[max(0, min(3, k + (step if ch != 'e' else 0)))]
+        elif ch in 'fh':
+            k = min(3, max(1, round(l * 3.6 + 0.2)))
+            c = FUR_WHITE[max(1, min(3, k + step))]
+        elif ch in 'ck': c = FUR_WHITE[max(0, min(2, 1 + (step if step < 0 else 0)))]
+        elif ch == 'd': c = FUR_WHITE[0]
+        else: c = TC[ch]
+        out[(x, y)] = c
+    return {'size': [W, H], 'touch': [{'x': x, 'y': y, 'color': c} for (x, y), c in sorted(out.items(), key=lambda t: (t[0][1], t[0][0]))]}
+
 def tama_sit(blink=False, flick=False):
     d, (W, H) = tama_trace()
     W += 1  # しっぽの先を上げる絵のための余白
@@ -284,7 +328,7 @@ def tama_sit(blink=False, flick=False):
         for (x, y), ch in tip.items(): d[(x, y - 2)] = ch
         for (x, y), ch in tip.items():
             if (x, y) not in d and y >= 48 and x < 31: d[(x, y)] = 'a'
-    return {'size': [W, H], 'touch': [{'x': x, 'y': y, 'color': TC[ch]} for (x, y), ch in sorted(d.items(), key=lambda t: (t[0][1], t[0][0])) if 0 <= x < W and 0 <= y < H]}
+    return fur_blend(d, W, H)
 
 def tama_sleep():
     """丸くなって寝る（座り姿と同じ描き方: 黒いふちどり、黒い毛は1色＋背中のふちに灰色の光、白い毛は下に灰色の陰）。
@@ -315,7 +359,7 @@ def tama_sleep():
     d[(33, 17)] = 'j'; d[(34, 17)] = 'j'; d[(33, 18)] = 'a'  # 鼻と口
     for x in range(27, 39):  # 首輪（あごの下）
         if (x, 20) in head and d.get((x, 20)) not in ('a',): d[(x, 20)] = 'r'
-    return {'size': [W, H], 'touch': [{'x': x, 'y': y, 'color': TC[ch]} for (x, y), ch in sorted(d.items(), key=lambda t: (t[0][1], t[0][0])) if 0 <= x < W and 0 <= y < H]}
+    return fur_blend(d, W, H)
 
 if __name__ == '__main__':
     d = {}
