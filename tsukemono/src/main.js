@@ -1330,4 +1330,4 @@ renderAll();
 showTitle();
 say('');
 requestAnimationFrame(frame);
-window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText }; // 動作確認用（scripts/e2e.js）
+window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText, overEffect }; // 動作確認用（scripts/e2e.js）
