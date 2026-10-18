@@ -187,6 +187,24 @@ try {
   const atlas = await page.textContent('#winBody');
   check('全国めぐりに47都道府県が出て、便りで覚えた漬物が載る', atlas.includes('/ 47') && atlas.includes('ニシン漬け') && atlas.includes('知っている') && atlas.includes('伝説'), atlas.slice(0, 80));
   await page.click('#winClose'); await closeNotices();
+  // 重石と工程・棚・注文・天気
+  await closeNotices();
+  await G(() => { const g = window.__game.game; g.money = 1e6; g.barrels = g.barrels.map(() => null); g.brew(0, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20, weight: 'heavy', count: 18 }); g.popEvents(); window.__game.ui.pending = []; window.__game.renderAll(); });
+  check('帳場に明日の天気が出る', (await page.textContent('#hud')).includes('明日'));
+  await page.click('[data-chip="0"]');
+  await page.click('[data-weight="light"]');
+  check('樽の窓で重石を軽くできる', (await G(() => window.__game.game.weightOf(window.__game.game.barrels[0]))) === 'light');
+  await page.click('#winClose'); await closeNotices();
+  await G(() => { const g = window.__game.game; g.barrels[0].startTick -= 8 * 4; g.orders.board.push({ id: 777, client: 'chonaikai', pickle: 'hakusaizuke', count: 6, days: 9, minSat: 0, reward: 5000, rep: 2, state: 'offer', offerUntil: g.day() + 3, due: null }); window.__game.renderAll(); });
+  await page.click('[data-chip="0"]');
+  await page.click('[data-act="shelve"]');
+  check('食べ頃の樽を棚に移すと樽が空く', await G(() => !window.__game.game.barrels[0] && !!window.__game.game.shelf[0]));
+  await page.click('#winClose'); await closeNotices();
+  await page.click('[data-cmd=\"sell\"]');
+  await page.click('[data-order="accept"][data-oid="777"]');
+  await page.click('[data-order="deliver"][data-oid="777"]');
+  check('注文を受けて、棚から納められる', await G(() => !window.__game.game.orders.board.some((o) => o.id === 777) && window.__game.game.orders.done >= 1));
+  await page.click('#winClose').catch(() => {}); await closeNotices();
   await closeNotices(); await page.click('[data-cmd=\"settings\"]');
   await page.fill('#vBgm', '0.3');
   check('設定で音量を変えられる', (await G(() => window.__game.settings.bgm)) === 0.3);

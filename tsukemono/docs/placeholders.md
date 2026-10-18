@@ -17,65 +17,70 @@
 | 61 | spoil.tempTable | `[[4, 0.1], [10, 0.3], [20, 1], [25, 2.5], [30, 5], [40, 10]]` |  |
 | 66 | texture.spoilPenalty | `0.5` | 傷み100%で食感が半分に |
 | 80 | specialMax | `2` | 1つの樽に2つまで |
-| 86 | letterEvery | `5` | 地方の便りが届く間隔（日） |
-| 107 | additives.shoga | `{ name: '生姜', cost: 50, complexity: 10, salt: 0, acid: 0, spoil: 0.9 }` | さっぱり・日持ちを少し良く |
-| 108 | additives.akajiso | `{ name: '赤しそ', cost: 70, complexity: 12, salt: 0, acid: 4, spoil: 0…` | 香りと色 |
-| 109 | additives.karashi | `{ name: 'からし', cost: 40, complexity: 9, salt: 0, acid: 0, spoil: 0.…` | ぬか床に入れると傷みにくい |
-| 110 | additives.sakekasu | `{ name: '酒粕', cost: 90, complexity: 16, salt: -4, acid: -3, spoil: 1 }` | まろやかでコクが出る（粕漬け） |
-| 115 | affinityBadPenalty | `15` |  |
-| 116 | affinitySatBonus | `6` | 相性の良い調味1つにつき、どのお客の満足度も+6（悪いと−6） |
-| 117 | affinityNeutralFactor | `0.5` |  |
-| 172 | progress.xpPerPiece | `1` | 1個売るごとの経験 |
-| 173 | progress.xpGreatSat | `70` | この満足度以上で買われた分は |
-| 174 | progress.xpGreatMult | `2` | 経験×2 |
-| 175 | progress.xpNewBook | `5` | 図鑑に新しい組み合わせが載ったとき |
-| 176 | progress.xpInspire | `20` | ひらめいたとき |
-| 177 | progress.xpFirstSuccess | `30` | 作り方を初めて成功させたとき（図鑑が埋まる） |
-| 178 | progress.successSat | `60` | 1つの樽で、買ったお客の誰か1人でもこの満足度以上なら「成功」（うまいと言わせた） |
-| 179 | progress.masterAfter | `10` | 成功10樽で腕前が最大 |
-| 180 | progress.masterComplexity | `0.15` | 腕前が最大なら風味の深さ×1.15（作り方を磨くと品質が上がる） |
-| 181 | progress.masterTexture | `0.05` | 腕前が最大なら食感×1.05（扱いが上手になる） |
-| 201 | care.filmPerDay | `[[4, 0.008], [10, 0.05], [20, 0.08], [25, 0.12], [30, 0.15], [40, 0…` | 量は |
-| 202 | care.filmVisible | `0.3` | これ以上で「白い膜」が見える（4℃では約37日） |
-| 203 | care.filmHarmless | `0.15` | これ未満は味に響かない |
-| 204 | care.filmSatPenalty | `0.5` | 膜が一面に張ると満足度×0.5 |
-| 205 | care.filmComplexityPenalty | `0.4` | 膜が一面に張ると風味の深さ×0.6 |
-| 210 | nuka.startSalt | `7` | ぬか床の塩分% |
-| 211 | nuka.minSalt | `4, maxSalt: 12` |  |
-| 212 | nuka.saltLossPerBatch | `0.3` | ぬか漬けを1樽漬けるごとに床の塩分が減る |
-| 213 | nuka.sourPerDay | `[[4, 0.02], [10, 0.06], [20, 0.1], [25, 0.12], [26, 0.2], [30, 0.3]…` | かき混ぜないと1日に増える酸味（26℃以上で急に増える） |
-| 214 | nuka.lowSaltSourBoost | `0.05` | 塩分が1%下がるごとに酸味の増え方+5% |
-| 215 | nuka.stirSourDrop | `0.35` | かき混ぜると酸味がこれだけ下がる |
-| 216 | nuka.sourAcidBoost | `40` | 床の酸味1でぬか漬けの酸味+40 |
-| 217 | nuka.matureDays | `14` | 毎日かき混ぜて14日で熟成度が最大 |
-| 219 | nuka.waterPerBatch | `0.08` | ぬか漬けを標準の個数ぶん漬けるごとに、野菜から出る水で床が水っぽくなる（個数に比例） |
-| 220 | nuka.waterPerDay | `0.01` | 何もしなくても少しずつ水が出る |
-| 221 | nuka.waterSourBoost | `0.6` | 水っぽさ1で酸味の増え方×1.6（水分過多は酸っぱくなる原因） |
-| 222 | nuka.waterSaltLoss | `0.3` | 水っぽさ1でぬか漬けの塩味×0.7（薄まる） |
-| 224 | nuka.rotFilmStart | `0.5, rotPerFilm: 0.35` | 膜が半分を超えると、超えたぶん×0.35/日 |
-| 225 | nuka.rotSourStart | `0.6, rotPerSour: 0.35` | 酸味が0.6を超えると、超えたぶん×0.35/日 |
-| 226 | nuka.suteEveryDays | `4, rotPerSuteDay: 0.02` | 捨て漬けを4日より長く替えないと、1日ごとに+0.02/日 |
-| 227 | nuka.rotStirDrop | `0.05` | かき混ぜると傷みが少し戻る（空気を入れて悪い菌をおさえる） |
-| 228 | nuka.rotSpoilBoost | `100` | 傷み1でぬか漬けの傷みリスク+100% |
-| 229 | nuka.rotComplexityLoss | `0.5` | 傷み1で風味の深さ×0.5 |
-| 230 | nuka.umamiPerDay | `0.02` | 足した旨味は1日に0.02ずつ抜けていく |
-| 231 | nuka.umamiComplexityBoost | `0.3` | 旨味1でぬか漬けの風味の深さ×1.3 |
-| 238 | sales.portionsPerBatch | `6` | 1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値） |
-| 239 | sales.barrelCapacity | `60` | 1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる） |
-| 240 | sales.satScale | `1.7` | 好みとのズレ(重み付き平均)×この値を100から引く |
-| 241 | sales.stageFactor | `{ raw: 1, ripe: 1, over: 0.92, sour: 0.7 }` | 過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる） |
-| 242 | sales.likeBonus | `8` | 好きな種類の漬物なら満足度+8 |
-| 243 | sales.unripeMinFactor | `0.5` | 未熟だと満足度に 0.5〜1.0 を掛ける |
-| 244 | sales.spoilSatPenalty | `0.8` | 傷みリスク100%で満足度×0.2（期待値） |
-| 245 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
-| 247 | sales.priceMin | `0.6, priceMax: 1.3` |  |
-| 248 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
-| 249 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
-| 250 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
-| 251 | sales.buyStep | `15` |  |
-| 258 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
-| 259 | calendar.daysPerSeason | `28` |  |
-| 287 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
+| 90 | weight.riseBase | `0.5` | ふつうの重石・塩3%の白菜で、2日で水が上がる |
+| 91 | weight.unUpSpoil | `3` | 水の上がっていない1日 = 傷みの3日ぶん（ふつうの重石との差で数える） |
+| 92 | weight.crush | `0.06` | 水が上がったあと倍の重石のままだと、1日ごとに食感 −6%（白菜。大根はその1/4） |
+| 93 | weight.lightBonus | `0.01, lightMax: 1.06` | 水が上がったあと軽くしておくと、1日ごとに食感 +1%（6%まで） |
+| 97 | workGrace | `3` | 目安を過ぎても3日までは（遅れて）できる |
+| 103 | letterEvery | `5` | 地方の便りが届く間隔（日） |
+| 124 | additives.shoga | `{ name: '生姜', cost: 50, complexity: 10, salt: 0, acid: 0, spoil: 0.9 }` | さっぱり・日持ちを少し良く |
+| 125 | additives.akajiso | `{ name: '赤しそ', cost: 70, complexity: 12, salt: 0, acid: 4, spoil: 0…` | 香りと色 |
+| 126 | additives.karashi | `{ name: 'からし', cost: 40, complexity: 9, salt: 0, acid: 0, spoil: 0.…` | ぬか床に入れると傷みにくい |
+| 127 | additives.sakekasu | `{ name: '酒粕', cost: 90, complexity: 16, salt: -4, acid: -3, spoil: 1 }` | まろやかでコクが出る（粕漬け） |
+| 132 | affinityBadPenalty | `15` |  |
+| 133 | affinitySatBonus | `6` | 相性の良い調味1つにつき、どのお客の満足度も+6（悪いと−6） |
+| 134 | affinityNeutralFactor | `0.5` |  |
+| 189 | progress.xpPerPiece | `1` | 1個売るごとの経験 |
+| 190 | progress.xpGreatSat | `70` | この満足度以上で買われた分は |
+| 191 | progress.xpGreatMult | `2` | 経験×2 |
+| 192 | progress.xpNewBook | `5` | 図鑑に新しい組み合わせが載ったとき |
+| 193 | progress.xpInspire | `20` | ひらめいたとき |
+| 194 | progress.xpFirstSuccess | `30` | 作り方を初めて成功させたとき（図鑑が埋まる） |
+| 195 | progress.successSat | `60` | 1つの樽で、買ったお客の誰か1人でもこの満足度以上なら「成功」（うまいと言わせた） |
+| 196 | progress.masterAfter | `10` | 成功10樽で腕前が最大 |
+| 197 | progress.masterComplexity | `0.15` | 腕前が最大なら風味の深さ×1.15（作り方を磨くと品質が上がる） |
+| 198 | progress.masterTexture | `0.05` | 腕前が最大なら食感×1.05（扱いが上手になる） |
+| 221 | care.filmPerDay | `[[4, 0.008], [10, 0.05], [20, 0.08], [25, 0.12], [30, 0.15], [40, 0…` | 量は |
+| 222 | care.filmVisible | `0.3` | これ以上で「白い膜」が見える（4℃では約37日） |
+| 223 | care.filmHarmless | `0.15` | これ未満は味に響かない |
+| 224 | care.filmSatPenalty | `0.5` | 膜が一面に張ると満足度×0.5 |
+| 225 | care.filmComplexityPenalty | `0.4` | 膜が一面に張ると風味の深さ×0.6 |
+| 230 | nuka.startSalt | `7` | ぬか床の塩分% |
+| 231 | nuka.minSalt | `4, maxSalt: 12` |  |
+| 232 | nuka.saltLossPerBatch | `0.3` | ぬか漬けを1樽漬けるごとに床の塩分が減る |
+| 233 | nuka.sourPerDay | `[[4, 0.02], [10, 0.06], [20, 0.1], [25, 0.12], [26, 0.2], [30, 0.3]…` | かき混ぜないと1日に増える酸味（26℃以上で急に増える） |
+| 234 | nuka.lowSaltSourBoost | `0.05` | 塩分が1%下がるごとに酸味の増え方+5% |
+| 235 | nuka.stirSourDrop | `0.35` | かき混ぜると酸味がこれだけ下がる |
+| 236 | nuka.sourAcidBoost | `40` | 床の酸味1でぬか漬けの酸味+40 |
+| 237 | nuka.matureDays | `14` | 毎日かき混ぜて14日で熟成度が最大 |
+| 239 | nuka.waterPerBatch | `0.08` | ぬか漬けを標準の個数ぶん漬けるごとに、野菜から出る水で床が水っぽくなる（個数に比例） |
+| 240 | nuka.waterPerDay | `0.01` | 何もしなくても少しずつ水が出る |
+| 241 | nuka.waterSourBoost | `0.6` | 水っぽさ1で酸味の増え方×1.6（水分過多は酸っぱくなる原因） |
+| 242 | nuka.waterSaltLoss | `0.3` | 水っぽさ1でぬか漬けの塩味×0.7（薄まる） |
+| 244 | nuka.rotFilmStart | `0.5, rotPerFilm: 0.35` | 膜が半分を超えると、超えたぶん×0.35/日 |
+| 245 | nuka.rotSourStart | `0.6, rotPerSour: 0.35` | 酸味が0.6を超えると、超えたぶん×0.35/日 |
+| 246 | nuka.suteEveryDays | `4, rotPerSuteDay: 0.02` | 捨て漬けを4日より長く替えないと、1日ごとに+0.02/日 |
+| 247 | nuka.rotStirDrop | `0.05` | かき混ぜると傷みが少し戻る（空気を入れて悪い菌をおさえる） |
+| 248 | nuka.rotSpoilBoost | `100` | 傷み1でぬか漬けの傷みリスク+100% |
+| 249 | nuka.rotComplexityLoss | `0.5` | 傷み1で風味の深さ×0.5 |
+| 250 | nuka.umamiPerDay | `0.02` | 足した旨味は1日に0.02ずつ抜けていく |
+| 251 | nuka.umamiComplexityBoost | `0.3` | 旨味1でぬか漬けの風味の深さ×1.3 |
+| 258 | sales.portionsPerBatch | `6` | 1樽の標準の個数（仕込みで個数を選ばなければこの数。費用はこの数ぶんの仕入れ値） |
+| 259 | sales.barrelCapacity | `60` | 1樽に仕込める最大の個数（たくさん仕込んで長く売れる。売れ残ると酸っぱくなる） |
+| 260 | sales.satScale | `1.7` | 好みとのズレ(重み付き平均)×この値を100から引く |
+| 261 | sales.stageFactor | `{ raw: 1, ripe: 1, over: 0.92, sour: 0.7 }` | 過熟・酸っぱすぎは満足度に掛ける（rawは別途、未熟の式で下げる） |
+| 262 | sales.likeBonus | `8` | 好きな種類の漬物なら満足度+8 |
+| 263 | sales.unripeMinFactor | `0.5` | 未熟だと満足度に 0.5〜1.0 を掛ける |
+| 264 | sales.spoilSatPenalty | `0.8` | 傷みリスク100%で満足度×0.2（期待値） |
+| 265 | sales.buyThreshold | `40` | 満足度がこれ未満なら買わない |
+| 267 | sales.priceMin | `0.6, priceMax: 1.3` |  |
+| 268 | sales.saltCostPerPct | `10` | 塩代: 塩分1%あたり(円) |
+| 269 | sales.startMoney | `10000` | はじめから樽いっぱい（60個）仕込める額 |
+| 270 | sales.maxBuy | `4` | 1人が買う数の上限。満足度が buyThreshold から buyStep 上がるごとに1個ずつ増える |
+| 271 | sales.buyStep | `15` |  |
+| 278 | calendar.ticksPerDay | `4` | 1日=4区切り（朝・昼・夕・夜） |
+| 279 | calendar.daysPerSeason | `28` |  |
+| 307 | visit.slots | `10` | 1つの時間帯に来るお客の上限（1日5分で、1時間帯に十人ほど） |
 
 ## data/claimer.js
 
@@ -93,11 +98,13 @@
 | 行 | 項目 | 値 | 理由・メモ |
 | --- | --- | --- | --- |
 | 13 | — | `{ id: 'hanami', name: 'お花見', season: 'spring', from: 8, to: 10, vis…` |  |
-| 14 | — | `{ id: 'tsuyu', name: '梅雨入り', season: 'summer', from: 1, to: 5, visi…` |  |
-| 15 | — | `{ id: 'obon', name: 'お盆', season: 'summer', from: 20, to: 23, visit…` |  |
-| 16 | — | `{ id: 'takuanDoki', name: 'たくあんの仕込みどき', season: 'autumn', from: 20,…` |  |
-| 17 | — | `{ id: 'saimatsu', name: '歳末', season: 'winter', from: 5, to: 9, vis…` |  |
-| 18 | — | `{ id: 'shogatsu', name: '正月', season: 'winter', from: 10, to: 12, v…` |  |
+| 14 | — | `{ id: 'doyo', name: '夏の土用', season: 'summer', from: 14, to: 19, vis…` |  |
+| 15 | — | `{ id: 'tsuyu', name: '梅雨入り', season: 'summer', from: 1, to: 5, visi…` |  |
+| 16 | — | `{ id: 'obon', name: 'お盆', season: 'summer', from: 20, to: 23, visit…` |  |
+| 17 | — | `{ id: 'bettaraichi', name: 'べったら市', season: 'autumn', from: 12, to:…` | 出典: 資料 p13-1「秋の市（べったら市）に合わせた出荷」 |
+| 18 | — | `{ id: 'takuanDoki', name: 'たくあんの仕込みどき', season: 'autumn', from: 20,…` |  |
+| 19 | — | `{ id: 'saimatsu', name: '歳末', season: 'winter', from: 5, to: 9, vis…` |  |
+| 20 | — | `{ id: 'shogatsu', name: '正月', season: 'winter', from: 10, to: 12, v…` |  |
 
 ## data/facilities.js
 
@@ -141,131 +148,143 @@
 | 26 | — | `{ id: 'sansho', name: '実山椒', when: 'umami', cost: 70, effects: { um…` |  |
 | 27 | — | `{ id: 'yuzu', name: 'ゆずの皮', when: 'umami', cost: 80, effects: { uma…` |  |
 
+## data/orders.js
+
+| 行 | 項目 | 値 | 理由・メモ |
+| --- | --- | --- | --- |
+| 19 | bento | `}` |  |
+| 25 | chonaikai | `}` |  |
+| 31 | ryokan | `}` |  |
+| 37 | furusato | `}` |  |
+| 43 | ryotei | `}` |  |
+| 49 | oyashiki | `}` |  |
+
 ## data/pickles.js
 
 | 行 | 項目 | 値 | 理由・メモ |
 | --- | --- | --- | --- |
-| 46 | asazuke.tempHint | `'5〜20℃'` | 冷蔵〜室温の短期 |
-| 47 | asazuke.temp | `{ lo: 5, hi: 20 }` |  |
-| 49 | asazuke.window | `{ lo: 0.5, hi: 3, sour: 5 }` | 日持ちは数日 |
-| 50 | asazuke.complexityMax | `35` | 浅漬けは風味が単純 |
-| 51 | asazuke.price | `250` | 1個(円) |
-| 62 | hakusaizuke.salt | `{ lo: 2.5, hi: 3.5 }` | 出典は3%のみ |
-| 63 | hakusaizuke.tempHint | `'5〜20℃'` |  |
-| 64 | hakusaizuke.temp | `{ lo: 5, hi: 20 }` |  |
-| 66 | hakusaizuke.window | `{ lo: 0.85, hi: 1.3, sour: 1.8 }` | 6〜9日が食べ頃、約12.6日で酸っぱすぎ |
-| 67 | hakusaizuke.complexityMax | `85` | 調味（昆布など）でさらに深くなる余地を残す |
-| 68 | hakusaizuke.price | `500` |  |
-| 84 | nukazuke.ripeAt | `0.8` | きゅうりを20〜25℃の床で一晩〜1日 |
-| 85 | nukazuke.window | `{ lo: 0.5, hi: 2, sour: 3.5 }` |  |
-| 86 | nukazuke.saltUptake | `0.4` | 野菜が吸う塩はぬか床の塩分の一部だけ |
-| 87 | nukazuke.complexityMax | `80` | 床の熟成度で 40%〜100% になる |
-| 88 | nukazuke.price | `300` |  |
-| 99 | takuan.saltHint | `'4〜8%（長く置くなら多め）'` | 出典は「干し日数と出荷時期で塩を変える」のみ |
-| 100 | takuan.salt | `{ lo: 4, hi: 8 }` |  |
-| 101 | takuan.tempHint | `'寒い時期（5〜15℃）'` | 冬の仕込み |
-| 102 | takuan.temp | `{ lo: 5, hi: 15 }` |  |
-| 103 | takuan.ripeAt | `20` | 出典は「約1か月以上」。大根は漬かりが遅い（×0.8）ので、塩5%・室22℃で約36日 |
-| 104 | takuan.window | `{ lo: 0.9, hi: 4, sour: 6 }` | 長く置ける |
-| 105 | takuan.acidHalfProgress | `20` | 長く漬けても酸っぱくなりにくい（食べ頃で酸味50） |
-| 106 | takuan.complexityMax | `80` | ざらめ・唐辛子・昆布で深まる |
-| 107 | takuan.price | `900` | 長く寝かせるぶん高い |
-| 108 | takuan.portions | `18` | 大きな樽で一度にたくさん漬ける（ふつうは6個） |
-| 113 | takuan.drying | `{ max: 14, ideal: [5, 10], default: 7 }` | 出典は「干してから塩漬け」。干す日数（1〜2週間ほど、の字に曲がるまで） |
-| 114 | takuan.aging | `{ from: 1.3, full: 3, max: 0.5 }` | 寝かせるほど高く売れる |
-| 125 | nozawanazuke.tempHint | `'寒い所（0〜10℃）'` | 出典は「寒い時期」 |
-| 126 | nozawanazuke.temp | `{ lo: 0, hi: 10 }` |  |
-| 127 | nozawanazuke.ripeAt | `3` | 出典は「2〜3週間で食べられる」（寒い時期）。冬の屋外（8℃）で約10日、土間（3℃）で約1か月 |
-| 128 | nozawanazuke.window | `{ lo: 0.8, hi: 2, sour: 3 }` |  |
-| 129 | nozawanazuke.complexityMax | `70` |  |
-| 130 | nozawanazuke.price | `450` |  |
-| 144 | umeboshi.salt | `{ lo: 15, hi: 20 }` |  |
-| 145 | umeboshi.tempHint | `'冷暗所（15〜25℃）'` |  |
-| 146 | umeboshi.temp | `{ lo: 15, hi: 25 }` |  |
-| 147 | umeboshi.ripeAt | `1.6` | 塩18%・20℃で約1か月 |
-| 148 | umeboshi.window | `{ lo: 0.8, hi: 30, sour: 60 }` | ほぼ傷まず、いつまでも置ける |
-| 149 | umeboshi.acidHalfProgress | `0.3` | 梅はもともと酸っぱい |
-| 150 | umeboshi.saltUptake | `0.4` | 塩分は高いが、感じる塩味は果肉の酸味でやわらぐ（梅の塩の入り方0.6と合わせて、18%で塩味75ほど） |
-| 151 | umeboshi.complexityMax | `75` |  |
-| 152 | umeboshi.price | `150` | 1粒より少し多めの1包み |
-| 153 | umeboshi.portions | `24` | 壺いっぱいに漬ける |
-| 160 | umeboshi.aging | `{ from: 1, full: 12, max: 1.0 }` | 古い梅干しほど値打ちがある |
-| 170 | karashizuke.saltHint | `'2〜4%'` |  |
-| 171 | karashizuke.salt | `{ lo: 2, hi: 4 }` |  |
-| 172 | karashizuke.tempHint | `'5〜20℃'` |  |
-| 173 | karashizuke.temp | `{ lo: 5, hi: 20 }` |  |
-| 174 | karashizuke.ripeAt | `2` | 数日 |
-| 175 | karashizuke.window | `{ lo: 0.7, hi: 2.5, sour: 4 }` |  |
-| 176 | karashizuke.complexityMax | `60` |  |
-| 177 | karashizuke.price | `400` |  |
-| 194 | shibazuke.saltHint | `'3〜5%'` |  |
-| 195 | shibazuke.salt | `{ lo: 3, hi: 5 }` |  |
-| 196 | shibazuke.tempHint | `'15〜25℃（夏）'` | 夏の仕込み |
-| 197 | shibazuke.temp | `{ lo: 15, hi: 25 }` |  |
-| 198 | shibazuke.ripeAt | `6` | 乳酸発酵で1週間ほど |
-| 199 | shibazuke.window | `{ lo: 0.8, hi: 2.5, sour: 4 }` |  |
-| 200 | shibazuke.complexityMax | `75` |  |
-| 201 | shibazuke.price | `550` |  |
-| 217 | furuzuke.saltHint | `'4〜7%'` |  |
-| 218 | furuzuke.salt | `{ lo: 4, hi: 7 }` |  |
-| 219 | furuzuke.tempHint | `'0〜15℃'` |  |
-| 220 | furuzuke.temp | `{ lo: 0, hi: 15 }` |  |
-| 221 | furuzuke.ripeAt | `10` |  |
-| 222 | furuzuke.window | `{ lo: 0.8, hi: 5, sour: 8 }` | 酸っぱいのが持ち味なので長く置ける |
-| 223 | furuzuke.acidHalfProgress | `3` | 早く酸っぱくなる（食べ頃で酸味が強い） |
-| 224 | furuzuke.complexityMax | `70` |  |
-| 225 | furuzuke.price | `350` |  |
-| 234 | furuzuke.aging | `{ from: 1.5, full: 4, max: 0.3 }` | 寝かせるほど高く売れる |
-| 242 | kasuzuke.saltHint | `'3〜6%（下漬け）'` |  |
-| 243 | kasuzuke.salt | `{ lo: 3, hi: 6 }` |  |
-| 244 | kasuzuke.tempHint | `'涼しい所（5〜15℃）'` |  |
-| 245 | kasuzuke.temp | `{ lo: 5, hi: 15 }` |  |
-| 246 | kasuzuke.ripeAt | `14` |  |
-| 247 | kasuzuke.window | `{ lo: 0.9, hi: 4, sour: 6 }` |  |
-| 248 | kasuzuke.acidHalfProgress | `20` | 酸っぱくなりにくい |
-| 249 | kasuzuke.complexityMax | `90` |  |
-| 250 | kasuzuke.price | `800` |  |
-| 259 | kasuzuke.aging | `{ from: 1.2, full: 3, max: 0.6 }` | 寝かせるほど高く売れる |
-| 274 | sunki.tempHint | `'寒い所（0〜10℃）'` | 【出典】は「低温」。数値は |
-| 275 | sunki.temp | `{ lo: 0, hi: 10 }` |  |
-| 276 | sunki.ripeAt | `6` | 5℃で約1か月 |
-| 277 | sunki.window | `{ lo: 0.8, hi: 2.5, sour: 4 }` |  |
-| 278 | sunki.acidHalfProgress | `3` | 乳酸でしっかり酸っぱい |
-| 279 | sunki.spoilMult | `0.05` | 種の乳酸菌が、塩のかわりに傷みをおさえる |
-| 280 | sunki.complexityMax | `80` |  |
-| 281 | sunki.price | `700` |  |
-| 298 | iburigakko.smoking | `{ woods: { nara: { name: 'ナラ', flavor: 1.0 }, sakura: { name: 'サクラ'…` | 日数は【出典】4〜5日、香りの差は |
-| 300 | iburigakko.saltHint | `'5〜8%（米ぬか・ざらめと）'` |  |
-| 301 | iburigakko.salt | `{ lo: 5, hi: 8 }` |  |
-| 302 | iburigakko.tempHint | `'冬の冷気（0〜10℃）'` | 【出典】は「冬の冷気」。数値は |
-| 303 | iburigakko.temp | `{ lo: 0, hi: 10 }` |  |
-| 304 | iburigakko.ripeAt | `3.8` | 塩6%・5℃で約2か月 |
-| 305 | iburigakko.window | `{ lo: 0.9, hi: 3, sour: 5 }` |  |
-| 306 | iburigakko.acidHalfProgress | `15` |  |
-| 307 | iburigakko.complexityMax | `70` | 燻すと最大 ×1.5 |
-| 308 | iburigakko.price | `1100` |  |
-| 309 | iburigakko.portions | `12` |  |
-| 318 | iburigakko.aging | `{ from: 1.2, full: 3, max: 0.4 }` |  |
-| 330 | sugukizuke.bestTemp | `[38, 42]` | 【出典】は「約40℃」。幅は |
-| 331 | sugukizuke.saltHint | `'3〜4%'` |  |
-| 332 | sugukizuke.salt | `{ lo: 3, hi: 4 }` |  |
-| 335 | sugukizuke.ripeAt | `40` | 塩3.5%・40℃で約15日 |
-| 336 | sugukizuke.window | `{ lo: 0.85, hi: 1.3, sour: 1.8 }` | 食べ頃は短い |
-| 337 | sugukizuke.spoilMult | `0.06` | 高温を好む乳酸菌が、ほかの菌をおさえる |
-| 338 | sugukizuke.complexityMax | `85` |  |
-| 339 | sugukizuke.price | `1000` |  |
-| 357 | heshiko.saltHint | `'10〜20%（魚なので多め。少ないと傷む）'` |  |
-| 358 | heshiko.salt | `{ lo: 10, hi: 20 }` |  |
-| 359 | heshiko.tempHint | `'置き場所の温度で（夏の暑さに注意）'` |  |
-| 360 | heshiko.temp | `{ lo: 0, hi: 20 }` |  |
-| 361 | heshiko.ripeAt | `5` | 塩15%・土間で約1年（1年 = 112日） |
-| 362 | heshiko.window | `{ lo: 0.8, hi: 3, sour: 5 }` |  |
-| 363 | heshiko.acidHalfProgress | `10` |  |
-| 364 | heshiko.saltUptake | `0.18` | 感じる塩味（ぬかでやわらぐ。塩15%で塩味80ほど） |
-| 365 | heshiko.complexityMax | `95` | 長い熟成で旨味が深い |
-| 366 | heshiko.price | `1500` |  |
-| 367 | heshiko.portions | `12` |  |
-| 375 | heshiko.aging | `{ from: 1, full: 2.5, max: 0.6 }` |  |
+| 48 | asazuke.tempHint | `'5〜20℃'` | 冷蔵〜室温の短期 |
+| 49 | asazuke.temp | `{ lo: 5, hi: 20 }` |  |
+| 51 | asazuke.window | `{ lo: 0.5, hi: 3, sour: 5 }` | 日持ちは数日 |
+| 52 | asazuke.complexityMax | `35` | 浅漬けは風味が単純 |
+| 53 | asazuke.price | `250` | 1個(円) |
+| 64 | hakusaizuke.salt | `{ lo: 2.5, hi: 3.5 }` | 出典は3%のみ |
+| 65 | hakusaizuke.tempHint | `'5〜20℃'` |  |
+| 66 | hakusaizuke.temp | `{ lo: 5, hi: 20 }` |  |
+| 68 | hakusaizuke.window | `{ lo: 0.85, hi: 1.3, sour: 1.8 }` | 6〜9日が食べ頃、約12.6日で酸っぱすぎ |
+| 69 | hakusaizuke.complexityMax | `85` | 調味（昆布など）でさらに深くなる余地を残す |
+| 70 | hakusaizuke.price | `500` |  |
+| 87 | nukazuke.ripeAt | `0.8` | きゅうりを20〜25℃の床で一晩〜1日 |
+| 88 | nukazuke.window | `{ lo: 0.5, hi: 2, sour: 3.5 }` |  |
+| 89 | nukazuke.saltUptake | `0.4` | 野菜が吸う塩はぬか床の塩分の一部だけ |
+| 90 | nukazuke.complexityMax | `80` | 床の熟成度で 40%〜100% になる |
+| 91 | nukazuke.price | `300` |  |
+| 103 | takuan.saltHint | `'4〜8%（長く置くなら多め）'` | 出典は「干し日数と出荷時期で塩を変える」のみ |
+| 104 | takuan.salt | `{ lo: 4, hi: 8 }` |  |
+| 105 | takuan.tempHint | `'寒い時期（5〜15℃）'` | 冬の仕込み |
+| 106 | takuan.temp | `{ lo: 5, hi: 15 }` |  |
+| 107 | takuan.ripeAt | `20` | 出典は「約1か月以上」。大根は漬かりが遅い（×0.8）ので、塩5%・室22℃で約36日 |
+| 108 | takuan.window | `{ lo: 0.9, hi: 4, sour: 6 }` | 長く置ける |
+| 109 | takuan.acidHalfProgress | `20` | 長く漬けても酸っぱくなりにくい（食べ頃で酸味50） |
+| 110 | takuan.complexityMax | `80` | ざらめ・唐辛子・昆布で深まる |
+| 111 | takuan.price | `900` | 長く寝かせるぶん高い |
+| 112 | takuan.portions | `18` | 大きな樽で一度にたくさん漬ける（ふつうは6個） |
+| 117 | takuan.drying | `{ max: 14, ideal: [5, 10], default: 7 }` | 出典は「干してから塩漬け」。干す日数（1〜2週間ほど、の字に曲がるまで） |
+| 118 | takuan.aging | `{ from: 1.3, full: 3, max: 0.5 }` | 寝かせるほど高く売れる |
+| 130 | nozawanazuke.tempHint | `'寒い所（0〜10℃）'` | 出典は「寒い時期」 |
+| 131 | nozawanazuke.temp | `{ lo: 0, hi: 10 }` |  |
+| 132 | nozawanazuke.ripeAt | `3` | 出典は「2〜3週間で食べられる」（寒い時期）。冬の屋外（8℃）で約10日、土間（3℃）で約1か月 |
+| 133 | nozawanazuke.window | `{ lo: 0.8, hi: 2, sour: 3 }` |  |
+| 134 | nozawanazuke.complexityMax | `70` |  |
+| 135 | nozawanazuke.price | `450` |  |
+| 150 | umeboshi.salt | `{ lo: 15, hi: 20 }` |  |
+| 151 | umeboshi.tempHint | `'冷暗所（15〜25℃）'` |  |
+| 152 | umeboshi.temp | `{ lo: 15, hi: 25 }` |  |
+| 153 | umeboshi.ripeAt | `1.6` | 塩18%・20℃で約1か月 |
+| 154 | umeboshi.window | `{ lo: 0.8, hi: 30, sour: 60 }` | ほぼ傷まず、いつまでも置ける |
+| 155 | umeboshi.acidHalfProgress | `0.3` | 梅はもともと酸っぱい |
+| 156 | umeboshi.saltUptake | `0.4` | 塩分は高いが、感じる塩味は果肉の酸味でやわらぐ（梅の塩の入り方0.6と合わせて、18%で塩味75ほど） |
+| 157 | umeboshi.complexityMax | `75` |  |
+| 158 | umeboshi.price | `150` | 1粒より少し多めの1包み |
+| 159 | umeboshi.portions | `24` | 壺いっぱいに漬ける |
+| 166 | umeboshi.aging | `{ from: 1, full: 12, max: 1.0 }` | 古い梅干しほど値打ちがある |
+| 176 | karashizuke.saltHint | `'2〜4%'` |  |
+| 177 | karashizuke.salt | `{ lo: 2, hi: 4 }` |  |
+| 178 | karashizuke.tempHint | `'5〜20℃'` |  |
+| 179 | karashizuke.temp | `{ lo: 5, hi: 20 }` |  |
+| 180 | karashizuke.ripeAt | `2` | 数日 |
+| 181 | karashizuke.window | `{ lo: 0.7, hi: 2.5, sour: 4 }` |  |
+| 182 | karashizuke.complexityMax | `60` |  |
+| 183 | karashizuke.price | `400` |  |
+| 200 | shibazuke.work | `[['drain', 2, 4]]` | 【出典】資料 p26-2「黒い汁を捨てる判断」。日は |
+| 201 | shibazuke.saltHint | `'3〜5%'` |  |
+| 202 | shibazuke.salt | `{ lo: 3, hi: 5 }` |  |
+| 203 | shibazuke.tempHint | `'15〜25℃（夏）'` | 夏の仕込み |
+| 204 | shibazuke.temp | `{ lo: 15, hi: 25 }` |  |
+| 205 | shibazuke.ripeAt | `6` | 乳酸発酵で1週間ほど |
+| 206 | shibazuke.window | `{ lo: 0.8, hi: 2.5, sour: 4 }` |  |
+| 207 | shibazuke.complexityMax | `75` |  |
+| 208 | shibazuke.price | `550` |  |
+| 224 | furuzuke.saltHint | `'4〜7%'` |  |
+| 225 | furuzuke.salt | `{ lo: 4, hi: 7 }` |  |
+| 226 | furuzuke.tempHint | `'0〜15℃'` |  |
+| 227 | furuzuke.temp | `{ lo: 0, hi: 15 }` |  |
+| 228 | furuzuke.ripeAt | `10` |  |
+| 229 | furuzuke.window | `{ lo: 0.8, hi: 5, sour: 8 }` | 酸っぱいのが持ち味なので長く置ける |
+| 230 | furuzuke.acidHalfProgress | `3` | 早く酸っぱくなる（食べ頃で酸味が強い） |
+| 231 | furuzuke.complexityMax | `70` |  |
+| 232 | furuzuke.price | `350` |  |
+| 241 | furuzuke.aging | `{ from: 1.5, full: 4, max: 0.3 }` | 寝かせるほど高く売れる |
+| 249 | kasuzuke.saltHint | `'3〜6%（下漬け）'` |  |
+| 250 | kasuzuke.salt | `{ lo: 3, hi: 6 }` |  |
+| 251 | kasuzuke.tempHint | `'涼しい所（5〜15℃）'` |  |
+| 252 | kasuzuke.temp | `{ lo: 5, hi: 15 }` |  |
+| 253 | kasuzuke.ripeAt | `14` |  |
+| 254 | kasuzuke.window | `{ lo: 0.9, hi: 4, sour: 6 }` |  |
+| 255 | kasuzuke.acidHalfProgress | `20` | 酸っぱくなりにくい |
+| 256 | kasuzuke.complexityMax | `90` |  |
+| 257 | kasuzuke.price | `800` |  |
+| 266 | kasuzuke.aging | `{ from: 1.2, full: 3, max: 0.6 }` | 寝かせるほど高く売れる |
+| 281 | sunki.tempHint | `'寒い所（0〜10℃）'` | 【出典】は「低温」。数値は |
+| 282 | sunki.temp | `{ lo: 0, hi: 10 }` |  |
+| 283 | sunki.ripeAt | `6` | 5℃で約1か月 |
+| 284 | sunki.window | `{ lo: 0.8, hi: 2.5, sour: 4 }` |  |
+| 285 | sunki.acidHalfProgress | `3` | 乳酸でしっかり酸っぱい |
+| 286 | sunki.spoilMult | `0.05` | 種の乳酸菌が、塩のかわりに傷みをおさえる |
+| 287 | sunki.complexityMax | `80` |  |
+| 288 | sunki.price | `700` |  |
+| 305 | iburigakko.smoking | `{ woods: { nara: { name: 'ナラ', flavor: 1.0 }, sakura: { name: 'サクラ'…` | 日数は【出典】4〜5日、香りの差は |
+| 307 | iburigakko.saltHint | `'5〜8%（米ぬか・ざらめと）'` |  |
+| 308 | iburigakko.salt | `{ lo: 5, hi: 8 }` |  |
+| 309 | iburigakko.tempHint | `'冬の冷気（0〜10℃）'` | 【出典】は「冬の冷気」。数値は |
+| 310 | iburigakko.temp | `{ lo: 0, hi: 10 }` |  |
+| 311 | iburigakko.ripeAt | `3.8` | 塩6%・5℃で約2か月 |
+| 312 | iburigakko.window | `{ lo: 0.9, hi: 3, sour: 5 }` |  |
+| 313 | iburigakko.acidHalfProgress | `15` |  |
+| 314 | iburigakko.complexityMax | `70` | 燻すと最大 ×1.5 |
+| 315 | iburigakko.price | `1100` |  |
+| 316 | iburigakko.portions | `12` |  |
+| 325 | iburigakko.aging | `{ from: 1.2, full: 3, max: 0.4 }` |  |
+| 337 | sugukizuke.bestTemp | `[38, 42]` | 【出典】は「約40℃」。幅は |
+| 338 | sugukizuke.saltHint | `'3〜4%'` |  |
+| 339 | sugukizuke.salt | `{ lo: 3, hi: 4 }` |  |
+| 342 | sugukizuke.ripeAt | `40` | 塩3.5%・40℃で約15日 |
+| 343 | sugukizuke.window | `{ lo: 0.85, hi: 1.3, sour: 1.8 }` | 食べ頃は短い |
+| 344 | sugukizuke.spoilMult | `0.06` | 高温を好む乳酸菌が、ほかの菌をおさえる |
+| 345 | sugukizuke.complexityMax | `85` |  |
+| 346 | sugukizuke.price | `1000` |  |
+| 364 | heshiko.saltHint | `'10〜20%（魚なので多め。少ないと傷む）'` |  |
+| 365 | heshiko.salt | `{ lo: 10, hi: 20 }` |  |
+| 366 | heshiko.tempHint | `'置き場所の温度で（夏の暑さに注意）'` |  |
+| 367 | heshiko.temp | `{ lo: 0, hi: 20 }` |  |
+| 368 | heshiko.ripeAt | `5` | 塩15%・土間で約1年（1年 = 112日） |
+| 369 | heshiko.window | `{ lo: 0.8, hi: 3, sour: 5 }` |  |
+| 370 | heshiko.acidHalfProgress | `10` |  |
+| 371 | heshiko.saltUptake | `0.18` | 感じる塩味（ぬかでやわらぐ。塩15%で塩味80ほど） |
+| 372 | heshiko.complexityMax | `95` | 長い熟成で旨味が深い |
+| 373 | heshiko.price | `1500` |  |
+| 374 | heshiko.portions | `12` |  |
+| 382 | heshiko.aging | `{ from: 1, full: 2.5, max: 0.6 }` |  |
 
 ## data/regional.js
 
@@ -294,9 +313,9 @@
 
 | 行 | 項目 | 値 | 理由・メモ |
 | --- | --- | --- | --- |
-| 18 | baito | `}` |  |
-| 24 | kanban | `}` |  |
-| 30 | deshi | `}` |  |
+| 19 | baito | `}` |  |
+| 25 | kanban | `}` |  |
+| 31 | deshi | `}` |  |
 
 ## data/stories.js
 
@@ -313,12 +332,14 @@
 | 16 | — | `{ id: 'noren', group: 'shop', name: '暖簾を新調する', cost: 8000, level: 2…` |  |
 | 17 | — | `{ id: 'kanban', group: 'shop', name: '看板を書き直す', cost: 20000, level:…` |  |
 | 18 | — | `{ id: 'shishoku', group: 'shop', name: '試食コーナーを作る', cost: 12000, le…` |  |
-| 19 | — | `{ id: 'misesaki', group: 'shop', name: '店先を改装する', cost: 50000, leve…` |  |
-| 20 | — | `{ id: 'kura', group: 'shop', name: '漬物蔵を建てる', cost: 120000, level: …` |  |
-| 21 | — | `{ id: 'shinise', group: 'shop', name: '「老舗」の札をかける', cost: 300000, l…` |  |
-| 23 | — | `{ id: 'sugioke', group: 'barrel', name: '杉の木桶に替える', cost: 6000, lev…` |  |
-| 25 | — | `{ id: 'chirashi', group: 'campaign', name: 'チラシを配る', cost: 3000, le…` |  |
-| 26 | — | `{ id: 'radio', group: 'campaign', name: '地元のラジオに出る', cost: 15000, l…` |  |
+| 19 | — | `{ id: 'tana', group: 'shop', name: '棚を作り足す', cost: 6000, level: 2, …` |  |
+| 20 | — | `{ id: 'urakura', group: 'shop', name: '裏の物置を蔵にする', cost: 30000, lev…` |  |
+| 21 | — | `{ id: 'misesaki', group: 'shop', name: '店先を改装する', cost: 50000, leve…` |  |
+| 22 | — | `{ id: 'kura', group: 'shop', name: '漬物蔵を建てる', cost: 120000, level: …` |  |
+| 23 | — | `{ id: 'shinise', group: 'shop', name: '「老舗」の札をかける', cost: 300000, l…` |  |
+| 25 | — | `{ id: 'sugioke', group: 'barrel', name: '杉の木桶に替える', cost: 6000, lev…` |  |
+| 27 | — | `{ id: 'chirashi', group: 'campaign', name: 'チラシを配る', cost: 3000, le…` |  |
+| 28 | — | `{ id: 'radio', group: 'campaign', name: '地元のラジオに出る', cost: 15000, l…` |  |
 
 ## data/vegetables.js
 
@@ -381,6 +402,20 @@
 | 行 | 項目 | 値 | 理由・メモ |
 | --- | --- | --- | --- |
 | 6 | — | `export const GRANNY = { name: '梅子さん', title: '知恵袋のおばあちゃん', type: 's…` |  |
+
+## data/work.js
+
+| 行 | 項目 | 値 | 理由・メモ |
+| --- | --- | --- | --- |
+| 13 | honzuke | `{ label: '本漬けに漬け替える', note: '下漬けで水が出たら、新しい漬け床へ。下漬けのままだと塩がきつく、味が浅い',…` |  |
+| 14 | tsukekae | `{ label: '漬け替える（塩を下げる）', note: '塩の多い床から、薄い床へ。替えないとしょっぱいまま', done: {…` |  |
+| 15 | amazu | `{ label: '甘酢に漬け替える', note: '塩漬けのあと、甘酢へ。替えないと、ただのしょっぱいらっきょう', done: …` |  |
+| 16 | nikaeshi | `{ label: '漬け汁を煮返す', note: '汁を煮立てて、冷まして戻す。傷みにくくなり、味がしみる', done: { sp…` |  |
+| 17 | drain | `{ label: '汁を捨てる', note: '上がった汁（黒い汁・えぐみ）を捨てる。捨てないとえぐく、酸っぱい', done: {…` |  |
+| 18 | kasu | `{ label: '粕を替える', note: '古い粕から新しい粕へ。替えるほど、しょっぱさが抜けて深くなる', done: { c…` |  |
+| 19 | kasane | `{ label: '魚と野菜を重ねる', note: '下ごしらえした魚と、塩漬けした野菜を、麹と交互に重ねる', done: {},…` |  |
+| 20 | doyoboshi | `{ label: '土用干しをする', note: '夏の土用の晴れた日に、梅を3日3晩お日さまに当てる。皮がやわらかく、色よく、値打…` | 出典: 資料 p14-1「天日干しの天気に左右される」 |
+| 21 | hasamu | `{ label: '魚をかぶで挟む', note: '塩漬けしたかぶに、魚をはさんで麹へ', done: {}, skip: { co…` |  |
 
 ## data/regional.js（全国の漬物）
 
@@ -460,4 +495,4 @@
 | p47-1 | 沖縄 スクガラス | 温度 10〜20℃ ・ 値段 1500円 |
 | p47-2 | 沖縄 島らっきょうの塩漬け（民間記事） | 温度 2〜6℃ ・ 値段 600円 |
 
-合計 514 件
+合計 539 件
