@@ -15,6 +15,8 @@ import { agingFactor, STAFF, AGES } from './business.js';
 import { Sound } from './audio.js';
 import { SCENE, IMAGES } from '../assets/scene.js';
 import { OVER_WORDS } from '../assets/faces.js';
+import { CAST_BODIES } from '../assets/cast.js';
+import { BARON_LINES } from '../data/rivals.js';
 import { PREFECTURE_PICKLES } from '../data/prefectures.js';
 import { NOT_PLAYABLE } from '../data/regional.js';
 import { SEASONS, TIMES, WEATHERS } from '../assets/themes.js';
@@ -279,10 +281,19 @@ WINS.saga = (w) => {
   const tail = all ? `${q ? `<div class="panel quest"><div class="ukon">課題: ${q.name}</div><div class="hint">${questText(q)}（${q.days}日以内）</div></div>` : ''}${rw && !w.all ? `<div class="hint" style="text-align:center">${[rw.rep && `評判 +${rw.rep}`, rw.money && `${yen(rw.money)}`, rw.xp && `経験 +${rw.xp}`].filter(Boolean).join(' ・ ')}</div>` : ''}` : '';
   return {
     title: `${ch.no}　${ch.title}`,
-    body: `<div class="saga">${shown.map((l) => (l.who ? `<p class="sg-say"><b>${esc(l.who)}</b>「${esc(l.text)}」</p>` : `<p class="sg-narr">${esc(l.text)}</p>`)).join('')}</div>${tail}
+    body: `${sagaCast(ch)}<div class="saga">${shown.map((l) => (l.who ? `<p class="sg-say"><b>${esc(l.who)}</b>「${esc(l.text)}」</p>` : `<p class="sg-narr">${esc(l.text)}</p>`)).join('')}</div>${tail}
       <div class="row end">${all ? '<button class="btn main" data-act="closeWin">閉じる</button>' : '<button class="btn main" data-act="sagaNext">次へ ▼</button>'}</div>`,
   };
 };
+// 章に出てくる人物の絵（漬物男爵・タマ殿）を、窓の上に並べる
+function sagaCast(ch) {
+  const has = (re) => ch.lines.some((l) => re.test(`${l.who ?? ''}${l.text}`));
+  const cast = [has(/男爵/) && ['baron_2', 1, '漬物男爵'], has(/タマ殿/) && ['tama_0', 2, '審査員長 タマ殿']].filter(Boolean);
+  if (!cast.length) return '';
+  const img = ([name, k, label]) => { const p = Object.values(CAST_BODIES).flatMap((b) => b.poses).find((q) => q.img === name);
+    return `<figure><img src="${globalThis.TSUKEMONO_IMAGES?.[name] ?? `assets/img/${name}.png`}" width="${p.w * k}" height="${p.h * k}" alt="${label}"><figcaption>${label}</figcaption></figure>`; };
+  return `<div class="sg-cast">${cast.map(img).join('')}</div>`;
+}
 const questText = (q) => ({ greatGuests: `お客を${q.target}人、満足${q.need.sat}以上でうならせる`, agedSale: `寝かせた漬物（売り値×${q.need.aging}以上の熟成もの）を売る`, variety: `違う漬物${q.target}種を、それぞれ満足${q.need.sat}以上で売る` }[q.kind] ?? '');
 function storyTab() {
   const st = game.story, q = st.quest;
@@ -801,7 +812,7 @@ function flushEvents() {
       floatText('…？', 384, 150);
       continue;
     }
-    if (e.type === 'saga') { sound.se('regular'); openWin('saga', { id: e.id, step: 0 }); return; }
+    if (e.type === 'saga') { sound.se('regular'); openWin('saga', { id: e.id, step: 0, onClose: () => baronAfter(e.id) }); return; }
     if (e.type === 'questStart') { say(`課題「${e.name}」が始まった（${e.days}日以内）。帳面の「物語」で進み具合が見られる。`, '店主'); continue; }
     if (e.type === 'questWon') { sound.se('found'); floatText(`${e.name} 達成！`, 384, 100, 'good'); continue; }
     if (e.type === 'questLost') { sound.se('bad'); say(`課題「${e.name}」は期限までに果たせなかった…。`, '店主'); continue; }
@@ -1324,6 +1335,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - last); last = now;
   world.syncStaff(game.staff); // 雇っている従業員を店先に
+  world.syncCast({ tama: tamaMode() }); // タマ殿（対決のあいだは樽の上、終章のあとは屋根の上）
   world.update(dt);
   tickClock(dt);
   renderer.draw(view(), now);
@@ -1332,13 +1344,34 @@ function frame(now) {
 }
 // 店を開いていると、ときどき通りがかりの人が買っていく（見た目だけ。ゲームの状態は変えない）
 setTimeout(function loop() {
-  if (ui.started && !world.busy && !ui.busy && view().time !== 'night') world.ambientVisit(view().season);
+  if (ui.started && !world.busy && !ui.busy && view().time !== 'night') {
+    const lines = baronMood();
+    if (lines && Math.random() < 0.12) world.baronVisit([lines[Math.floor(Math.random() * lines.length)]], { laugh: lines !== BARON_LINES.friend }); // 漬物男爵が、ときどき偵察に来る
+    else world.ambientVisit(view().season);
+  }
   setTimeout(loop, 16000);
 }, 4000);
+
+// ---- 物語の人物（data/rivals.js）----
+const BATTLES = ['battle1', 'battle2'];
+/** タマ殿の居場所: 漬物対決のあいだは樽の上で審査、終章のあとは屋根の上で寝る */
+const tamaMode = () => (BATTLES.includes(game.story.quest?.id) ? 'judge' : game.story.seen.includes('ending') ? 'nap' : null);
+/** 男爵が店先で言うこと（第二章「宿敵」より前は来ない） */
+function baronMood() {
+  const seen = game.story.seen;
+  if (seen.includes('ending')) return BARON_LINES.friend;
+  if (BATTLES.includes(game.story.quest?.id)) return BARON_LINES.battle;
+  return seen.includes('rival') ? BARON_LINES.rival : null;
+}
+/** 男爵が出てくる章を読み終えたら、本人が店先に来て、章の最後のせりふをもう一度言う */
+function baronAfter(id) {
+  const said = game.chapter(id)?.lines.filter((l) => l.who === '漬物男爵') ?? [];
+  if (said.length) world.baronVisit([said[said.length - 1].text], { laugh: id !== 'ending' && id !== 'battle1Lose' });
+}
 
 fit();
 renderAll();
 showTitle();
 say('');
 requestAnimationFrame(frame);
-window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText, overEffect }; // 動作確認用（scripts/e2e.js）
+window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText, overEffect, baronAfter }; // 動作確認用（scripts/e2e.js）

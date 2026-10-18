@@ -315,6 +315,20 @@ Object.assign(POSE_ANIMS, {
     work: { loop: true, frames: [p(450, 1, { up: 2 }), p(500, 1, { up: -1 }), p(600, 0)] },
   },
 });
+// 物語の人物（assets/cast.js の姿勢の順）
+Object.assign(POSE_ANIMS, {
+  baron: {
+    walk: { loop: true, frames: [p(200, 0), p(200, 1)] },
+    idle: { loop: true, frames: [p(800, 2), p(800, 2, { up: -1 })] },
+    talk: { loop: true, frames: [p(320, 2), p(320, 3)] },
+    laugh: { loop: true, frames: [p(140, 3, { up: -2 }), p(140, 3)] }, // ふはは！（胸をそらして笑う）
+  },
+  tama: {
+    idle: { loop: true, frames: [p(2400, 0), p(150, 1), p(1800, 0), p(150, 1), p(150, 0), p(150, 1)] }, // ときどきまばたき
+    talk: { loop: true, frames: [p(600, 0), p(400, 1)] },
+    sleep: { loop: true, frames: [p(1400, 2), p(1400, 2, { up: -1 })] }, // 寝息
+  },
+});
 // 怒った顔: どんと足を踏みならして、ぷるぷる震え続ける（驚いた顔の次の番号）
 for (const name of Object.keys(ANGRY_BASE)) {
   const a = TRACE.poses[name].length + (SURPRISE_BASE[name] != null ? 1 : 0);

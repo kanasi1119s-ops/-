@@ -266,3 +266,8 @@ details summary { cursor: pointer; color: var(--sumi); font-size: 14px }
 .panel.granny { border-color: var(--wakatake); font-size: 15px }
 .panel.granny .ukon { margin-right: 6px }
 .tile.lore { border-style: dashed }
+/* 物語の窓の上に並べる、章に出てくる人物の絵（漬物男爵・タマ殿） */
+.sg-cast { display: flex; justify-content: center; align-items: flex-end; gap: 28px; padding: 8px 0 4px; border-bottom: 1px dashed var(--line, #c9b89a); margin-bottom: 6px }
+.sg-cast figure { margin: 0; display: grid; justify-items: center; gap: 4px }
+.sg-cast img { image-rendering: pixelated; max-width: 100% }
+.sg-cast figcaption { font: 400 13px/1 var(--brush); background: var(--sumi); color: var(--washi); padding: 3px 6px }

@@ -5,6 +5,7 @@ import { KEEPER_LOOK, randomLook, regularLook, REGULAR_LINES, AMBIENT_LINES, BOD
 import { POSE_ANIMS } from '../assets/animations.js';
 import { ANGRY_KEYS } from '../assets/faces.js';
 import { STAFF } from '../data/staff.js';
+import { TAMA_LINES } from '../data/rivals.js';
 
 const WALK_SPEED = 96; // px/秒 【仮置き】歩くコマ（150ms×2で1歩）と合う速さ
 
@@ -48,33 +49,62 @@ export class World {
       const spot = SCENE.staff[id];
       if (!spot || this.staffOf(id)) continue;
       const a = this.spawn('staff', { body: `staff_${id}` }, spot.x, spot.y, 'idle');
-      Object.assign(a, { staffId: id, dir: spot.dir, hide: spot.hide ?? null, until: 0, nextAt: this.now() + 4000 + Math.random() * 8000 });
+      Object.assign(a, { staffId: id, dir: spot.dir, hide: spot.hide ?? null, chatter: STAFF.find((s) => s.id === id)?.chatter ?? [] });
+      this.startChatter(a);
     }
   }
   staffOf(id) { return this.actors.find((a) => a.kind === 'staff' && a.staffId === id); }
   /** 従業員に一言しゃべらせる（anim: talk / work）。話している最中なら言わない */
-  staffSay(id, line, anim = 'talk', ms = 2400) {
-    const a = this.staffOf(id);
+  staffSay(id, line, anim = 'talk', ms = 2400) { return this.chat(this.staffOf(id), line, anim, ms); }
+  // ---- 店先にいて、ときどきひとこと言う人（従業員・タマ殿）。chatter = [[言葉, 動き], ...]、rest = 黙っているときの動き ----
+  startChatter(a) { Object.assign(a, { until: 0, nextAt: this.now() + 4000 + Math.random() * 8000 }); }
+  chat(a, line, anim = 'talk', ms = 2400) {
     if (!a || a.until) return false;
     a.bubble = line; this.setAnim(a, anim); a.until = this.now() + ms;
     return true;
   }
-  updateStaff() {
+  updateChatter() {
     const now = this.now();
-    for (const a of this.actors.filter((a) => a.kind === 'staff')) {
-      if (a.until && now >= a.until) { a.bubble = null; this.setAnim(a, 'idle'); a.until = 0; a.nextAt = now + 14000 + Math.random() * 16000; continue; }
+    for (const a of this.actors.filter((a) => a.chatter)) {
+      if (a.until && now >= a.until) { a.bubble = null; this.setAnim(a, a.rest ?? 'idle'); a.until = 0; a.nextAt = now + 14000 + Math.random() * 16000; continue; }
       if (!a.until && now >= a.nextAt) {
-        const lines = STAFF.find((s) => s.id === a.staffId)?.chatter ?? [];
-        const [line, anim] = lines[Math.floor(Math.random() * lines.length)] ?? [null, 'work'];
-        if (line) this.staffSay(a.staffId, line, anim);
+        const [line, anim] = a.chatter[Math.floor(Math.random() * a.chatter.length)] ?? [null, 'work'];
+        if (line) this.chat(a, line, anim);
         else { this.setAnim(a, 'work'); a.until = now + 2400; }
       }
     }
   }
 
+  // ---- 物語の人物 ----
+  /** タマ殿: mode = 'judge'（対決のあいだ、樽の上で審査）/ 'nap'（終章のあと、屋根で寝る）/ null（いない） */
+  syncCast({ tama = null } = {}) {
+    let t = this.actors.find((a) => a.kind === 'cast' && a.castId === 'tama');
+    if (t && t.mode !== tama) { this.remove(t); t = null; }
+    if (!t && tama) {
+      const spot = tama === 'judge' ? SCENE.cast.tamaJudge : SCENE.cast.tamaNap, rest = tama === 'judge' ? 'idle' : 'sleep';
+      t = this.spawn('cast', { body: 'tama' }, spot.x, spot.y, rest);
+      Object.assign(t, { castId: 'tama', mode: tama, rest, chatter: TAMA_LINES[tama].map((l) => [l, rest === 'sleep' ? 'sleep' : 'talk']) });
+      this.startChatter(t);
+    }
+  }
+  /** 漬物男爵が右から来て、言うだけ言って帰る（ゲームの状態は変えない）。laugh: 最後に「ふはは」と胸をそらす */
+  async baronVisit(lines, { laugh = true } = {}) {
+    if (this.actors.some((a) => a.castId === 'baron')) return;
+    const b = this.spawn('cast', { body: 'baron' }, SCENE.lane.startX, SCENE.lane.y - 4, 'walk');
+    b.castId = 'baron';
+    await this.walkTo(b, SCENE.cast.baronX);
+    b.dir = -1;
+    for (const l of lines) { this.setAnim(b, 'talk'); b.bubble = l; await this.wait(2600); }
+    if (laugh) { this.setAnim(b, 'laugh'); await this.wait(900); }
+    b.bubble = null;
+    this.setAnim(b, 'walk');
+    await this.walkTo(b, SCENE.lane.endX);
+    this.remove(b);
+  }
+
   /** dt(ms) ぶん進める。 */
   update(dtMs) {
-    this.updateStaff();
+    this.updateChatter();
     const dt = (dtMs / 1000) * this.speed;
     for (const m of this.moves) {
       const d = m.x - m.actor.x, step = m.speed * dt;

@@ -4,6 +4,7 @@ import { SURPRISE_BASE, ANGRY_BASE, OVER_WORDS } from './faces.js';
 import { VEGETABLES } from '../data/vegetables.js'; // 野菜を足すと、樽の中身の絵（slot{0..2}_{id}.png）も読みこむ
 import { TRACE } from './trace.js';
 import { STAFF_IMAGES } from './staff.js';
+import { CAST_IMAGES } from './cast.js';
 import { WALK } from './walk.js';
 
 const [W, H] = TRACE.size;
@@ -41,6 +42,8 @@ export const SCENE = {
     baito: { x: 136, y: 398, dir: 1, hide: [102, 352, 96, 48] }, // 野菜の木箱の後ろ（脚は箱と樽の陰にかくれる。かがむと右の樽から漬物を取る）
     deshi: { x: 716, y: 422, dir: -1 }, // 大八車の横で、店のほうを向いて重石を持つ
   },
+  // 物語の人物。男爵は右から来て、ここで止まって言うだけ言って帰る。タマ殿は対決のあいだ左奥の樽のふたの上で審査し、終章のあとは看板の下の屋根で寝る
+  cast: { baronX: 612, tamaJudge: { x: 262, y: 305 }, tamaNap: { x: 468, y: 156 } },
 };
 
 function pos(name) { const [x, y] = TRACE.hanging[name]; return { x, y }; }
@@ -54,6 +57,7 @@ export const IMAGES = [
   ...Object.keys(ANGRY_BASE).map((n) => `angry_${n}`), // 怒った顔
   ...OVER_WORDS.great.concat(OVER_WORDS.bad).map((n) => `over_${n}`), // オーバーリアクションの描き文字
   ...STAFF_IMAGES, // 従業員（assets/staff.js）
+  ...CAST_IMAGES, // 漬物男爵・タマ殿（assets/cast.js）
   ...Object.values(WALK).flatMap((fs) => fs.map((f) => f.img)), // 描き直した歩くコマ（tools/walk_frames.py）
   'hang_noren', 'hang_daikon', 'hang_chili_l', 'hang_chili_r',
   ...[0, 1, 2].flatMap((i) => ['empty', 'takuan', ...VEGETABLES.filter((v) => !v.img).map((v) => v.id)].map((v) => `slot${i}_${v}`)),

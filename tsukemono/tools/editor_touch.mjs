@@ -25,7 +25,7 @@ const png64 = (name) => `data:image/png;base64,${fs.readFileSync(path.join(root,
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ['--no-sandbox'] });
-const page = await browser.newPage({ viewport: { width: 1500, height: 1400 } }); // 背の高い絵（全身）もキャンバスが画面に収まるように
+const page = await browser.newPage({ viewport: { width: 1500, height: 2000 } }); // 背の高い絵（全身）もキャンバスが画面に収まるように
 await page.goto(pathToFileURL(EDITOR).href);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
