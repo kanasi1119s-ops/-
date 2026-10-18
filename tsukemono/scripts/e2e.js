@@ -205,6 +205,12 @@ try {
   await page.click('[data-order="deliver"][data-oid="777"]');
   check('注文を受けて、棚から納められる', await G(() => !window.__game.game.orders.board.some((o) => o.id === 777) && window.__game.game.orders.done >= 1));
   await page.click('#winClose').catch(() => {}); await closeNotices();
+  // 秘伝の漬物
+  await G(() => { const g = window.__game.game; g.learn('kumagoroshi'); g.popEvents(); window.__game.ui.pending = []; window.__game.renderAll(); });
+  await closeNotices(); await page.click('[data-cmd=\"book\"]'); await page.click('[data-tab="recipes"]');
+  const rb = await page.textContent('#winBody');
+  check('秘伝の漬物に「秘伝」の札がつく', rb.includes('秘伝') && rb.includes('熊殺し漬け'));
+  await page.click('#winClose'); await closeNotices();
   await closeNotices(); await page.click('[data-cmd=\"settings\"]');
   await page.fill('#vBgm', '0.3');
   check('設定で音量を変えられる', (await G(() => window.__game.settings.bgm)) === 0.3);
