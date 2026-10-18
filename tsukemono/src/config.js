@@ -3,6 +3,10 @@
 // 【出典】= 企画書の根拠数値に基づく値 / 【仮置き】= 出典になく、妥当そうな値を置いた箇所。
 // 仮置きの一覧は tsukemono/README.md にもまとめてある。
 
+import { PICKLES, picklesFrom } from '../data/pickles.js';
+
+const PICKLE_CFG = picklesFrom(PICKLES);
+
 export const CONFIG = {
   // ---------------------------------------------------------------
   // 発酵の進み（1日） = 基準の進み × 温度の係数 × 塩分の係数 × 野菜の係数
@@ -111,68 +115,9 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------
-  // 漬物（最小版は2種）
-  //  ripeAt     : 食べ頃になる標準日数
-  //  window     : 進み/ripeAt の比。lo未満=まだ早い、lo〜hi=食べ頃、hi〜sour=過熟、sour超=酸っぱすぎ
-  //  complexityMax: 風味の複雑さの上限
+  // 漬物は data/pickles.js の定義から作る（1件足すだけで増える）。相性（affinity）も定義の中に持つ。
   // ---------------------------------------------------------------
-  pickles: {
-    asazuke: {
-      name: '浅漬け',
-      vegetables: ['hakusai', 'kyuri', 'nasu', 'daikon', 'kabu', 'kyabetsu', 'ninjin'],
-      ripeAt: 1, // 【出典】半日でしんなり、数時間〜数日で完成（3%・20℃で1日を食べ頃の中心に）
-      window: { lo: 0.5, hi: 3, sour: 5 }, // 【仮置き】日持ちは数日
-      complexityMax: 35, // 【仮置き】浅漬けは風味が単純
-      price: 250, // 【仮置き】1個(円)
-      saltHint: '2〜3%', // 【出典】
-    },
-    hakusaizuke: {
-      name: '白菜漬け',
-      vegetables: ['hakusai'],
-      ripeAt: 7, // 【出典】約1週間
-      window: { lo: 0.85, hi: 1.3, sour: 1.8 }, // 【仮置き】6〜9日が食べ頃、約12.6日で酸っぱすぎ
-      complexityMax: 85, // 【仮置き】調味（昆布など）でさらに深くなる余地を残す
-      price: 500, // 【仮置き】
-      saltHint: '3%', // 【出典】
-      film: true, // 白い膜が出る（浅漬けは冷蔵で短期なので対象外）
-    },
-    nukazuke: {
-      name: 'ぬか漬け',
-      vegetables: ['kyuri', 'hakusai', 'nasu', 'daikon', 'kabu', 'ninjin'],
-      usesNukaBed: true, // 塩分はぬか床の塩分を使う（仕込みで塩分は選ばない）
-      ripeAt: 0.8, // 【仮置き】きゅうりを20〜25℃の床で一晩〜1日
-      window: { lo: 0.5, hi: 2, sour: 3.5 }, // 【仮置き】
-      saltUptake: 0.4, // 【仮置き】野菜が吸う塩はぬか床の塩分の一部だけ
-      complexityMax: 80, // 【仮置き】床の熟成度で 40%〜100% になる
-      price: 300, // 【仮置き】
-      saltHint: 'ぬか床の塩分',
-      film: true,
-    },
-    // 段階5で追加
-    takuan: {
-      name: 'たくあん',
-      vegetables: ['daikon'],
-      ripeAt: 20, // 【仮置き】出典は「約1か月以上」。大根は漬かりが遅い（×0.8）ので、塩5%・室22℃で約36日
-      window: { lo: 0.9, hi: 4, sour: 6 }, // 【仮置き】長く置ける
-      acidHalfProgress: 20, // 【仮置き】長く漬けても酸っぱくなりにくい（食べ頃で酸味50）
-      complexityMax: 80, // 【仮置き】ざらめ・唐辛子・昆布で深まる
-      price: 900, // 【仮置き】長く寝かせるぶん高い
-      portions: 18, // 【仮置き】大きな樽で一度にたくさん漬ける（ふつうは6個）
-      saltHint: '4〜8%（長く置くなら多め）', // 【仮置き】出典は「干し日数と出荷時期で塩を変える」のみ
-      film: true,
-      top: 'takuan', // 樽の中身の絵（黄色）
-    },
-    nozawanazuke: {
-      name: '野沢菜漬',
-      vegetables: ['nozawana'],
-      ripeAt: 3, // 【仮置き】出典は「2〜3週間で食べられる」（寒い時期）。冬の屋外（8℃）で約10日、土間（3℃）で約1か月
-      window: { lo: 0.8, hi: 2, sour: 3 }, // 【仮置き】
-      complexityMax: 70, // 【仮置き】
-      price: 450, // 【仮置き】
-      saltHint: '2.5〜3%', // 【出典】野菜40kgに塩1〜1.3kg
-      film: true,
-    },
-  },
+  pickles: PICKLE_CFG.pickles,
 
   // ---------------------------------------------------------------
   // 調味（段階5）。仕込みで2つまで足せる。漬物との相性（good/bad、書いてなければふつう）で効き方が変わる。
@@ -190,14 +135,8 @@ export const CONFIG = {
     sakekasu: { name: '酒粕', cost: 90, complexity: 16, salt: -4, acid: -3, spoil: 1 }, // 【仮置き】まろやかでコクが出る（粕漬け）
   },
   additiveMax: 2,
-  // 相性。good=効き目そのまま＋ほめられる、bad=風味が濁る（風味の深さ−badPenalty）、ふつう=効き目の半分
-  affinity: {
-    asazuke: { kombu: 'good', yuzu: 'good', zarame: 'bad', shoga: 'good', akajiso: 'good', sakekasu: 'bad' },
-    hakusaizuke: { kombu: 'good', togarashi: 'good', yuzu: 'good', shoga: 'good', sakekasu: 'bad' },
-    nukazuke: { kombu: 'good', togarashi: 'good', zarame: 'bad', yuzu: 'bad', karashi: 'good', shoga: 'good', sakekasu: 'bad' },
-    takuan: { zarame: 'good', togarashi: 'good', kombu: 'good', yuzu: 'bad', sakekasu: 'good', akajiso: 'bad' },
-    nozawanazuke: { togarashi: 'good', kombu: 'good', zarame: 'bad', shoga: 'good', sakekasu: 'bad' },
-  },
+  // 相性は data/pickles.js の各定義の affinity。good=効き目そのまま＋ほめられる、bad=風味が濁る（風味の深さ−badPenalty）、ふつう=効き目の半分
+  affinity: PICKLE_CFG.affinity,
   affinityBadPenalty: 15, // 【仮置き】
   affinitySatBonus: 6, // 【仮置き】相性の良い調味1つにつき、どのお客の満足度も+6（悪いと−6）
   affinityNeutralFactor: 0.5, // 【仮置き】

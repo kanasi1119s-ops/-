@@ -53,6 +53,8 @@ npm run build      # テストプレイ用に1つのHTMLにまとめる → dist
 | 絵のトレース | 参考画像をドット絵（768×432・背景192色・人物48色）に起こす | `tools/trace.py` → `assets/img/` `assets/trace.js` |
 
 - 係数・基準値は **`src/config.js` の1か所**。出典のある値は【出典】、ないものは【仮置き】とコメント。
+- 漬物は **`data/pickles.js` の定義**から作る（段階A）。1件の定義に、野菜・工程（`steps`）・塩分の目安（`saltHint` と `salt`）・温度の目安（`tempHint` と `temp`）・食べ頃の日数（`ripeAt`）・必要な店のレベル（`level`）・解放の条件（`unlock`、段階Cで使う）・調味との相性（`affinity`）を持つ。**定義を1件足すだけで**、仕込みの窓・図鑑・お客の反応に新しい漬物が出る（`tests/pickles-data.test.js` で確かめる）。必須の項目が抜けていたり id がかぶっていると、読みこむときにエラーで知らせる。
+- 仮置きの一覧は `node scripts/placeholders.js > docs/placeholders.md` で作り直せる（`src/config.js` と `data/` の【仮置き】を、項目・値・理由つきで並べる）。
 - 絵と動きの定義は `assets/`（`img/` トレースした絵、`scene.js` 配置、`characters.js` 人物と色違い、`animations.js` コマ送り、`themes.js` 季節・時間・天気、`sprites.js` 小物）。
 - ズーム・拡大縮小はしない。canvas は 768×432 を **整数倍** で表示（ぼかさない）。画面より狭いスマホだけは幅に合わせて縮める（ぼかさないが、ドットの大きさが少し不ぞろいになる）。
 - ドットの細かさは 768×432（`tools/trace.py` の `SC = 2`。はじめは 384×216 だった）。参考画像は 1024×572 なので、背景は 1.33 分の 1、人物は約 1.6 分の 1 に縮めるだけで、目や眼鏡、看板の字、樽のたがが元の絵どおりに残る。座標を書いた定数は 384×216 の値を `SC` 倍して使う（trace.py・barrel_tops.py）か、2倍した値を直接書いてある（scene.js・render.js・main.js・characters.js・animations.js・world.js・walk_joints.json・walk_prep.py）。文字で描いた小物（傘・太陽・月・水たまり）は `SPRITE_SCALE = 2` で2倍にして描く。

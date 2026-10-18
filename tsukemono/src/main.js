@@ -296,7 +296,7 @@ WINS.brew = () => {
     title: '仕込む',
     body: `
     <div class="sec"><h3>樽</h3><div class="row">${empties.map((i) => `<button class="tile${ui.slot === i ? ' on' : ''}" data-bslot="${i}" style="flex:0 0 auto">樽${i + 1}</button>`).join('')}</div></div>
-    <div class="sec"><h3>漬物</h3><div class="tiles">${pickles}</div></div>
+    <div class="sec"><h3>漬物</h3><div class="tiles">${pickles}</div><div class="hint">作り方: ${p.steps.join(' → ')}　・　温度の目安 ${p.tempHint}</div></div>
     <div class="sec"><h3>野菜</h3><div class="tiles">${vegs}</div></div>
     <div class="sec"><h3>塩　<span class="hint">目安 ${p.saltHint}</span></h3>
       ${p.usesNukaBed ? `<div class="hint">ぬか漬けの塩はぬか床の塩分（今 ${trim(game.nuka.salt, 1)}%）。ぬか床の窓で足せる。</div>`
