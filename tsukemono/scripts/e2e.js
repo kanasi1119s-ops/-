@@ -180,6 +180,13 @@ try {
   await closeNotices(); await page.click('[data-cmd=\"brew\"]');
   check('ひらめいた作り方を仕込みの窓で選べる', (await page.textContent('#winBody')).includes('からし漬け'));
   await page.click('#winClose'); await closeNotices();
+  // 全国の漬物: 地方の枠を開くと便りが届き、全国めぐりに載る
+  await closeNotices();
+  await G(() => { const g = window.__game.game; g.addXp(2000); g.openRegion('北海道・東北'); g.learn('nishinzuke', 'letter'); g.popEvents(); window.__game.renderAll(); });
+  await page.click('[data-cmd=\"book\"]'); await page.click('[data-tab="atlas"]');
+  const atlas = await page.textContent('#winBody');
+  check('全国めぐりに47都道府県が出て、便りで覚えた漬物が載る', atlas.includes('/ 47') && atlas.includes('ニシン漬け') && atlas.includes('知っている') && atlas.includes('伝説'), atlas.slice(0, 80));
+  await page.click('#winClose'); await closeNotices();
   await closeNotices(); await page.click('[data-cmd=\"settings\"]');
   await page.fill('#vBgm', '0.3');
   check('設定で音量を変えられる', (await G(() => window.__game.settings.bgm)) === 0.3);

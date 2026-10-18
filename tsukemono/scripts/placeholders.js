@@ -30,5 +30,16 @@ src.forEach((line, i) => {
 });
 out.push('');
 }
+// 全国の漬物（data/regional.js）: 1行に数値がまとめてあるので、資料にない数値を漬物ごとに並べる
+const { REGIONAL } = await import('../data/regional.js');
+const { PREFECTURE_PICKLES } = await import('../data/prefectures.js');
+out.push('## data/regional.js（全国の漬物）', '', '資料の「numbers」にない数値は仮置き。値段・店のレベル・食べ頃の長さ・漬け方ごとの性質（METHODS）はすべて仮置き。', '', '| 資料 | 漬物 | 仮置きの数値 |', '| --- | --- | --- |');
+for (const r of REGIONAL) {
+  const d = PREFECTURE_PICKLES.find((x) => x.id === r.ref), src = new Set(r.src ?? []);
+  const miss = [r.salt && !src.has('salt') ? `塩 ${r.salt.join('〜')}%` : null, !src.has('temp') ? `温度 ${r.temp.join('〜')}℃` : null, !src.has('days') ? `日数 ${r.days}` : null, `値段 ${r.price}円`].filter(Boolean);
+  out.push(`| ${r.ref} | ${d.prefecture} ${d.name} | ${miss.join(' ・ ')}${r.unknown ? '（資料に数値の記載なし）' : ''} |`);
+  n += miss.length;
+}
+out.push('');
 out.push(`合計 ${n} 件`);
 console.log(out.join('\n'));
