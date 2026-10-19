@@ -8,7 +8,10 @@ from PIL import Image
 I=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'img') + '/'
 def bgl(c):
     c=c.astype(int); return (c.max(-1)-c.min(-1)<50)&(c[...,2]>=c[...,0])&(c[...,2]-c[...,0]<60)&((c@[0.299,0.587,0.114])>120)
-JOBS={'soccer':['もも','すね'],'beach':['もも','すね']}  # レーサーも試したが、赤黒い点が出て悪くなったので外した
+JOBS={'soccer':['もも','すね'],'beach':['もも','すね']}
+JOBS['alien'] = ['もも', 'すね']  # 試し: 宇宙人は奥の脚にも同じ明るい緑があり、ほとんど変わらなかったので当てていない
+JOBS = {k: JOBS[k] for k in sys.argv[1:]} if sys.argv[1:] else {k: v for k, v in JOBS.items() if k != 'alien'}
+PALE = {'alien'}  # 背景の灰色ではなく、白っぽく抜けた明るい色が入っている人（奥の脚のその部品にない色を塗り直す）  # レーサーも試したが、赤黒い点が出て悪くなったので外した
 os.makedirs('nl',exist_ok=True)
 for ch,parts in JOBS.items():
     p,sym,L=load(ch); ts=[]
@@ -19,7 +22,12 @@ for ch,parts in JOBS.items():
             fc=cel(p,sym,L.index('奥の'+part),f); fm=fc[...,3]>0
             cmap=paint_part(fc,fm,nm,K=5)
             # 画像の上で、手前の部品の色がそのまま見えていて、それが背景の灰色の所だけ
-            vis=nm&np.all(img[...,:3]==nc[...,:3],-1)&(img[...,3]==255)&bgl(img[...,:3])
+            vis=nm&np.all(img[...,:3]==nc[...,:3],-1)&(img[...,3]==255)
+            if ch in PALE:
+                f0=cel(p,sym,L.index('奥の'+part),0); fpal={tuple(int(v) for v in c) for c in f0[f0[...,3]>0][:,:3]}
+                vis&=np.array([[tuple(int(v) for v in img[y,x,:3]) not in fpal for x in range(img.shape[1])] for y in range(img.shape[0])])
+            else:
+                vis&=bgl(img[...,:3])
             for y,x in zip(*np.nonzero(vis)):
                 c=cmap.get((y,x))
                 if c is not None: img[y,x,:3]=c
