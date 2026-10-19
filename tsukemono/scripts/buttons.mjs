@@ -23,7 +23,7 @@ const SETUP = () => {
   G.money = 500000; G.reputation = 95;
   for (let i = 0; i < 40; i++) G.advance(1);
   G.popEvents();
-  while (G.barrels.length < 6 && G.nextBarrelCost() != null) G.buyBarrel();
+  for (let k = 0; k < 4 && G.barrels.length < G.barrelMax() && G.nextBarrelCost() != null; k++) if (!G.buyBarrel().ok) break;
   G.barrels.forEach((b, i) => { if (b) G.discard(i); });
   G.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 });
   G.brew(1, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 });
@@ -41,8 +41,9 @@ const WINS = [
   ['wisdom', { e: { text: '塩はひとつまみ多めに。', lore: false } }], ['story', { e: { name: '町内会長', title: '昔話', text: 'むかしむかし。' } }],
   ['idea', { e: { pickle: 'takuan', line: 'ひらめいた', via: 'inspire' } }], ['levelup', { e: { level: 3, title: '町の店', line: 'やったな', opens: ['冷蔵庫'] } }], ['reformed', { e: { line: 'また来てやる' } }],
 ];
-const SIZES = QUICK ? [[1280, 720], [390, 640]] : [[1360, 900], [1280, 720], [1024, 600], [390, 844], [390, 600], [844, 390]];
-const EMBED = QUICK ? [[1280, 700, 1800]] : [[1280, 700, 1800], [400, 700, 2600]]; // 外の見える大きさと、のびた枠の高さ
+const ONLY = process.env.SIZE ? [process.env.SIZE.split('x').map(Number)] : null;
+const SIZES = ONLY ?? (QUICK ? [[1280, 720], [390, 640]] : [[1360, 900], [1280, 720], [1024, 600], [390, 844], [390, 600], [844, 390]]);
+const EMBED = ONLY ? [] : QUICK ? [[1280, 700, 1800]] : [[1280, 700, 1800], [400, 700, 2600]]; // 外の見える大きさと、のびた枠の高さ
 const SKIP_CLICK = new Set(['reset', 'toTitle', 'pickFile', 'importSave', 'pasteSave', 'exportSave']); // 押すと遊びが止まる・別の窓に飛ぶ（届くかだけ見る）
 
 const problems = [];
@@ -92,7 +93,7 @@ async function run(label, page, frame, vis) {
       const reopen = async () => { await openW(kind, opts); if (tab) await frame.evaluate((t) => { window.__game.ui.win.tab = t; document.querySelector(`#winBody [data-tab="${t}"]`)?.click(); }, tab); };
       await reopen();
       const where = `${label} 窓「${title}」${tab ? `（${tab}）` : ''}`;
-      nWin++;
+      nWin++; const t0 = Date.now();
       const n = await frame.evaluate(() => [...document.querySelectorAll('#modal button, #modal input, #modal select')].filter((x) => x.offsetParent).length);
       for (let i = 0; i < n; i++) {
         await reopen();
@@ -110,6 +111,7 @@ async function run(label, page, frame, vis) {
         if (before === after) note(where, `${r.name} を押しても何も変わらない`);
         if (await frame.evaluate(() => !!document.getElementById('title') && !document.getElementById('title').hidden)) { await frame.click('[data-title="continue"]').catch(() => frame.click('[data-title="new"]')); await frame.evaluate(SETUP); }
       }
+      if (process.env.VERBOSE) console.log(`  ${where}: ${n}個 ${((Date.now() - t0) / 1000).toFixed(1)}秒`);
     }
   }
   // ---- メイン画面（コマンド・時間の一時停止・樽の札）
