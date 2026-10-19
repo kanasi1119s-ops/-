@@ -34,7 +34,7 @@ try {
       const w = await page.evaluate(() => { const g = window.__game; return g.ui.win ? g.ui.win.kind : null; });
       if (!w) return;
       seen.win.add(w);
-      const b = await page.$('#winBody [data-act="sagaNext"]') || await page.$('#winBody button.main') || await page.$('#winBody [data-act="closeWin"]');
+      const b = await page.$('#modal [data-act="sagaNext"]') || await page.$('#modal button.main') || await page.$('#modal [data-act="closeWin"]');
       if (b) await b.click().catch(() => {}); else await page.evaluate(() => window.__game.closeWin());
       await page.waitForTimeout(30);
     }

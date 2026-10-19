@@ -257,7 +257,7 @@ try {
       for (const [kind, opts] of [['brew', { slot: 0 }], ['dayend', { t: { ...g.ui.today, repEnd: g.game.reputation } }], ['rest', {}]]) {
         while (g.ui.win) g.closeWin();
         g.openWin(kind, opts);
-        const last = [...document.querySelectorAll('#winBody > .row.end:last-child button')].at(-1) ?? [...document.querySelectorAll('#winBody button')].at(-1);
+        const last = [...document.querySelectorAll('#winFoot button')].at(-1) ?? [...document.querySelectorAll('#winBody button')].at(-1);
         const r = last.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         if (!(r.top >= 0 && r.bottom <= innerHeight && (hit === last || last.contains(hit)))) out.push(kind);
       }

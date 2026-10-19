@@ -278,6 +278,11 @@ function renderWin() {
   $('winTitle').textContent = title;
   const scroll = $('winBody').scrollTop;
   $('winBody').innerHTML = body;
+  // いちばん下の決めるボタンの段は、窓の足もと（中身の外）に出す。中身が長くても、スクロールしないで押せる
+  const foot = $('winBody').querySelector(':scope > .row.end:last-child');
+  $('winFoot').replaceChildren(...(foot ? [foot] : []));
+  $('winFoot').hidden = !foot;
+  if (ui.win.kind === 'brew') disableNoopSteppers();
   $('winBody').scrollTop = scroll;
 }
 
@@ -479,6 +484,16 @@ const effRecipe = () => {
 };
 const brewCostOf = (r) => game.brewCost({ ...r, saltPct: C.pickles[r.pickle].usesNukaBed || C.pickles[r.pickle].saltFree ? 0 : r.saltPct });
 const CAP = () => C.sales.barrelCapacity;
+/** 押しても値が変わらない（もう端まで来ている）「－」「＋」は押せないことが見えるように灰色にする */
+function disableNoopSteppers() {
+  const r = ui.recipe, p = C.pickles[r.pickle];
+  const off = (sel, same) => $('winBody').querySelectorAll(sel).forEach((b) => { if (same(b)) b.disabled = true; });
+  off('[data-count]', (b) => clampCount((r.count ?? 1) + +b.dataset.count) === (r.count ?? 1));
+  off('[data-salt]', (b) => Math.min(SALT_MAX(), Math.max(1, r.saltPct + +b.dataset.salt)) === r.saltPct);
+  if (p?.drying) { const cur = r.dry ?? p.drying.default; off('[data-dry]', (b) => Math.min(p.drying.max, Math.max(0, cur + +b.dataset.dry)) === cur); }
+  if (p?.smoking && r.smoke) off('[data-smoke]', (b) => Math.min(p.smoking.max, Math.max(1, r.smoke.days + +b.dataset.smoke)) === r.smoke.days);
+  const [lo, hi] = C.kaonRange ?? [0, 99]; off('[data-kaon]', (b) => Math.min(hi, Math.max(lo, kaonT() + +b.dataset.kaon)) === kaonT());
+}
 const clampCount = (n) => Math.min(CAP(), Math.max(1, Math.round(Number.isFinite(n) ? n : 1)));
 const affKnown = (pickle, id) => Object.keys(game.book).some((k) => { const [pk, , ...ad] = k.split(':'); return pk === pickle && ad.includes(id); });
 const affMark = (pickle, id) => (!affKnown(pickle, id) ? '？' : { good: '◎', bad: '✕', neutral: '△' }[affinityOf(pickle, id, C)]);

@@ -34,7 +34,7 @@ const SETUP = () => {
   G.buyStock?.('daikon', 12);
   G.popEvents(); g.ui.pending = []; g.renderAll();
 };
-const WINS = [
+const WINS0 = [
   ['brew', { slot: 3 }], ['barrel', { slot: 1 }], ['barrel', { slot: 2 }], ['barrels', {}], ['sell', {}], ['market', {}], ['shop', {}], ['nuka', {}], ['book', {}],
   ['settings', {}], ['help', {}], ['rest', {}], ['granny', {}], ['claim', {}], ['saveText', { text: 'x' }], ['saveText', { text: null }],
   ['saga', { id: 'prologue', step: 0 }], ['saga', { id: 'rival', all: true }], ['dayend', 'TODAY'],
@@ -42,6 +42,7 @@ const WINS = [
   ['idea', { e: { pickle: 'takuan', line: 'ひらめいた', via: 'inspire' } }], ['levelup', { e: { level: 3, title: '町の店', line: 'やったな', opens: ['冷蔵庫'] } }], ['reformed', { e: { line: 'また来てやる' } }],
 ];
 const ONLY = process.env.SIZE ? [process.env.SIZE.split('x').map(Number)] : null;
+const WINS = process.env.WIN ? WINS0.filter(([k]) => k === process.env.WIN) : WINS0;
 const SIZES = ONLY ?? (QUICK ? [[1280, 720], [390, 640]] : [[1360, 900], [1280, 720], [1024, 600], [390, 844], [390, 600], [844, 390]]);
 const EMBED = ONLY ? [] : QUICK ? [[1280, 700, 1800]] : [[1280, 700, 1800], [400, 700, 2600]]; // 外の見える大きさと、のびた枠の高さ
 const SKIP_CLICK = new Set(['reset', 'toTitle', 'pickFile', 'importSave', 'pasteSave', 'exportSave']); // 押すと遊びが止まる・別の窓に飛ぶ（届くかだけ見る）
@@ -66,7 +67,7 @@ async function run(label, page, frame, vis) {
   const reach = async (sel, i) => {
     const r = await frame.evaluate(([sel, i]) => {
       const el = [...document.querySelectorAll(sel)].filter((x) => x.offsetParent)[i]; if (!el) return null;
-      const body = el.closest('#winBody');
+      const body = el.closest('#winBody'); // 足もと（#winFoot）のボタンはスクロールしない
       if (body) { const a = el.getBoundingClientRect(), b = body.getBoundingClientRect(); body.scrollTop += (a.top + a.height / 2) - (b.top + b.height / 2); }
       else el.scrollIntoView({ block: 'center' });
       const a = el.getBoundingClientRect();
@@ -78,10 +79,10 @@ async function run(label, page, frame, vis) {
     const o = await off();
     const X = r.x + o.x, Y = r.y + o.y;
     const inView = X >= 0 && X <= vis.w && Y >= 0 && Y <= vis.h && r.w > 4 && r.h > 4;
-    const hit = await frame.evaluate(([sel, i, x, y]) => { const el = [...document.querySelectorAll(sel)].filter((q) => q.offsetParent)[i]; const h = document.elementFromPoint(x, y); return !!h && (h === el || el.contains(h)); }, [sel, i, r.x, r.y]);
-    return { ...r, X, Y, ok: inView && hit, why: !inView ? `見える範囲の外（${Math.round(X)},${Math.round(Y)} / ${vis.w}×${vis.h}）` : !hit ? 'ほかの物の下' : '' };
+    const hit = await frame.evaluate(([sel, i, x, y]) => { const el = [...document.querySelectorAll(sel)].filter((q) => q.offsetParent)[i]; const h = document.elementFromPoint(x, y); return !!h && (h === el || el.contains(h)) ? true : (h ? `${h.tagName}.${h.className}「${h.textContent.trim().slice(0, 12)}」` : 'なし'); }, [sel, i, r.x, r.y]);
+    return { ...r, X, Y, ok: inView && hit === true, why: !inView ? `見える範囲の外（${Math.round(X)},${Math.round(Y)} / ${vis.w}×${vis.h}）` : hit !== true ? `ほかの物の下（${hit}）` : '' };
   };
-  const stateOf = () => frame.evaluate(() => { const g = window.__game; return JSON.stringify([g.ui.win?.kind, g.ui.win?.tab, g.ui.win?.step, document.getElementById('modal').hidden, document.getElementById('winBody').innerHTML.length, document.getElementById('winBody').innerHTML.slice(0, 4000), g.game.money, document.getElementById('message')?.textContent, g.ui.recipe, g.ui.slot, g.ui.display, g.ui.paused, g.ui.confirm, document.getElementById('title')?.hidden]); });
+  const stateOf = () => frame.evaluate(() => { const g = window.__game; return JSON.stringify([g.ui.win?.kind, g.ui.win?.tab, g.ui.win?.step, document.getElementById('modal').hidden, document.getElementById('winBody').innerHTML.length, document.getElementById('winBody').innerHTML.slice(0, 4000), document.getElementById('winFoot').innerHTML, g.game.money, document.getElementById('message')?.textContent, g.ui.recipe, g.ui.slot, g.ui.display, g.ui.paused, g.ui.confirm, document.getElementById('title')?.hidden]); });
 
   let nWin = 0, nBtn = 0;
   // ---- 窓
