@@ -194,7 +194,16 @@ export function attachBusiness(g, { cfg, rng, cal, seed = 1 }) {
     const ev = g.event();
     if (ev && ev.from === g.dayOfSeason()) g.events.push({ type: 'season', id: ev.id, name: ev.name, note: ev.note });
     if (g.peddlerOffer()) g.events.push({ type: 'peddler' });
+    // お金が尽きて何もできない朝（樽も棚も空で、いちばん安い仕込みもできない）: 大家さんが仕込み代を出してくれる（詰まないように）
+    const cheapest = g.cheapestBrew();
+    if (g.money < cheapest && !g.barrels.some(Boolean) && !g.shelf.some(Boolean)) {
+      const lend = Math.ceil((cheapest - g.money) / 10) * 10;
+      g.money += lend; g.stats.rescue = (g.stats.rescue ?? 0) + lend;
+      g.events.push({ type: 'rescue', money: lend });
+    }
   };
+  /** いちばん安い仕込みの費用（今仕込める野菜で、塩分2%の浅漬け） */
+  g.cheapestBrew = () => Math.min(...Object.keys(cfg.vegetables).filter((veg) => g.vegAvailable(veg)).map((veg) => g.brewCost({ veg, saltPct: 2 })));
 
   // ---- 客の年代と、減塩の流れ ----
   /** 今年の年代ごとの割合 */

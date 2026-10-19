@@ -205,7 +205,8 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
 .meter i { position: absolute; inset: 0 auto 0 0; background: var(--shu) }
 .list { display: grid; gap: 6px }
 .item { display: flex; gap: 10px; align-items: center; background: #fbf5e4; border: 2px solid var(--washi-3); padding: 8px 10px; min-width: 0; text-align: left; color: var(--sumi) }
-.item .grow { flex: 1; min-width: 0 }
+.item { flex-wrap: wrap }
+.item .grow { flex: 1 1 8em; min-width: 0 } /* 説明が細くつぶれないように（スマホ幅では、横のボタンは次の行へ） */
 .item.ok { border-color: var(--wakatake) }
 .app.titling .console, .app.titling .hud { visibility: hidden }
 

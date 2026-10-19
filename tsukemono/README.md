@@ -12,6 +12,9 @@ npm test           # 味のモデル・売上・ゲーム進行・ぬか床・�
 npm run survey     # 条件を変えた結果の一覧を端末に表示
 npm run balance    # 決まった作戦で自動で遊ばせ、もうけを比べる（バランスの点検）
 npm run e2e        # 画面の通し確認（タイトル→序章→仕込み→販売→投資・常連・ひらめき・難癖のお客・仕入れ・干す・セーブのファイル→スマホ幅。Playwright が必要）
+node scripts/monkey.mjs 600 1    # でたらめに押して不具合を探す（エラー・NaN・はみ出し。手数と乱数の種。W=390 H=844 でスマホ幅）
+node scripts/winshots.mjs        # すべての窓をパソコン幅とスマホ幅で開いて撮る（docs/winshots/。はみ出し・おかしな文字を調べる）
+node scripts/playthrough.mjs 120 # まじめに長く遊ぶ（毎朝仕込んで売る。物語・従業員・注文の窓も通る。docs/playthrough/ に10日ごとの店先）
 node scripts/placeholders.js > docs/placeholders.md  # 【仮置き】の一覧を作り直す
 npm run build      # テストプレイ用に1つのHTMLにまとめる → dist/tsukemono-standalone.html（そのまま開ける）
 ```

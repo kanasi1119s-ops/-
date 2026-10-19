@@ -194,6 +194,7 @@ function overEffect(v) {
     setTimeout(() => st.classList.remove('shake'), 600);
   }
 }
+const SKY_Y = 46; // 店全体の知らせの文字は、看板に重ならないよう屋根の上の空に出す
 function floatText(text, x, y, cls = '') {
   const el = document.createElement('div');
   el.className = `float ${cls}`;
@@ -809,18 +810,18 @@ function flushEvents() {
     const e = ui.pending.shift();
     if (e.type === 'almost') {
       say(`${ALMOST[e.missing] ?? ALMOST.stage}${ALMOST_TAIL[ui.almostN++ % ALMOST_TAIL.length]}`, '店主');
-      floatText('…？', 384, 150);
+      floatText('…？', 470, SKY_Y - 6); // ほかの知らせと重ならないよう少し右
       continue;
     }
     if (e.type === 'saga') { sound.se('regular'); openWin('saga', { id: e.id, step: 0, onClose: () => baronAfter(e.id) }); return; }
     if (e.type === 'questStart') { say(`課題「${e.name}」が始まった（${e.days}日以内）。帳面の「物語」で進み具合が見られる。`, '店主'); continue; }
-    if (e.type === 'questWon') { sound.se('found'); floatText(`${e.name} 達成！`, 384, 100, 'good'); continue; }
+    if (e.type === 'questWon') { sound.se('found'); floatText(`${e.name} 達成！`, 384, SKY_Y, 'good'); continue; }
     if (e.type === 'questLost') { sound.se('bad'); say(`課題「${e.name}」は期限までに果たせなかった…。`, '店主'); continue; }
-    if (e.type === 'affinity') { if (e.aff === 'good') { sound.se('found'); floatText(`相性◎ ${C.pickles[e.pickle].name}×${C.additives[e.additive].name}`, 384, 130, 'good'); } say(`${C.pickles[e.pickle].name}と${C.additives[e.additive].name}の相性は${{ good: '◎（よく合う）', bad: '✕（合わない）', neutral: '△（ふつう）' }[e.aff]}。レシピ帳に書いておこう。`, '店主'); continue; }
+    if (e.type === 'affinity') { if (e.aff === 'good') { sound.se('found'); floatText(`相性◎ ${C.pickles[e.pickle].name}×${C.additives[e.additive].name}`, 384, SKY_Y - 8, 'good'); } say(`${C.pickles[e.pickle].name}と${C.additives[e.additive].name}の相性は${{ good: '◎（よく合う）', bad: '✕（合わない）', neutral: '△（ふつう）' }[e.aff]}。レシピ帳に書いておこう。`, '店主'); continue; }
     if (e.type === 'grannyJoin') { sound.se('regular'); openWin('granny'); return; }
     if (e.type === 'wisdom') { sound.se('found'); openWin('wisdom', { e }); return; }
     if (e.type === 'wisdomHint') { say(`「${e.text}」`, game.grannyDef.name); continue; }
-    if (e.type === 'tane') { floatText('種を取り分けた', 384, 130, 'good'); say(`${C.pickles[e.pickle].name}の種を取り分けた（種 ${e.n}）。次の樽に使える。`, '店主'); continue; }
+    if (e.type === 'tane') { floatText('種を取り分けた', 384, SKY_Y - 8, 'good'); say(`${C.pickles[e.pickle].name}の種を取り分けた（種 ${e.n}）。次の樽に使える。`, '店主'); continue; }
     if (e.type === 'orderOffer') { say(`${game.client(e.client).name}: ${e.line}（「売る」の窓で受けられる）`, game.client(e.client).name); continue; }
     if (e.type === 'orderDone') { say(`${game.client(e.client).name}: ${e.line}（お礼 ${yen(e.pay)}）`, game.client(e.client).name); continue; }
     if (e.type === 'orderFailed') { say(`${game.client(e.client).name}: ${e.line}（期日を過ぎた。評判が下がった）`, game.client(e.client).name); continue; }
@@ -828,17 +829,18 @@ function flushEvents() {
     if (e.type === 'waterUp') { if (e.heavy) say(`樽${e.slot + 1}（${C.pickles[e.pickle].name}）の水が上がった。重石を軽くする頃だ。`, '店主'); continue; }
     if (e.type === 'starterReady') { say(`寝かせておいた${C.pickles[e.pickle].name}の床が、いい香りになった。もう漬けられる。`, '店主'); continue; }
     if (e.type === 'taneArrived') { say(`木曽から小包。「種を絶やしたな？ 今年だけじゃぞ」…${C.pickles[e.pickle].name}の種が届いた。`, '店主'); continue; }
-    if (e.type === 'season') { floatText(e.name, 384, 110, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
+    if (e.type === 'season') { floatText(e.name, 384, SKY_Y, 'good'); say(`今日から${e.name}。${e.note}。`, '店主'); continue; }
     if (e.type === 'peddler') { say('行商人が来ている。「店」の窓で、作り方の巻物を売っているらしい。（今日だけ）', '店主'); continue; }
     if (e.type === 'stockSpoiled') { say(`仕入れた野菜が${e.n}個分、傷んでしまった…。（買いすぎ注意）`, '店主'); continue; }
     if (e.type === 'staffQuit') { sound.se('bad'); say(`${e.name}が辞めてしまった。「${e.line}」`, '店主'); continue; }
     if (e.type === 'upkeepShort') { say(`維持費が${yen(e.short)}足りなかった。大家さん「出世払いでいいよ」…ありがたい。`, '店主'); continue; }
+    if (e.type === 'rescue') { say(`大家さん「元手がなきゃ漬物も漬けられんだろ。これで仕込みな」（${yen(e.money)}を出してくれた）`, '店主'); continue; }
     if (e.type === 'story') { sound.se('regular'); openWin('story', { e }); return; }
     if (e.type === 'claimIgnored') { say(`${e.line}（評判 ${trim(e.rep, 1)}）`, '店主'); continue; }
     if (e.type === 'claim' && !game.claim) continue; // もう片付いた
     if (e.type === 'learned') {
       sound.se('found');
-      floatText('レシピ帳が埋まった！', 384, 100, 'good');
+      floatText('レシピ帳が埋まった！', 384, SKY_Y, 'good');
       say(`お客に「うまい！」と言わせた。${C.pickles[e.pickle].name}がレシピ帳に埋まった。`, '店主');
       continue;
     }
@@ -1061,7 +1063,7 @@ async function startSale(slot) {
   if (res.discovery?.isNew) {
     msg = `図鑑に新しい組み合わせが載った！ ${msg}`;
     sound.se('found');
-    floatText('図鑑に登録！', 384, 120, 'good');
+    floatText('図鑑に登録！', 384, SKY_Y - 8, 'good');
   }
   if (res.spoiled) sound.se('bad');
   if (!ui.win) say(msg, '店主');
@@ -1374,4 +1376,4 @@ renderAll();
 showTitle();
 say('');
 requestAnimationFrame(frame);
-window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText, overEffect, baronAfter }; // 動作確認用（scripts/e2e.js）
+window.__game = { game, ui, world, renderer, sound, settings, advance, doBrew, doSell, hideSlot, tryOpenShop, renderAll, openWin, closeWin, importSaveText, overEffect, baronAfter, floatText, SKY_Y }; // 動作確認用（scripts/e2e.js）

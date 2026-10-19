@@ -101,10 +101,26 @@ test('維持費: 毎朝かかり、お金はマイナスにならない（払え
   const m = g.money;
   g.advance(DAY);
   assert.equal(g.money, m - g.upkeep());
+  g.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); // 樽に仕込みがあれば、大家さんの助けはない
   g.money = 10;
   g.advance(DAY);
   assert.equal(g.money, 0);
   assert.ok(g.popEvents().some((e) => e.type === 'upkeepShort'));
+});
+
+test('お金が尽きて樽も棚も空の朝は、大家さんがいちばん安い仕込みの代金を出してくれる（詰まない）', () => {
+  const g = createGame({ seed: 7 });
+  g.money = 0;
+  g.advance(DAY);
+  const ev = g.popEvents().find((e) => e.type === 'rescue');
+  assert.ok(ev);
+  assert.ok(g.money >= g.cheapestBrew());
+  const empty = g.barrels.findIndex((b) => !b);
+  const veg = Object.keys(CONFIG.vegetables).filter((v) => g.vegAvailable(v)).sort((a, b) => g.brewCost({ veg: a, saltPct: 2 }) - g.brewCost({ veg: b, saltPct: 2 }))[0];
+  assert.ok(g.brew(empty, { veg, pickle: 'asazuke', saltPct: 2, tempC: 20 }).ok, '借りたお金で仕込める');
+  g.money = 0;
+  g.advance(DAY);
+  assert.ok(!g.popEvents().some((e) => e.type === 'rescue'), '仕込みがあるあいだは出さない');
 });
 
 test('従業員: アルバイトは毎朝ぬか床をかき混ぜ膜を取る。お給料を払えないと辞める', () => {

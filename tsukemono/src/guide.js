@@ -40,7 +40,7 @@ export function nextStep(g, ui = {}) {
   const fresh = Object.entries(g.recipes ?? {}).find(([id, r]) => r.via !== 'start' && r.made === 0 && g.canBrew(id).ok && !g.barrels.some((x) => x?.pickle === id));
   if (empty >= 0 && fresh && g.money >= cheapest) return `ひらめいた「${cfg.pickles[fresh[0]].name}」をまだ試していない。樽${empty + 1}で仕込んでみよう。`;
   if (empty >= 0 && g.money >= cheapest) return `樽${empty + 1}が空いている。塩分と置き場所を決めて仕込もう。`;
-  if (empty >= 0 && !items.length) return 'お金が足りず仕込めない…「確認用の操作」から最初からやり直せます。';
+  if (empty >= 0 && !items.length) return 'お金が足りず仕込めない…。朝になれば大家さんが仕込み代を出してくれる（「とばす」で朝へ）。';
   // 手元に余裕があれば投資をすすめる（仕込み代を残しておく）
   const buffer = cheapest * g.barrels.length * 2;
   const offers = [];
