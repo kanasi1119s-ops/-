@@ -24,7 +24,7 @@ function readPng(file) {
       px[y * st + i] = (x + pred) & 255;
     }
   }
-  return { w, h, alpha: (x, y) => px[(y * w + x) * 4 + 3] };
+  return { w, h, px, alpha: (x, y) => px[(y * w + x) * 4 + 3] };
 }
 
 // つながったかたまり（4近傍）。pick(x, y) が真のマスをまとめる
@@ -76,5 +76,18 @@ test('おばあちゃん: 首と肩がつながっている（頭と胴のあい
       const n = [...Array(img.w).keys()].filter((x) => img.alpha(x, y) === 255).length;
       assert.ok(n >= 12, `${f}: ${y}行目が ${n}マスしかない`);
     }
+  }
+});
+
+test('色をそろえた: 同じ人のポーズ全体で使う色が多すぎない（ポーズごとにばらばらの色にならない）', () => {
+  const colorsOf = (f) => {
+    const img = readPng(f), set = new Set();
+    for (let i = 0; i < img.w * img.h; i++) if (img.px[i * 4 + 3] === 255) set.add(img.px.readUIntBE(i * 4, 3));
+    return set;
+  };
+  for (const ch of ['keeper', 'woman', 'granny', 'suit', 'hiker', 'witch']) {
+    const all = new Set();
+    for (const f of fs.readdirSync('assets/img').filter((n) => n.startsWith(`pose_${ch}_`))) for (const c of colorsOf(`assets/img/${f}`)) all.add(c);
+    assert.ok(all.size <= 120, `${ch}: ${all.size}色`);
   }
 });

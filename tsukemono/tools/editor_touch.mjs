@@ -1,6 +1,7 @@
 // 人の絵の手直しを、ドット絵エディタ（tools/pixel-editor.html）のえんぴつで1ドットずつ描いて書き出す。
 //   node tools/editor_touch.mjs <設計図.json> [絵の名前...]
 // 設計図: { "<元の絵の名前>": [{ x, y, color }...] } または { "<新しい絵の名前>": { "from": "<元の絵>", "touch": [...] } }
+//   または { "<絵の名前>": { "recolor": { "#元の色": "#新しい色", ... }, "touch": [...] } }（色の表の色を、エディタの色選びで置きかえてから描く）
 //   または { "<新しい絵の名前>": { "size": [幅, 高さ], "touch": [...] } }（まっさらなキャンバスから描く）
 //   color が null なら消しゴムで消す。
 // エディタでの手順（絵ごと）:
@@ -47,11 +48,17 @@ const readPng = (src) => page.evaluate(async (src) => {
 let bad = 0;
 for (const [name, spec] of Object.entries(design)) {
   if (only.length && !only.includes(name)) continue;
-  const from = Array.isArray(spec) ? name : spec.from, touch = Array.isArray(spec) ? spec : spec.touch;
+  const from = Array.isArray(spec) ? name : (spec.from ?? name), touch = Array.isArray(spec) ? spec : (spec.touch ?? []);
+  const rec = (!Array.isArray(spec) && spec.recolor) || {};
+  const after = (c) => (c && rec[c]) || c; // 色の表で置きかえたあとの色
   const base = spec.size ? { w: spec.size[0], h: spec.size[1], px: Array(spec.size[0] * spec.size[1]).fill(null) } : await readPng(png64(from));
-  const colors = [...new Set([...base.px.filter(Boolean), ...touch.map((t) => t.color).filter(Boolean)])];
+  const baseCols = [...new Set(base.px.filter(Boolean))];
+  // 描く色: 置きかえたあとの色が同じになる元の色の記号を使う（色の表を増やさない）
+  const extra = touch.map((t) => t.color).filter((c) => c && !baseCols.some((b) => after(b) === c));
+  const colors = [...new Set([...baseCols, ...extra])];
   if (colors.length > SYMS.length) throw new Error(`${name}: 色が多すぎる（${colors.length}）`);
   const symOf = Object.fromEntries(colors.map((c, i) => [c, SYMS[i]]));
+  for (const b of baseCols) if (rec[b] && !(rec[b] in symOf)) symOf[rec[b]] = symOf[b];
   // 半透明のドット（歩くコマの足もとの影）は、下の「影」レイヤーに分けて、レイヤーの不透明度で表す（描くのは上のレイヤー）
   const semi = base.al ? [...new Set(base.al.filter((a) => a > 0 && a < 255))] : [];
   if (semi.length > 1) throw new Error(`${name}: 半透明の濃さが${semi.length}通りある`);
@@ -70,6 +77,14 @@ for (const [name, spec] of Object.entries(design)) {
   if (await page.isChecked('#symmetryV')) await page.click('#symmetryV');
   await setRange('#zoom', process.env.EDITOR_ZOOM || (base.w > 150 ? 4 : base.w > 90 || base.h > 110 ? 6 : 8));
   await setRange('#brushSize', 1);
+  // 色の表で色を置きかえる（エディタの色選びに新しい色を入れる）
+  for (const b of baseCols) {
+    if (!rec[b] || rec[b] === b) continue;
+    await page.evaluate(([sym, col]) => {
+      const row = [...document.querySelectorAll('#symbolList .symbol-row')].find((r) => r.querySelector('.sym')?.textContent === sym);
+      const inp = row.querySelector('input[type=color]'); inp.value = col; inp.dispatchEvent(new Event('input', { bubbles: true }));
+    }, [symOf[b], rec[b]]);
+  }
   await page.keyboard.press('Escape');
   let B;
   const measure = async () => { B = await page.$eval('#gridCanvas', (c) => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }); };
@@ -93,10 +108,10 @@ for (const [name, spec] of Object.entries(design)) {
   const erase = touch.filter((t) => !t.color);
   if (erase.length) { await tool('eraser'); await measure(); for (const r of runs(erase)) await stroke(r); }
   // 3. 書き出して確かめる: 元の絵＋設計図と同じか。描きそこねたドットがあれば、そのドットだけ描き直す（3回まで）
-  const want = [...base.px], wantA = base.al ? [...base.al] : base.px.map((c) => (c ? 255 : 0));
+  const want = base.px.map(after), wantA = base.al ? [...base.al] : base.px.map((c) => (c ? 255 : 0));
   for (const t of touch) { const i = t.y * base.w + t.x; want[i] = t.color; wantA[i] = t.color ? 255 : (semi.length && base.al[i] === semi[0] ? semi[0] : 0); }
   // 消した所の下に影があれば影が見える（上のレイヤーだけ消すので）
-  for (const t of touch) { const i = t.y * base.w + t.x; if (!t.color && wantA[i]) want[i] = base.px[i]; }
+  for (const t of touch) { const i = t.y * base.w + t.x; if (!t.color && wantA[i]) want[i] = after(base.px[i]); }
   const near = (a, b) => a && b && [1, 3, 5].every((k) => Math.abs(parseInt(a.slice(k, k + 2), 16) - parseInt(b.slice(k, k + 2), 16)) <= 2);
   const wrong = (got) => want.map((c, i) => i).filter((i) => (wantA[i] !== got.al[i]) || (wantA[i] === 255 ? want[i] !== got.px[i] : wantA[i] && !near(want[i], got.px[i])));
   const exportPng = async () => {
