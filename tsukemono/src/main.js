@@ -229,7 +229,35 @@ function renderCommands() {
 }
 
 // ------------------------------------------------------------ 窓
-function openWin(kind, opts = {}) { ui.win = { kind, ...opts }; ui.confirm = null; sound.se('open'); renderWin(); $('modal').hidden = false; }
+// 窓は「いま実際に見えている範囲」に出す。埋め込み表示（iframe）でページの高さぶん枠がのびる所では、
+// 画面の外まで窓が広がって下のボタンが押せなくなるので、見えている範囲を IntersectionObserver で測り、
+// 窓の置き場（.modal）の上と高さをそこに合わせる。ふつうの画面では、見えている範囲＝画面いっぱい。
+const seen = { top: 0, h: 0 }; // 見えている範囲（窓の置き場）
+const viewProbe = document.createElement('div');
+viewProbe.setAttribute('aria-hidden', 'true');
+viewProbe.style.cssText = 'position:absolute;left:0;top:0;width:1px;pointer-events:none;visibility:hidden';
+document.body.appendChild(viewProbe);
+function placeModal() {
+  const vv = window.visualViewport;
+  const full = { top: (vv?.offsetTop ?? 0), h: vv?.height ?? window.innerHeight };
+  const v = seen.h > 40 && seen.h < full.h - 4 ? seen : full; // 見えている範囲が画面より小さいときだけ使う
+  const m = $('modal');
+  m.style.top = `${Math.round(v.top)}px`; m.style.height = `${Math.round(v.h)}px`; m.style.bottom = 'auto';
+  m.style.setProperty('--view-h', `${Math.round(v.h)}px`);
+}
+function watchView() {
+  viewProbe.style.height = `${document.documentElement.scrollHeight}px`;
+  const io = new IntersectionObserver((es) => {
+    const r = es.at(-1).intersectionRect;
+    if (r.height > 0) { seen.top = r.top; seen.h = r.height; if (!$('modal').hidden) placeModal(); }
+  }, { threshold: Array.from({ length: 101 }, (_, i) => i / 100) });
+  io.observe(viewProbe);
+  const again = () => { viewProbe.style.height = `${document.documentElement.scrollHeight}px`; if (!$('modal').hidden) placeModal(); };
+  window.addEventListener('resize', again); window.addEventListener('scroll', again, { passive: true });
+  window.visualViewport?.addEventListener('resize', again); window.visualViewport?.addEventListener('scroll', again);
+}
+if ('IntersectionObserver' in window) watchView();
+function openWin(kind, opts = {}) { ui.win = { kind, ...opts }; ui.confirm = null; sound.se('open'); renderWin(); $('modal').hidden = false; placeModal(); $('winBody').scrollTop = 0; }
 function closeWin() {
   if (!ui.win) return;
   const after = ui.win.onClose;

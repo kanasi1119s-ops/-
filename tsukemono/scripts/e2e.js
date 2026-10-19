@@ -249,6 +249,24 @@ try {
   // スマホ幅
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(200);
   check('スマホ幅で横にはみ出さない', !(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)));
+  // 窓のいちばん下の決めるボタン（仕込む・次の日へなど）は、スクロールしなくても画面の中にあって押せる（低い画面でも）
+  for (const [w, h] of [[390, 600], [844, 390], [1280, 600]]) {
+    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(150);
+    const bad = await G(() => {
+      const g = window.__game, out = [];
+      for (const [kind, opts] of [['brew', { slot: 0 }], ['dayend', { t: { ...g.ui.today, repEnd: g.game.reputation } }], ['rest', {}]]) {
+        while (g.ui.win) g.closeWin();
+        g.openWin(kind, opts);
+        const last = [...document.querySelectorAll('#winBody > .row.end:last-child button')].at(-1) ?? [...document.querySelectorAll('#winBody button')].at(-1);
+        const r = last.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!(r.top >= 0 && r.bottom <= innerHeight && (hit === last || last.contains(hit)))) out.push(kind);
+      }
+      while (g.ui.win) g.closeWin();
+      return out;
+    });
+    check(`${w}×${h}: 窓の決めるボタンがスクロールなしで押せる`, bad.length === 0, bad.join(','));
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
 
   check('エラーが出ない', errors.length === 0, errors.slice(0, 3).join(' / '));
 } finally {
