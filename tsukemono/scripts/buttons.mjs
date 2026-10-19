@@ -61,13 +61,16 @@ async function run(label, page, frame, vis) {
   const off = async () => (frame === page.mainFrame() ? { x: 0, y: 0 } : page.evaluate(() => { const r = document.querySelector('iframe').getBoundingClientRect(); return { x: r.left, y: r.top }; }));
   const openW = (kind, opts) => frame.evaluate(([kind, opts]) => {
     const g = window.__game; if (opts === 'TODAY') opts = { t: { ...g.ui.today, repEnd: g.game.reputation } };
-    while (g.ui.win) g.closeWin(); g.openWin(kind, opts); return document.getElementById('winTitle').textContent;
+    while (g.ui.win) g.closeWin(); g.openWin(kind, opts);
+    document.getAnimations().forEach((a) => { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); }); // 窓が出るときの動き（少し縮んでいる）を終わらせてから測る
+    return document.getElementById('winTitle').textContent;
   }, [kind, opts]);
   // i 番目のボタンを窓の中でスクロールして出し、届くかを見る
   const reach = async (sel, i) => {
     const r = await frame.evaluate(([sel, i]) => {
       const el = [...document.querySelectorAll(sel)].filter((x) => x.offsetParent)[i]; if (!el) return null;
       const body = el.closest('#winBody'); // 足もと（#winFoot）のボタンはスクロールしない
+      document.getAnimations().forEach((a) => { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); });
       if (body) { const a = el.getBoundingClientRect(), b = body.getBoundingClientRect(); body.scrollTop += (a.top + a.height / 2) - (b.top + b.height / 2); }
       else el.scrollIntoView({ block: 'center' });
       const a = el.getBoundingClientRect();
