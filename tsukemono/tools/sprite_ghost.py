@@ -24,6 +24,7 @@ for k in ('drop_ground_shadow', 'bridge_feet', 'POSE_ERASE', 'WARM_SHADOW', 'FG_
     globals()[k] = ns[k]
 
 MIN_PX = int(os.environ.get('MIN_PX', 8))
+GEOM = {}  # ポーズの絵の1ドットが参照画像のどこか: 参照の x = box[0] + (絵の x + off[0] + 0.5) / scale
 def masks(name):
     """ポーズごとに (埋められた割合 filled[h,w], 元の前景の割合 raw[h,w]) をポーズの絵の座標で"""
     a = np.asarray(Image.open(f'{R}/assets/reference/pose_{name}.jpg').convert('RGB')).astype(int)
@@ -96,6 +97,7 @@ def masks(name):
         for j in range(1, kk):
             if stt[j, 4] >= MIN_PX: keep |= lab == j
         out.append(np.where(keep, fs, 0))
+        GEOM.setdefault(name, []).append({'box': (int(x0), int(y0), int(x1), int(y1)), 'scale': float(scale), 'off': (int(xs.min()), int(ys.min())), 'size': (tw, th)})
     return out
 
 
