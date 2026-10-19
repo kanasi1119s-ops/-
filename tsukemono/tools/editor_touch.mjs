@@ -109,7 +109,11 @@ for (const [name, spec] of Object.entries(design)) {
   for (const t of touch) { const i = t.y * base.w + t.x; if (!t.color && wantA[i]) want[i] = base.px[i]; }
   const near = (a, b) => a && b && [1, 3, 5].every((k) => Math.abs(parseInt(a.slice(k, k + 2), 16) - parseInt(b.slice(k, k + 2), 16)) <= 2);
   const diff = want.reduce((n, c, i) => n + ((wantA[i] !== got.al[i]) || (wantA[i] === 255 ? c !== got.px[i] : wantA[i] && !near(c, got.px[i])) ? 1 : 0), 0);
-  if (diff || got.w !== base.w || got.h !== base.h) { bad++; console.log(`${name}: ${diff}ドット違う（書き出さない）`); continue; }
+  if (diff || got.w !== base.w || got.h !== base.h) {
+    bad++; console.log(`${name}: ${diff}ドット違う（書き出さない）`);
+    if (process.env.EDITOR_DEBUG) want.forEach((c, i) => { if ((wantA[i] !== got.al[i]) || (wantA[i] === 255 && c !== got.px[i])) console.log(`  (${i % base.w},${Math.floor(i / base.w)}) 欲しい ${c}/${wantA[i]} 実際 ${got.px[i]}/${got.al[i]}`); });
+    continue;
+  }
   dataUrlToFile(url, path.join(root, 'assets/img', `${name}.png`));
   console.log(`${name}: ${touch.length}ドット描いた（${spec.size ? 'まっさらなキャンバス' : from} から）`);
 }
