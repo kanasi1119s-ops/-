@@ -39,8 +39,9 @@ const readPng = (src) => page.evaluate(async (src) => {
   const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
   const x = c.getContext('2d'); x.drawImage(img, 0, 0);
   const d = x.getImageData(0, 0, c.width, c.height).data, px = [];
-  for (let i = 0; i < c.width * c.height; i++) px.push(d[i * 4 + 3] ? '#' + [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]].map((v) => v.toString(16).padStart(2, '0')).join('') : null);
-  return { w: c.width, h: c.height, px };
+  const al = [];
+  for (let i = 0; i < c.width * c.height; i++) { px.push(d[i * 4 + 3] ? '#' + [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]].map((v) => v.toString(16).padStart(2, '0')).join('') : null); al.push(d[i * 4 + 3]); }
+  return { w: c.width, h: c.height, px, al };
 }, src);
 
 let bad = 0;
@@ -51,10 +52,16 @@ for (const [name, spec] of Object.entries(design)) {
   const colors = [...new Set([...base.px.filter(Boolean), ...touch.map((t) => t.color).filter(Boolean)])];
   if (colors.length > SYMS.length) throw new Error(`${name}: 色が多すぎる（${colors.length}）`);
   const symOf = Object.fromEntries(colors.map((c, i) => [c, SYMS[i]]));
-  const rows = Array.from({ length: base.h }, (_, y) => Array.from({ length: base.w }, (_, x) => { const c = base.px[y * base.w + x]; return c ? symOf[c] : '.'; }).join(''));
+  // 半透明のドット（歩くコマの足もとの影）は、下の「影」レイヤーに分けて、レイヤーの不透明度で表す（描くのは上のレイヤー）
+  const semi = base.al ? [...new Set(base.al.filter((a) => a > 0 && a < 255))] : [];
+  if (semi.length > 1) throw new Error(`${name}: 半透明の濃さが${semi.length}通りある`);
+  const grid = (keep) => Array.from({ length: base.h }, (_, y) => Array.from({ length: base.w }, (_, x) => { const i = y * base.w + x, c = base.px[i]; return c && keep(base.al ? base.al[i] : 255) ? symOf[c] : '.'; }).join(''));
+  const rows = grid((a) => a === 255);
+  const layerName = name === from ? '手直し' : '表情';
   const proj = { format: 'sunshine-pixel', version: 2, width: base.w, height: base.h,
     symbols: colors.map((c, i) => ({ sym: SYMS[i], label: `色${SYMS[i]}`, color: c })),
-    layers: [{ name: name === from ? '手直し' : '表情', visible: true, opacity: 1 }], frames: [{ dur: 100 }], cels: [[rows]], layer: 0, frame: 0 };
+    layers: semi.length ? [{ name: '影', visible: true, opacity: semi[0] / 255 }, { name: layerName, visible: true, opacity: 1 }] : [{ name: layerName, visible: true, opacity: 1 }],
+    frames: [{ dur: 100 }], cels: semi.length ? [[grid((a) => a === semi[0])], [rows]] : [[rows]], layer: semi.length ? 1 : 0, frame: 0 };
   // 1. 開く
   await page.click('#openProjBtn');
   await page.fill('#projText', JSON.stringify(proj));
@@ -96,9 +103,12 @@ for (const [name, spec] of Object.entries(design)) {
   await modalAction('閉じる');
   // 確かめ: 元の絵＋設計図と同じか
   const got = await readPng(url);
-  const want = [...base.px];
-  for (const t of touch) want[t.y * base.w + t.x] = t.color;
-  const diff = want.reduce((n, c, i) => n + (c !== got.px[i] ? 1 : 0), 0);
+  const want = [...base.px], wantA = base.al ? [...base.al] : base.px.map((c) => (c ? 255 : 0));
+  for (const t of touch) { const i = t.y * base.w + t.x; want[i] = t.color; wantA[i] = t.color ? 255 : (semi.length && base.al[i] === semi[0] ? semi[0] : 0); }
+  // 消した所の下に影があれば影が見える（上のレイヤーだけ消すので）
+  for (const t of touch) { const i = t.y * base.w + t.x; if (!t.color && wantA[i]) want[i] = base.px[i]; }
+  const near = (a, b) => a && b && [1, 3, 5].every((k) => Math.abs(parseInt(a.slice(k, k + 2), 16) - parseInt(b.slice(k, k + 2), 16)) <= 2);
+  const diff = want.reduce((n, c, i) => n + ((wantA[i] !== got.al[i]) || (wantA[i] === 255 ? c !== got.px[i] : wantA[i] && !near(c, got.px[i])) ? 1 : 0), 0);
   if (diff || got.w !== base.w || got.h !== base.h) { bad++; console.log(`${name}: ${diff}ドット違う（書き出さない）`); continue; }
   dataUrlToFile(url, path.join(root, 'assets/img', `${name}.png`));
   console.log(`${name}: ${touch.length}ドット描いた（${spec.size ? 'まっさらなキャンバス' : from} から）`);
