@@ -257,6 +257,23 @@ function watchView() {
   window.visualViewport?.addEventListener('resize', again); window.visualViewport?.addEventListener('scroll', again);
 }
 if ('IntersectionObserver' in window) watchView();
+// セーブのファイル書き出し。claude.ai の表示の中では、ふつうのダウンロードが効かないので、表示側の「保存」を頼む
+const downloadsReady = window.claude?.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+async function saveFile(filename, text) {
+  const dl = await downloadsReady;
+  if (dl) {
+    try { await dl.save({ filename, data: text }); say('セーブをファイルに書き出した。', '店主'); }
+    catch (e) { if (e?.code !== 'declined') say('ファイルに書き出せなかった。下の文字をコピーして取っておこう。'); }
+    return;
+  }
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch { /* ファイルを保存できない所では、窓の文字のコピーで書き出す */ }
+}
 function openWin(kind, opts = {}) { ui.win = { kind, ...opts }; ui.confirm = null; sound.se('open'); renderWin(); $('modal').hidden = false; placeModal(); $('winBody').scrollTop = 0; }
 function closeWin() {
   if (!ui.win) return;
@@ -1221,13 +1238,8 @@ document.addEventListener('click', (e) => {
   if (act === 'help') { openWin('help'); return; }
   if (act === 'exportSave') {
     const text = encodeSave(game, { log: ui.log, today: ui.today, clock: ui.clock, display: ui.display });
-    try {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-      a.download = `tsukemono-save-${game.day()}日目.json`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    } catch { /* ファイルを保存できない所（埋めこみ表示など）では、下の文字のコピーで書き出す */ }
+    const filename = `tsukemono-save-${game.day()}日目.json`;
+    saveFile(filename, text);
     window.__lastExport = text; // 動作確認用
     openWin('saveText', { text });
     return;
