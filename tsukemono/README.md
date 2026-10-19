@@ -15,6 +15,7 @@ npm run e2e        # 画面の通し確認（タイトル→序章→仕込み�
 node scripts/monkey.mjs 600 1    # でたらめに押して不具合を探す（エラー・NaN・はみ出し。手数と乱数の種。W=390 H=844 でスマホ幅）
 node scripts/winshots.mjs        # すべての窓をパソコン幅とスマホ幅で開いて撮る（docs/winshots/。はみ出し・おかしな文字を調べる）
 node scripts/playthrough.mjs 120 # まじめに長く遊ぶ（毎朝仕込んで売る。物語・従業員・注文の窓も通る。docs/playthrough/ に10日ごとの店先）
+node scripts/buttons.mjs          # すべての窓・すべてのボタンを6つの画面の大きさと埋め込み（縦に伸びる枠）で、見えて押せるか・押して何か起きるかを調べる（--quick、SIZE=844x390、WIN=market）
 node scripts/placeholders.js > docs/placeholders.md  # 【仮置き】の一覧を作り直す
 npm run build      # テストプレイ用に1つのHTMLにまとめる → dist/tsukemono-standalone.html（そのまま開ける）
 ```
