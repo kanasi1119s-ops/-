@@ -68,7 +68,7 @@ for (const [name, spec] of Object.entries(design)) {
   await modalAction('読み込む');
   if (await page.isChecked('#symmetry')) await page.click('#symmetry');
   if (await page.isChecked('#symmetryV')) await page.click('#symmetryV');
-  await setRange('#zoom', base.w > 90 || base.h > 110 ? 6 : 8);
+  await setRange('#zoom', process.env.EDITOR_ZOOM || (base.w > 150 ? 4 : base.w > 90 || base.h > 110 ? 6 : 8));
   await setRange('#brushSize', 1);
   await page.keyboard.press('Escape');
   let B;
@@ -92,26 +92,40 @@ for (const [name, spec] of Object.entries(design)) {
   }
   const erase = touch.filter((t) => !t.color);
   if (erase.length) { await tool('eraser'); await measure(); for (const r of runs(erase)) await stroke(r); }
-  // 3. 書き出し
-  await page.click('#exPngBtn');
-  await page.selectOption('#exScale', '1');
-  await modalAction('画像を作る');
-  const url = await page.$eval('#outBox img', (i) => i.src);
-  await modalAction('閉じる');
-  await page.click('#saveProjBtn');
-  fs.writeFileSync(path.join(OUT, `${name}.json`), await page.$eval('#projJson', (t) => t.value));
-  await modalAction('閉じる');
-  // 確かめ: 元の絵＋設計図と同じか
-  const got = await readPng(url);
+  // 3. 書き出して確かめる: 元の絵＋設計図と同じか。描きそこねたドットがあれば、そのドットだけ描き直す（3回まで）
   const want = [...base.px], wantA = base.al ? [...base.al] : base.px.map((c) => (c ? 255 : 0));
   for (const t of touch) { const i = t.y * base.w + t.x; want[i] = t.color; wantA[i] = t.color ? 255 : (semi.length && base.al[i] === semi[0] ? semi[0] : 0); }
   // 消した所の下に影があれば影が見える（上のレイヤーだけ消すので）
   for (const t of touch) { const i = t.y * base.w + t.x; if (!t.color && wantA[i]) want[i] = base.px[i]; }
   const near = (a, b) => a && b && [1, 3, 5].every((k) => Math.abs(parseInt(a.slice(k, k + 2), 16) - parseInt(b.slice(k, k + 2), 16)) <= 2);
-  const diff = want.reduce((n, c, i) => n + ((wantA[i] !== got.al[i]) || (wantA[i] === 255 ? c !== got.px[i] : wantA[i] && !near(c, got.px[i])) ? 1 : 0), 0);
+  const wrong = (got) => want.map((c, i) => i).filter((i) => (wantA[i] !== got.al[i]) || (wantA[i] === 255 ? want[i] !== got.px[i] : wantA[i] && !near(want[i], got.px[i])));
+  const exportPng = async () => {
+    await page.click('#exPngBtn');
+    await page.selectOption('#exScale', '1');
+    await modalAction('画像を作る');
+    const u = await page.$eval('#outBox img', (i) => i.src);
+    await modalAction('閉じる');
+    return u;
+  };
+  let url = await exportPng(), got = await readPng(url), miss = wrong(got);
+  for (let k = 0; k < 3 && miss.length && got.w === base.w && got.h === base.h; k++) {
+    const again = touch.filter((t) => miss.includes(t.y * base.w + t.x));
+    if (!again.length) break;
+    for (const col of [...new Set(again.map((t) => t.color).filter(Boolean))]) {
+      await tool('pencil'); await pickColor(symOf[col]); await measure();
+      for (const t of again.filter((t) => t.color === col)) await stroke([t.y, t.x, t.x]);
+    }
+    const er = again.filter((t) => !t.color);
+    if (er.length) { await tool('eraser'); await measure(); for (const t of er) await stroke([t.y, t.x, t.x]); }
+    url = await exportPng(); got = await readPng(url); miss = wrong(got);
+  }
+  await page.click('#saveProjBtn');
+  fs.writeFileSync(path.join(OUT, `${name}.json`), await page.$eval('#projJson', (t) => t.value));
+  await modalAction('閉じる');
+  const diff = miss.length;
   if (diff || got.w !== base.w || got.h !== base.h) {
     bad++; console.log(`${name}: ${diff}ドット違う（書き出さない）`);
-    if (process.env.EDITOR_DEBUG) want.forEach((c, i) => { if ((wantA[i] !== got.al[i]) || (wantA[i] === 255 && c !== got.px[i])) console.log(`  (${i % base.w},${Math.floor(i / base.w)}) 欲しい ${c}/${wantA[i]} 実際 ${got.px[i]}/${got.al[i]}`); });
+    if (process.env.EDITOR_DEBUG) miss.forEach((i) => console.log(`  (${i % base.w},${Math.floor(i / base.w)}) 欲しい ${want[i]}/${wantA[i]} 実際 ${got.px[i]}/${got.al[i]}`));
     continue;
   }
   dataUrlToFile(url, path.join(root, 'assets/img', `${name}.png`));

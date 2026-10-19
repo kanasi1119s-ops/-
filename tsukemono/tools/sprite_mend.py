@@ -67,7 +67,7 @@ def clean(a, steps=('hole', 'gap', 'halo', 'speck', 'line'), hole_max=6):
         else:
             im.a[y, x, :3] = col; im.a[y, x, 3] = 255
 
-    if 'hole' in steps:  # 体の中の小さな透明（ピンホール）: まわりの色で外から埋める
+    def fill_holes():  # 体の中の小さな透明（ピンホール）: まわりの色で外から埋める
         tr = (im.a[..., 3] == 0).astype(np.uint8)
         k, lab, st, _ = cv2.connectedComponentsWithStats(tr, connectivity=4)
         for i in range(1, k):
@@ -87,6 +87,9 @@ def clean(a, steps=('hole', 'gap', 'halo', 'speck', 'line'), hole_max=6):
                     break
                 for (yy, xx), col in done:
                     setp(yy, xx, np.array(col, np.uint8)); left.discard((yy, xx))
+
+    if 'hole' in steps:
+        fill_holes()
     if 'gap' in steps:  # 線と体のあいだの透明な隙間（線が体から1マス離れている）: 体の側の色で埋める
         fills = []
         for y in range(H):
@@ -160,6 +163,8 @@ def clean(a, steps=('hole', 'gap', 'halo', 'speck', 'line'), hole_max=6):
             if st[i, 4] <= 3 or (st[i, 4] <= 8 and float(np.mean(im.a[lab == i][:, :3] @ LW)) > 170):
                 for y, x in zip(*np.nonzero(lab == i)):
                     setp(y, x, None)
+    if 'hole' in steps and len(steps) > 1:  # すき間を埋めたり縁を消したりして新しく閉じた穴も埋める
+        fill_holes()
     if 'line' in steps:  # 明るい縁で線が抜けた所: 外の空いた所に面した透明なマスに、近くの線の色で1ドット
         add = {}
         for y in range(H):
@@ -415,5 +420,17 @@ def main(prefixes):
     print(len(design), '枚', sum(len(v) for v in design.values()), 'ドット →', path)
 
 
+def holes_only():
+    """いまの絵に穴埋めだけを当てる設計図（assets/editor/mend/holes.design.json）"""
+    names = sorted(f[:-4] for f in os.listdir(IMG) if f.endswith('.png') and f.split('_')[0] in ('pose', 'walk', 'surprise', 'angry', 'staff', 'baron'))
+    design = {}
+    for n in names:
+        a = load(n); t = touches(a, clean(a, ('hole',), HOLE_MAX.get(n, 6)))
+        if t:
+            design[n] = t
+    json.dump(design, open(os.path.join(OUT, 'holes.design.json'), 'w'), ensure_ascii=False)
+    print(len(design), '枚', sum(len(v) for v in design.values()), 'ドット')
+
+
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    holes_only() if sys.argv[1:] == ['--holes'] else main(sys.argv[1:])
