@@ -91,3 +91,17 @@ test('色をそろえた: 同じ人のポーズ全体で使う色が多すぎな
     assert.ok(all.size <= 120, `${ch}: ${all.size}色`);
   }
 });
+
+test('おばあさん: 頭巾に欠けがない（頭巾の高さで、左右・上下とも近くに絵がある透明のドットがない）', () => {
+  const R = 4;
+  for (const f of people.filter((n) => n.includes('granny'))) {
+    const img = readPng(`assets/img/${f}`), op = (x, y) => x >= 0 && y >= 0 && x < img.w && y < img.h && img.alpha(x, y) > 0;
+    let top = 0; while (![...Array(img.w).keys()].some((x) => img.alpha(x, top))) top++;
+    const near = (x, y, dx, dy) => [1, 2, 3, 4].slice(0, R).some((k) => op(x + dx * k, y + dy * k));
+    const holes = [];
+    for (let y = top; y < Math.min(img.h, top + 12); y++) for (let x = 0; x < img.w; x++) {
+      if (!op(x, y) && near(x, y, -1, 0) && near(x, y, 1, 0) && near(x, y, 0, -1) && near(x, y, 0, 1)) holes.push(`${x},${y}`);
+    }
+    assert.equal(holes.length, 0, `${f}: 欠け ${holes.join(' ')}`);
+  }
+});
