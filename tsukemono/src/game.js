@@ -55,12 +55,18 @@ export const startRecipes = (cfg = CONFIG) => Object.fromEntries(Object.entries(
 
 export const newBed = (cfg = CONFIG) => ({ salt: cfg.nuka.startSalt, sour: 0, film: 0, maturity: 0, lastStirDay: 0, water: 0, rot: 0, umami: 0, suteTick: 0, cared: {} });
 
+/** 店の名前（看板の「〇〇漬物店」の〇〇）。はじめるときに決める。空なら SHOP_NAME_DEFAULT */
+export const SHOP_NAME_DEFAULT = '俺の';
+export const SHOP_NAME_MAX = 6;
+export const cleanShopName = (t) => (typeof t === 'string' ? [...t.replace(/[\u0000-\u001f\u007f<>&"'`]/g, '').replace(/\s+/g, ' ').trim()].slice(0, SHOP_NAME_MAX).join('').trim() : '');
+
 export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {}) {
   const cal = cfg.calendar;
   const g = {
     cfg, rng,
     tick: 0, // 0 = 1日目の朝。1日 = ticksPerDay 区切り。
     money: cfg.sales.startMoney,
+    shopName: SHOP_NAME_DEFAULT,
     barrels: Array.from({ length: BARREL_COUNT }, () => null),
     shelf: [], // 棚（樽から移した漬物。null は空き）
     weather: 'sunny',
@@ -703,9 +709,13 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     return res;
   };
 
+  /** 店の名前を決める（看板・お話に出る）。使えない文字は落とし、長すぎれば切る。空なら決まった名前 */
+  g.setShopName = (t) => { g.shopName = cleanShopName(t) || SHOP_NAME_DEFAULT; return g.shopName; };
+  g.shopTitle = () => `${g.shopName}漬物店`;
+
   /** セーブ用の状態（JSONにできる形）。 */
   g.snapshot = () => JSON.parse(JSON.stringify({
-    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, tomorrow: g.tomorrow, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, orders: g.orders, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns,
+    v: SAVE_VERSION, tick: g.tick, money: g.money, barrels: g.barrels, shelf: g.shelf, weather: g.weather, tomorrow: g.tomorrow, stats: g.stats, lastSaleTick: g.lastSaleTick, nuka: g.nuka, reputation: g.reputation, places: g.places, regulars: g.regulars, nextRegularId: g.nextRegularId, book: g.book, xp: g.xp, recipes: g.recipes, regions: g.regions, tane: g.tane, wisdom: g.wisdom, claimer: g.claimer, claim: g.claim, stock: g.stock, staff: g.staff, contracts: g.contracts, seed: g.seed, story: g.story, orders: g.orders, upgrades: g.upgrades, barrelGrade: g.barrelGrade, campaigns: g.campaigns, shopName: g.shopName,
     rng: rng.getState ? rng.getState() : null,
   }));
 
@@ -760,6 +770,7 @@ export function createGame({ seed = 1, rng = createRng(seed), cfg = CONFIG } = {
     g.upgrades = Array.isArray(s.upgrades) ? s.upgrades.filter((id) => cfg.upgrades[id]?.group === 'shop') : [];
     g.barrelGrade = s.barrelGrade && typeof s.barrelGrade === 'object' ? Object.fromEntries(Object.entries(s.barrelGrade).filter(([k, id]) => cfg.upgrades[id] && +k < g.barrels.length)) : {};
     g.campaigns = Array.isArray(s.campaigns) ? s.campaigns.filter((c) => c && cfg.upgrades[c.id] && Number.isFinite(c.until)) : [];
+    g.shopName = cleanShopName(s.shopName) || SHOP_NAME_DEFAULT; // 名前を決める前のセーブは「俺の漬物店」
     for (const b of g.barrels) if (b) b.specials = Array.isArray(b.specials) ? b.specials.filter((id) => cfg.specials[id]) : [];
     const wd = s.wisdom;
     g.wisdom = wd && Array.isArray(wd.known) ? { joined: !!wd.joined, known: wd.known.filter((id) => typeof id === 'string'), told: wd.told && typeof wd.told === 'object' ? { ...wd.told } : {} } : { joined: g.regulars.some((r) => r.granny), known: [], told: {} };

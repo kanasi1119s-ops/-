@@ -38,7 +38,7 @@ try {
   await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
   await page.evaluate(() => localStorage.clear()); await page.reload();
   await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
-  await page.click('[data-title="new"]');
+  await page.click('[data-title="new"]'); await page.click('[data-title="named"]');
   await page.evaluate(() => { window.__game.world.speed = 8; });
   // 押さないもの: 最初から・タイトルへ・ファイルを選ぶ（遊びが止まる）
   const SKIP = ['reset', 'toTitle', 'pickFile', 'importSave', 'pasteSave'];

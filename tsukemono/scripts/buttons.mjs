@@ -55,7 +55,7 @@ async function run(label, page, frame, vis) {
   frame.page().on('pageerror', (e) => note(label, `エラー: ${e.message}`));
   await frame.waitForFunction(() => window.__game, null, { timeout: 60000 });
   await frame.evaluate(() => localStorage.clear());
-  await frame.click('[data-title="new"]');
+  await frame.click('[data-title="new"]'); await frame.click('[data-title="named"]');
   await frame.evaluate(SETUP);
   // 見えている範囲（外のページの座標で）と、枠の位置
   const off = async () => (frame === page.mainFrame() ? { x: 0, y: 0 } : page.evaluate(() => { const r = document.querySelector('iframe').getBoundingClientRect(); return { x: r.left, y: r.top }; }));
@@ -113,7 +113,7 @@ async function run(label, page, frame, vis) {
         await frame.waitForFunction(() => !window.__game.ui.busy, null, { timeout: 30000 }).catch(() => note(where, `${r.name} を押したあと止まったまま`));
         const after = await stateOf();
         if (before === after) note(where, `${r.name} を押しても何も変わらない`);
-        if (await frame.evaluate(() => !!document.getElementById('title') && !document.getElementById('title').hidden)) { await frame.click('[data-title="continue"]').catch(() => frame.click('[data-title="new"]')); await frame.evaluate(SETUP); }
+        if (await frame.evaluate(() => !!document.getElementById('title') && !document.getElementById('title').hidden)) { await frame.click('[data-title="continue"]').catch(async () => { await frame.click('[data-title="new"]'); await frame.click('[data-title="named"]'); }); await frame.evaluate(SETUP); }
       }
       if (process.env.VERBOSE) console.log(`  ${where}: ${n}個 ${((Date.now() - t0) / 1000).toFixed(1)}秒`);
     }

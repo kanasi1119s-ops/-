@@ -26,7 +26,7 @@ try {
   await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
   await page.evaluate(() => localStorage.clear()); await page.reload();
   await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
-  await page.click('[data-title="new"]');
+  await page.click('[data-title="new"]'); await page.click('[data-title="named"]');
   await page.evaluate(() => { window.__game.world.speed = 16; window.__game.ui.paused = true; });
   // 開いている窓を閉じる（ボタンの中でいちばん目立つもの。物語は「次へ」を押し切る）
   const closeAll = async () => {

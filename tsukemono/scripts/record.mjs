@@ -34,7 +34,7 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
-  await page.click('[data-title="new"]');
+  await page.click('[data-title="new"]'); await page.click('[data-title="named"]');
   await page.evaluate(() => { const g = window.__game; g.game.weather = 'sunny'; g.ui.override = { manual: true, season: 'spring', time: 'noon', weather: 'sunny' }; g.world.speed = 1;
     g.game.money = 20000; g.game.brew(0, { veg: 'kyuri', pickle: 'asazuke', saltPct: 2.5, tempC: 20 }); g.game.brew(1, { veg: 'hakusai', pickle: 'hakusaizuke', saltPct: 3, tempC: 20 }); g.renderAll(); }); // 樽: きゅうり・白菜・空
   let n = 0;

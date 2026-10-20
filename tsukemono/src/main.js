@@ -1,7 +1,7 @@
 // 画面（DOM）とゲームをつなぐ。計算は model.js / sales.js / game.js、見た目は render.js / world.js、音は audio.js。
 // 画面の作り: 上に帳場（日付・お金・評判）、真ん中に店先、下に会話窓とコマンド。操作は「窓」を開いて行う。
 import { CONFIG } from './config.js';
-import { createGame, bookTotal, SHELF } from './game.js';
+import { createGame, bookTotal, SHELF, SHOP_NAME_DEFAULT, SHOP_NAME_MAX } from './game.js';
 import { simulate, daysToRipe, ripeRangeDays, applyCare, affinityOf } from './model.js';
 import { SceneRenderer } from './render.js';
 import { World } from './world.js';
@@ -91,6 +91,7 @@ function view() {
     })),
     actors: world.actors,
     effects: world.effects,
+    shopName: game.shopName,
   };
 }
 const slotPos = (i) => SCENE.slots[i] ?? SCENE.extraSlots[i - SCENE.slots.length];
@@ -1309,18 +1310,39 @@ function showTitle() {
       <button class="btn ghost" data-title="help">遊び方</button>
     </div>
     <div class="note">音が出ます（設定で変えられます）</div>`;
+  t.classList.remove('naming');
   t.hidden = false;
   $('app').classList.add('titling');
   renderCommands();
   sound.play('title');
+}
+// はじめる前に、店の名前（看板の「〇〇漬物店」の〇〇）を決める。打つたびに看板が書きかわる
+function showNaming() {
+  const t = $('title');
+  t.classList.add('naming');
+  t.innerHTML = `<form class="naming-box" data-naming>
+      <label for="shopNameInput">店の名前をつけよう</label>
+      <div class="namebox"><input id="shopNameInput" maxlength="${SHOP_NAME_MAX}" placeholder="${esc(SHOP_NAME_DEFAULT)}" autocomplete="off" enterkeyhint="done" value=""><span>漬物店</span></div>
+      <p class="hint">屋根の看板に書きます。${SHOP_NAME_MAX}文字まで。空のままなら「${esc(SHOP_NAME_DEFAULT)}漬物店」。</p>
+      <div class="menu"><button class="btn main" type="button" data-title="named">この名前で店を開く</button>
+      <button class="btn ghost" type="button" data-title="back">もどる</button></div>
+    </form>`;
+  const inp = $('shopNameInput');
+  inp.addEventListener('input', () => { game.setShopName(inp.value); });
+  t.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); t.querySelector('[data-title="named"]').click(); });
+  game.setShopName('');
+  setTimeout(() => inp.focus(), 0);
 }
 $('title').addEventListener('click', (e) => {
   const b = e.target.closest('[data-title]');
   if (!b) return;
   sound.unlock();
   sound.se('click');
-  const k = b.dataset.title;
+  let k = b.dataset.title;
   if (k === 'help') { openWin('help'); return; }
+  if (k === 'back') { game.setShopName(''); showTitle(); return; }
+  if (k === 'new' && !(game.tick > 0 || game.barrels.some(Boolean))) { showNaming(); return; }
+  if (k === 'named') { game.setShopName($('shopNameInput')?.value ?? ''); $('title').classList.remove('naming'); k = 'new'; }
   if (k === 'new' && (game.tick > 0 || game.barrels.some(Boolean))) {
     if (ui.confirm !== 'new') { ui.confirm = 'new'; showTitle(); return; }
     store.del(SAVE_KEY); location.reload(); return;
@@ -1331,7 +1353,7 @@ $('title').addEventListener('click', (e) => {
   ui.confirm = null;
   renderAll();
   if (brokenSave) { brokenSave = false; say('前のセーブが壊れていて読めなかったので、最初から始める。（壊れたセーブは別に残してある）'); } else if (k === 'new' || (k !== 'continue' && game.tick === 0)) {
-    say('いらっしゃい…じゃなくて、今日からここがあなたの漬物屋。まずは「仕込む」で、樽にきゅうりの浅漬けを漬けてみよう。浅漬けは1日で食べ頃になる。', '先代');
+    say(`いらっしゃい…じゃなくて、今日からここが「${game.shopTitle()}」。あなたの漬物屋だ。まずは「仕込む」で、樽にきゅうりの浅漬けを漬けてみよう。浅漬けは1日で食べ頃になる。`, '先代');
   } else {
     say(`おかえりなさい。${C.season[game.season()].name} ${kanjiNum(game.day())}日目、${C.timeName[game.timeOfDay()]}から。`, '店主');
   }

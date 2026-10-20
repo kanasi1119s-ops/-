@@ -274,3 +274,13 @@ details summary { cursor: pointer; color: var(--sumi); font-size: 14px }
 .sg-cast figure { margin: 0; display: grid; justify-items: center; gap: 4px }
 .sg-cast img { image-rendering: pixelated; max-width: 100% }
 .sg-cast figcaption { font: 400 13px/1 var(--brush); background: var(--sumi); color: var(--washi); padding: 3px 6px }
+
+/* はじめる前の店の名前（看板が見えるよう、下に寄せて上は暗くしない） */
+.title-screen.naming { place-content: end center; background: linear-gradient(#1a274000 0 32%, #1a2740aa 52%, #1a2740dd) }
+.naming-box { display: grid; justify-items: center; gap: 1.2cqw; color: var(--washi) }
+.naming-box label { font: 400 clamp(18px, 4.2cqw, 34px)/1.2 var(--brush); text-shadow: 2px 2px 0 var(--sumi) }
+.naming-box .namebox { display: flex; align-items: center; gap: .3em; background: var(--washi); color: var(--sumi); border: 3px solid var(--sumi); padding: .15em .5em; font: 700 clamp(18px, 4cqw, 30px)/1.2 var(--mincho, serif) }
+.naming-box input { width: 7em; font: inherit; color: inherit; background: transparent; border: 0; border-bottom: 2px dashed #0005; text-align: center; outline: none }
+.naming-box input:focus-visible { border-bottom-color: var(--shu) }
+.naming-box .hint { margin: 0; font-size: clamp(11px, 2.2cqw, 14px); color: var(--washi) }
+.naming-box .menu { grid-auto-flow: column; margin-top: .4cqw }

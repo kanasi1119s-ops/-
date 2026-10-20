@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CONFIG } from '../src/config.js';
-import { createGame } from '../src/game.js';
+import { createGame, cleanShopName, SHOP_NAME_DEFAULT } from '../src/game.js';
 import { SAVE_VERSION, encodeSave, decodeSave, migrateSnapshot } from '../src/save.js';
 
 const DAY = CONFIG.calendar.ticksPerDay;
@@ -85,4 +85,17 @@ test('知らない項目（後の版で消えた漬物・野菜など）は、�
   assert.equal(h.recipes.nazozuke, undefined);
   assert.equal(h.stock.nazo, undefined);
   assert.ok(!h.staff.includes('nazo'));
+});
+
+test('店の名前: 決めた名前はセーブに入り、使えない文字は落ち、長すぎれば切れ、空や古いセーブは決まった名前', () => {
+  const g = createGame({ seed: 3 });
+  assert.equal(g.shopTitle(), `${SHOP_NAME_DEFAULT}漬物店`);
+  assert.equal(g.setShopName(' 山田 '), '山田');
+  const h = createGame({ seed: 4 });
+  const d = decodeSave(encodeSave(g), (s) => createGame({ seed: 5 }).restore(s));
+  assert.ok(d.ok); assert.ok(h.restore(d.data.game)); assert.equal(h.shopTitle(), '山田漬物店');
+  assert.equal(cleanShopName('<b>ぬか</b>'), 'bぬか/b');
+  assert.equal(cleanShopName('一二三四五六七八'), '一二三四五六');
+  assert.equal(g.setShopName('   '), SHOP_NAME_DEFAULT);
+  const old = g.snapshot(); delete old.shopName; h.setShopName('x'); assert.ok(h.restore(old)); assert.equal(h.shopName, SHOP_NAME_DEFAULT);
 });

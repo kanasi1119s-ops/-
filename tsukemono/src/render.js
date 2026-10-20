@@ -27,6 +27,60 @@ function applyTo(rgb, hsl, to) {
   if (to.mix) { const c = hex(to.mix[0]); out = out.map((v, i) => v + (c[i] - v) * to.mix[1]); }
   return out;
 }
+const SIGN_FONT = '"Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif';
+/**
+ * 看板の字を書き直した背景を返す。絵の字（暗いドットとそのふちのにじみ）は、同じ行の木目を
+ * 字のふちで折り返して写して消す（木目は横に流れているので、行ごとに写すと筋がつながる）。
+ * （字のまわり2ドットのにじみも消す）。新しい字は明朝の太字を等倍で描いて、濃い所だけを墨の色の1色にする（にじまないドット）。
+ */
+export function signBoard(src, text) {
+  const S = SCENE.sign, [x0, y0, x1, y1] = S.rect;
+  const c = makeCanvas(src.width, src.height), g = c.getContext('2d');
+  g.drawImage(src, 0, 0);
+  const img = g.getImageData(x0, y0, x1 - x0, y1 - y0), d = img.data, w = x1 - x0, h = y1 - y0;
+  const lum = (i) => d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+  // 字と、そのまわり2ドットのにじみ（木目より少し暗い・灰色がかったふち）を消す所にする
+  let mask = Array.from({ length: w * h }, (_, i) => lum(i * 4) < 112);
+  for (let k = 0; k < 2; k++) {
+    const m = mask.slice();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (mask[y * w + x]) continue;
+      for (let dy = -1; dy <= 1 && !m[y * w + x]; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const yy = y + dy, xx = x + dx;
+        if (yy >= 0 && yy < h && xx >= 0 && xx < w && mask[yy * w + xx]) { m[y * w + x] = true; break; }
+      }
+    }
+    mask = m;
+  }
+  for (let y = 0; y < h; y++) {
+    const ink = mask.slice(y * w, (y + 1) * w);
+    const orig = d.slice(y * w * 4, (y + 1) * w * 4);
+    for (let x = 0; x < w; x++) {
+      if (!ink[x]) continue;
+      let l = x; while (l >= 0 && ink[l]) l--;
+      let r = x; while (r < w && ink[r]) r++;
+      // 左の木目を折り返して写す（左が端なら右から）。折り返し先も字なら、いちばん近い木目
+      const cand = [l >= 0 ? 2 * l - x : -1, r < w ? 2 * r - x : -1, l, r].find((k) => k >= 0 && k < w && !ink[k]);
+      if (cand == null) continue;
+      for (let k = 0; k < 4; k++) d[(y * w + x) * 4 + k] = orig[cand * 4 + k];
+    }
+  }
+  g.putImageData(img, x0, y0);
+  // 字: 長い名前は小さくして看板の幅に収める
+  const n = [...text].length, size = Math.max(14, Math.min(S.size, Math.floor(S.w / n)));
+  const t = makeCanvas(x1 - x0, y1 - y0), tg = t.getContext('2d');
+  tg.font = `900 ${size}px ${SIGN_FONT}`;
+  tg.textAlign = 'center'; tg.textBaseline = 'middle';
+  const scaleX = Math.min(1, S.w / Math.max(1, tg.measureText(text).width));
+  tg.setTransform(scaleX, 0, 0, 1, (S.cx - x0) * (1 - scaleX), 0);
+  tg.fillStyle = '#000';
+  tg.fillText(text, S.cx - x0, S.cy - y0 + 1);
+  const ti = tg.getImageData(0, 0, t.width, t.height).data, out = g.getImageData(x0, y0, w, h);
+  for (let i = 0; i < ti.length; i += 4) if (ti[i + 3] >= 96) { out.data[i] = S.ink[0]; out.data[i + 1] = S.ink[1]; out.data[i + 2] = S.ink[2]; out.data[i + 3] = 255; }
+  g.putImageData(out, x0, y0);
+  return c;
+}
+
 /** 人物の色の差し替え（assets/characters.js の RECOLORS）。 */
 function personRecolor(rules, outfit) {
   if (!rules && !outfit) return null;
@@ -59,16 +113,37 @@ export class SceneRenderer {
     this.people = new Map();
   }
 
+  /** 看板に店の名前を書いた背景（季節の色替えの前。キャッシュ）。 */
+  signed(name) {
+    if (this.signName === name && this.signCanvas) return this.signCanvas;
+    this.askFont(name);
+    this.signName = name;
+    this.signCanvas = signBoard(getImage('bg'), `${name}漬物店`);
+    return this.signCanvas;
+  }
+
+  /** 看板の字の形（明朝）が読みこめたら、看板を書き直す */
+  askFont(name) {
+    this.fontAsked ??= new Set();
+    if (this.fontAsked.has(name) || typeof document === 'undefined' || !document.fonts?.load) return;
+    this.fontAsked.add(name);
+    document.fonts.load(`900 ${SCENE.sign.size}px ${SIGN_FONT.split(',')[0]}`, `${name}漬物店`).then((f) => {
+      if (f.length && this.signName === name) { this.signCanvas = null; this.lands.clear(); }
+    }).catch(() => {});
+  }
+
   /** 季節・天気で色を置き換えた背景（キャッシュ）。 */
-  land(theme) {
-    let c = this.lands.get(theme.landKey);
+  land(theme, name = '') {
+    const key = `${theme.landKey}|${name}`;
+    let c = this.lands.get(key);
     if (c) return c;
+    if (this.lands.size > 24) this.lands.clear();
     const rc = theme.recolor;
-    c = recolor(getImage('bg'), Object.keys(rc).length ? (r, g, b, x, y) => {
+    c = recolor(this.signed(name), Object.keys(rc).length ? (r, g, b, x, y) => {
       const hsl = rgbToHsl(r, g, b), k = kindOf(...hsl, x, y);
       return k && rc[k] ? applyTo([r, g, b], hsl, rc[k]) : null;
     } : null);
-    this.lands.set(theme.landKey, c);
+    this.lands.set(key, c);
     return c;
   }
 
@@ -123,7 +198,7 @@ export class SceneRenderer {
       g.globalAlpha = 1;
     }
     // 背景（トレースした店先）
-    g.drawImage(this.land(theme), 0, 0);
+    g.drawImage(this.land(theme, view.shopName ?? '俺の'), 0, 0);
     if (theme.puddles) for (const [x, y] of [[40, 410], [300, 418], [600, 408], [710, 420], [140, 424]]) g.drawImage(getSprite('puddle'), x, y);
     // 売り場の樽の中身
     view.barrels.forEach((b, i) => {

@@ -37,7 +37,16 @@ try {
   await page.evaluate(() => localStorage.clear()); await page.reload(); await ready();
   check('タイトルが出る', await page.isVisible('#title'));
   await page.click('[data-title="new"]');
+  check('はじめると、店の名前を決める欄が出る', await page.isVisible('#shopNameInput'));
+  const signPx = () => page.evaluate(() => Array.from(document.getElementById('screen').getContext('2d').getImageData(287, 83, 194, 42).data));
+  const signBefore = await signPx();
+  await page.fill('#shopNameInput', '山田');
+  await page.waitForTimeout(400);
+  const signAfter = await signPx();
+  check('名前を打つと看板が書きかわる', signAfter.filter((v, i) => i % 4 === 0 && Math.abs(v - signBefore[i]) > 60).length > 300 && (await page.evaluate(() => window.__game.game.shopName)) === '山田');
+  await page.click('[data-title="named"]');
   check('はじめると店先になる', !(await page.isVisible('#title')));
+  check('店の名前がつく（看板・セーブ・お話）', (await page.evaluate(() => window.__game.game.shopTitle())) === '山田漬物店' && (await page.evaluate(() => window.__game.game.snapshot().shopName)) === '山田');
   check('序章（物語）の窓が出て、「次へ」で読み進められる', (await page.textContent('#winTitle')).includes('序章'));
   for (let i = 0; i < 20 && (await page.$('[data-act="sagaNext"]')); i++) await page.click('[data-act="sagaNext"]');
   await page.click('[data-act="closeWin"]');

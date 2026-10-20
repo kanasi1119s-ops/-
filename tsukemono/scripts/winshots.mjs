@@ -24,7 +24,7 @@ try {
     await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
     await page.evaluate(() => localStorage.clear()); await page.reload();
     await page.waitForFunction(() => window.__game, null, { timeout: 20000 });
-    await page.click('[data-title="new"]');
+    await page.click('[data-title="new"]'); await page.click('[data-title="named"]');
     // 遊びこんだ店にする: お金・レベル・樽・棚・在庫・従業員
     await page.evaluate(() => {
       const g = window.__game, G = g.game;
